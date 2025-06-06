@@ -109,17 +109,7 @@ export function LoginForm() {
               {loading ? "Signing in..." : "Sign In"}
             </Button>
           </form>
-          <div className="mt-6 text-sm text-gray-600">
-            <p className="font-medium mb-2">Demo Accounts:</p>
-            <div className="space-y-1 text-xs">
-              <p>admin@applywizz.com (Super Admin)</p>
-              <p>marketing@applywizz.com (Marketing)</p>
-              <p>sales@applywizz.com (Sales)</p>
-              <p>account@applywizz.com (Account Management)</p>
-              <p>finance@applywizz.com (Finance)</p>
-              <p className="font-medium">Password: password</p>
-            </div>
-          </div>
+         
         </CardContent>
       </Card>
     </div>
