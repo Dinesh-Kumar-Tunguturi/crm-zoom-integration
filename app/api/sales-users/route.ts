@@ -1,0 +1,174 @@
+// // app/api/sales-users/route.ts
+// import { NextResponse } from 'next/server';
+// import { createClient } from '@supabase/supabase-js';
+// import { supabaseAdmin } from '@/lib/supabaseAdmin';
+
+// const supabase = createClient(
+//   process.env.NEXT_PUBLIC_SUPABASE_URL!,
+//   process.env.SUPABASE_SERVICE_ROLE_KEY!
+// // This is my api/sales-users/route.ts file code, i hope you are saying about this like return this structure
+// );
+
+// export const GET = async () => {
+//   try {
+//     const { data, error } = await supabase.rpc('get_sales_team_emails');
+
+//     if (error) throw error;
+
+//     return NextResponse.json(data); // [{ id, email }]
+//   } catch (error: any) {
+//     console.error('Sales-users API Error:', error.message);
+//     return NextResponse.json({ error: error.message }, { status: 500 });
+//   }
+// };
+// export const POST = async (req: Request) => {
+//   try {
+//     const { email, password, role } = await req.json();
+
+//     // 1. Create user
+//     const { data: signUpData, error: signUpError } = await supabaseAdmin.auth.admin.createUser({
+//       email,
+//       password,
+//       email_confirm: true,
+//     });
+
+//     if (signUpError) throw signUpError;
+//     const authId = signUpData.user?.id;
+//     if (!authId) throw new Error("No user ID returned");
+
+//     // 2. Wait (ensures user appears in auth.users)
+//     await new Promise((res) => setTimeout(res, 1000));
+
+//     // 3. Generate user ID
+//     const { data: uidData, error: uidError } = await supabaseAdmin.rpc("generate_user_id");
+//     if (uidError) throw uidError;
+//     const customUserId = uidData;
+
+//     // 4. Insert into profiles
+//     const { error: profileError } = await supabaseAdmin.from("profiles").insert([
+//       {
+//         user_id: customUserId,
+//         auth_id: authId,
+//         roles: role,
+//       },
+//     ]);
+//     if (profileError) throw profileError;
+
+//     return NextResponse.json({ success: true });
+//   } catch (error: any) {
+//     console.error("User creation error:", error.message);
+//     return NextResponse.json({ error: error.message }, { status: 500 });
+//   }
+// };
+
+
+
+
+
+
+
+
+// app/api/sales-users/route.ts
+
+import { NextResponse } from 'next/server';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
+
+/**
+ * ✅ GET: Fetch all users with 'Sales' role from Supabase using RPC
+ */
+export const GET = async () => {
+  try {
+    console.log("📥 [GET] /api/sales-users → Fetching sales team...");
+
+    const { data, error } = await supabaseAdmin.rpc('get_sales_team_names');
+
+    if (error) {
+      console.error("❌ Supabase RPC Error:", error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    if (!data || !Array.isArray(data)) {
+      console.warn("⚠️ Unexpected response format from RPC.");
+      return NextResponse.json({ error: "Invalid data format from Supabase RPC." }, { status: 500 });
+    }
+
+    console.log("✅ Sales users fetched:", data.length);
+    return NextResponse.json(data);
+  } catch (err: any) {
+    console.error("🔥 Unexpected GET /api/sales-users error:", err.message);
+    return NextResponse.json({ error: err.message || "Internal server error" }, { status: 500 });
+  }
+};
+
+/**
+ * ✅ POST: Create a new user in Supabase and insert into `profiles`
+ */
+export const POST = async (req: Request) => {
+  try {
+    const { email, password, role, full_name } = await req.json();
+
+    if (!email || !password || !role) {
+      return NextResponse.json({ error: "Missing required fields: email, password, or role" }, { status: 400 });
+    }
+
+    console.log("📥 [POST] Creating user:", email);
+
+    // 1. Create the user in Supabase Auth
+    const { data: signUpData, error: signUpError } = await supabaseAdmin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+    });
+    if (signUpError) throw signUpError;
+
+    const authId = signUpData?.user?.id;
+    if (!authId) throw new Error("User ID not returned from Supabase Auth");
+
+    // 2. Wait until the new user is visible in auth.users (polling)
+    let retries = 10;
+    let userConfirmed = false;
+
+    while (retries-- > 0) {
+      const { data: exists, error: checkError } = await supabaseAdmin
+        .from('profiles')
+        .select('auth_id')
+        .eq('auth_id', authId)
+        .maybeSingle();
+
+      if (!checkError && exists) {
+        userConfirmed = true;
+        break;
+      }
+      await new Promise((res) => setTimeout(res, 500)); // wait 0.5s before retry
+    }
+
+    if (!userConfirmed) {
+      console.warn("⚠️ New user not found in `profiles`, proceeding anyway.");
+    }
+
+    // 3. Generate unique user ID via RPC
+    const { data: uidData, error: uidError } = await supabaseAdmin.rpc("generate_user_id");
+    if (uidError) throw uidError;
+
+    const customUserId = uidData;
+    if (!customUserId) throw new Error("User ID not generated by RPC");
+
+    // 4. Insert into `profiles`
+    const { error: profileError } = await supabaseAdmin.from("profiles").insert([
+      {
+        user_id: customUserId,
+        auth_id: authId,
+        roles: role,
+        full_name: full_name || email.split("@")[0],
+      },
+    ]);
+
+    if (profileError) throw profileError;
+
+    console.log(`✅ User ${email} created & inserted into profiles`);
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error("🔥 User creation error:", error.message);
+    return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });
+  }
+};
