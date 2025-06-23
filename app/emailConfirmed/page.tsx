@@ -288,6 +288,15 @@ const handlePasswordUpdate = async () => {
   >
     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
   </button>
+
+  <Button
+  className="w-full mt-2"
+  onClick={handlePasswordUpdate}
+  disabled={loading || password.length < 6}
+>
+  {loading ? "Updating..." : "Update Password"}
+</Button>
+
 </div>
 
           </div>
