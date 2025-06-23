@@ -222,7 +222,7 @@ export default function AddUserPage() {
         password,
         options: {
           data: { full_name: fullName },
-          emailRedirectTo: "https://applywizzcrm.vercel.app/",
+          emailRedirectTo: "https://applywizzcrm.vercel.app/emailConfirmed",
         }
 
       });
