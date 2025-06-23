@@ -67,7 +67,14 @@ export default function EmailConfirmed() {
               Go to Login
             </Button>
           </Link> */}
-          <p>https://applywizzcrm.vercel.app/</p>
+<a
+  href="https://applywizzcrm.vercel.app/"
+  target="_blank"
+  rel="noopener noreferrer"
+  className="text-blue-600 underline hover:opacity-80 cursor-pointer"
+>
+  https://applywizzcrm.vercel.app/
+</a>
         </CardContent>
       </Card>
     </div>
