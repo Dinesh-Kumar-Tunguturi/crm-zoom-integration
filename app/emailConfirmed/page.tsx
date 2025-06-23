@@ -187,33 +187,53 @@ import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/utils/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useEffect } from "react";
+import { Eye, EyeOff } from "lucide-react";
+
 
 export default function EmailConfirmed() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState("");
+const [showPassword, setShowPassword] = useState(false);
 
-  const handlePasswordUpdate = async () => {
-    setLoading(true);
 
-    const { error } = await supabase.auth.updateUser({
-      password,
-    });
-
-    setLoading(false);
-
-    if (error) {
-      toast({
-        title: "❌ Failed to update password",
-        description: error.message,
-        variant: "destructive",
-      });
-    } else {
-      toast({
-        title: "✅ Password Updated",
-        description: "You can now log in with your new password.",
-      });
+  useEffect(() => {
+  const getSession = async () => {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (session?.user?.email) {
+      setEmail(session.user.email);
     }
   };
+
+  getSession();
+}, []);
+
+const handlePasswordUpdate = async () => {
+  setLoading(true);
+
+  const { data, error } = await supabase.auth.updateUser({
+    password,
+  });
+
+  setLoading(false);
+
+  if (error) {
+    toast({
+      title: "❌ Failed to update password",
+      description: error.message,
+      variant: "destructive",
+    });
+  } else {
+    toast({
+      title: "✅ Password Updated",
+      description: "You can now log in with your new password.",
+    });
+  }
+};
+
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-gray-50 px-4">
@@ -242,22 +262,34 @@ export default function EmailConfirmed() {
               Set a new password to complete your setup:
             </p>
 
-            <Label htmlFor="password">New Password</Label>
-            <Input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter your new password"
-            />
+            <Label htmlFor="email">Email</Label>
+<Input
+  id="email"
+  type="email"
+  value={email}
+  disabled
+  className="bg-gray-100 cursor-not-allowed"
+/>
 
-            <Button
-              className="w-full mt-2"
-              onClick={handlePasswordUpdate}
-              disabled={loading || password.length < 6}
-            >
-              {loading ? "Updating..." : "Update Password"}
-            </Button>
+<Label htmlFor="password">New Password</Label>
+<div className="relative">
+  <Input
+    id="password"
+    type={showPassword ? "text" : "password"}
+    value={password}
+    onChange={(e) => setPassword(e.target.value)}
+    placeholder="Enter your new password"
+    className="pr-10"
+  />
+  <button
+    type="button"
+    onClick={() => setShowPassword(!showPassword)}
+    className="absolute right-3 top-2.5 text-gray-500"
+  >
+    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+  </button>
+</div>
+
           </div>
         </CardContent>
       </Card>
