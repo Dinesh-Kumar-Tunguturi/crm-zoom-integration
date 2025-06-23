@@ -189,6 +189,13 @@ import { supabase } from "@/utils/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useEffect } from "react";
 import { Eye, EyeOff } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
 
 
 export default function EmailConfirmed() {
@@ -196,6 +203,10 @@ export default function EmailConfirmed() {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
 const [showPassword, setShowPassword] = useState(false);
+const [showDialog, setShowDialog] = useState(false);
+const [dialogMessage, setDialogMessage] = useState("");
+const [dialogTitle, setDialogTitle] = useState("");
+
 
 
   useEffect(() => {
@@ -214,24 +225,26 @@ const [showPassword, setShowPassword] = useState(false);
 const handlePasswordUpdate = async () => {
   setLoading(true);
 
-  const { data, error } = await supabase.auth.updateUser({
+  const { error } = await supabase.auth.updateUser({
     password,
   });
 
   setLoading(false);
 
   if (error) {
-    toast({
-      title: "❌ Failed to update password",
-      description: error.message,
-      variant: "destructive",
-    });
+    setDialogTitle("❌ Update Failed");
+    setDialogMessage(error.message);
+    setShowDialog(true);
   } else {
-    toast({
-      title: "✅ Password Updated",
-      description: "You can now log in with your new password.",
-    });
+    setDialogTitle("✅ Password Updated");
+    setDialogMessage("You can now log in with your new password.");
+    setShowDialog(true);
   }
+
+  // Auto-close dialog after 3 seconds
+  setTimeout(() => {
+    setShowDialog(false);
+  }, 3000);
 };
 
 
@@ -296,6 +309,16 @@ const handlePasswordUpdate = async () => {
 >
   {loading ? "Updating..." : "Update Password"}
 </Button>
+
+<Dialog open={showDialog} onOpenChange={setShowDialog}>
+  <DialogContent className="max-w-sm">
+    <DialogHeader>
+      <DialogTitle>{dialogTitle}</DialogTitle>
+    </DialogHeader>
+    <p className="text-sm text-gray-600">{dialogMessage}</p>
+  </DialogContent>
+</Dialog>
+
 
 </div>
 
