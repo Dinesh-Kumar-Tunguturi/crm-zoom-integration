@@ -12,7 +12,7 @@ export default function EmailVerifyRedirect() {
 
     // ✅ Show message for 2 sec then redirect
     setTimeout(() => {
-      router.push("/email-confirmed");
+      router.push("/emailConfirmed");
     }, 1500);
   }, []);
 
