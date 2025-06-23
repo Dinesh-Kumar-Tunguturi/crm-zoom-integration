@@ -361,14 +361,14 @@
 //       <ProtectedRoute allowedRoles={["Marketing", "Super Admin"]}>
 //         <DashboardLayout>
 //           <div className="space-y-6">
-       
+
 //         <div className="flex justify-between items-center">
 //           <div>
 //             <h1 className="text-3xl font-bold text-gray-900">Marketing CRM</h1>
 //             <p className="text-gray-600 mt-2">Manage leads and marketing campaigns</p>
 //           </div>
 //           <div className="flex gap-3">
-          
+
 //           <Dialog open={historyDialogOpen} onOpenChange={setHistoryDialogOpen}>
 
 //             <DialogTrigger asChild>
@@ -425,7 +425,7 @@
 //               </div >
 
 //               <div className="flex justify-end mt-4">
-                
+
 //                 <Button onClick={() => downloadCSV(assignedLeads)}>
 //                  <Download className="h-4 w-4 mr-2" /> Download CSV
 //                 </Button>
@@ -497,7 +497,7 @@
 //   </DialogContent>
 // </Dialog>
 
-            
+
 //           </div>
 //         </div>
 
@@ -554,7 +554,7 @@
 //             </div>
 //           </CardHeader>
 //           <CardContent>
-            
+
 //             <div className="flex flex-col sm:flex-row gap-4 mb-6">
 //               <div className="relative flex-1">
 //                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -623,7 +623,7 @@
 //                           disabled={lead.status === "Assigned"}
 //                         />
 //                       </TableCell>
-                      
+
 //                       <TableCell className="font-medium">{lead.business_id}</TableCell>
 
 //                       <TableCell className="font-medium">{lead.name}</TableCell>
@@ -672,7 +672,7 @@
 //               <DialogTitle>Bulk Assign Leads</DialogTitle>
 //               <DialogDescription>Assign {selectedLeads.length} selected leads to a sales team member</DialogDescription>
 //             </DialogHeader>
-           
+
 //             <div className="space-y-4">
 //   <div>
 //     <Label>Select Sales Team Member</Label>
@@ -683,7 +683,7 @@
 //         <SelectValue placeholder="Choose team member" />
 //       </SelectTrigger>
 //       <SelectContent>
-       
+
 
 //               {salesTeamMembers
 //   .filter((member) => member.full_name && member.full_name.trim() !== "")
@@ -694,7 +694,7 @@
 // ))}
 
 
-          
+
 //       </SelectContent>
 //     </Select>
 //   </div>
@@ -984,6 +984,14 @@ export default function MarketingPage() {
       if (status !== "all") query = query.eq("status", status);
 
       const { data: leadsData, error, count } = await query;
+      leadsData?.sort((a, b) => {
+        const numA = parseInt(a.business_id.replace("AWL-", ""), 10);
+        const numB = parseInt(b.business_id.replace("AWL-", ""), 10);
+        return numA - numB;
+      });
+
+      setLeads(leadsData ?? []);
+
       if (error) throw error;
 
       setLeads(leadsData ?? []);
