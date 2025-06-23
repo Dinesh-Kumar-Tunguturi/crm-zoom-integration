@@ -197,13 +197,17 @@ export function AppSidebar() {
     <Sidebar className="border-r border-gray-200">
       <SidebarHeader className="border-b border-gray-200 p-6">
         <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600">
+
+          <Link href="/" className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 hover:bg-blue-700 transition">
             <Building2 className="h-5 w-5 text-white" />
-          </div>
-          <div>
-            <h1 className="text-lg font-semibold text-gray-900">ApplyWizz</h1>
-            <p className="text-sm text-gray-500">CRM System</p>
-          </div>
+          </Link>
+
+          <Link href="/" className="cursor-pointer">
+            <div>
+              <h1 className="text-lg font-semibold text-gray-900">ApplyWizz</h1>
+              <p className="text-sm text-gray-500">CRM System</p>
+            </div>
+          </Link>
         </div>
       </SidebarHeader>
 
