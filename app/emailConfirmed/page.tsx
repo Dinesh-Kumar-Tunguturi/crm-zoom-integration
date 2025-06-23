@@ -62,11 +62,12 @@ export default function EmailConfirmed() {
         </CardHeader>
         <CardContent className="text-center space-y-4">
           <p className="text-gray-600">Your email is now verified.</p>
-          <Link href="/">
+          {/* <Link href="/">
             <Button variant="outline" className="w-full">
               Go to Login
             </Button>
-          </Link>
+          </Link> */}
+          <p>https://applywizzcrm.vercel.app/</p>
         </CardContent>
       </Card>
     </div>
