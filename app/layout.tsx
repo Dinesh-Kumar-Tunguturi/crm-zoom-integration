@@ -40,6 +40,7 @@ import { Toaster } from "@/components/ui/toaster"
 import { AuthProvider } from "@/components/providers/auth-provider"
 import { SidebarProvider } from "@/components/ui/sidebar" // ✅ added
 import { LoadingProvider } from "@/components/providers/LoadingContext"
+import SignupRedirectGuard from "@/components/providers/SignUpRedirectGuard"
 
 
 const inter = Inter({ subsets: ["latin"] })
@@ -58,6 +59,8 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
+                <SignupRedirectGuard /> {/* 🛑 Stops auto-login after email verification */}
+
          <LoadingProvider>
         <AuthProvider>
           <SidebarProvider> {/* ✅ Wrap your entire app with sidebar context */}
