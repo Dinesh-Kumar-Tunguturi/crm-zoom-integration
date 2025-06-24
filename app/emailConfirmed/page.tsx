@@ -222,7 +222,39 @@ export default function EmailConfirmed() {
     getSession();
   }, []);
 
-  const handlePasswordUpdate = async () => {
+//   const handlePasswordUpdate = async () => {
+//   setLoading(true);
+
+//   const { error } = await supabase.auth.updateUser({
+//     password,
+//   });
+
+//   setLoading(false);
+
+//   if (error) {
+//     setDialogTitle("❌ Update Failed");
+//     setDialogMessage(error.message);
+//     setShowDialog(true);
+
+//     // Auto-close dialog after 3 seconds
+//     setTimeout(() => {
+//       setShowDialog(false);
+//     }, 3000);
+//     return;
+//   }
+
+//   setDialogTitle("✅ Password Updated");
+//   setDialogMessage("Redirecting you to login...");
+//   setShowDialog(true);
+
+//   // ✅ Force logout after 2 seconds
+//   setTimeout(async () => {
+//     await supabase.auth.signOut();
+//     window.location.href = "https://applywizzcrm.vercel.app/"; // change to your login page path
+//   }, 3200);
+// };
+
+const handlePasswordUpdate = async () => {
   setLoading(true);
 
   const { error } = await supabase.auth.updateUser({
@@ -236,23 +268,30 @@ export default function EmailConfirmed() {
     setDialogMessage(error.message);
     setShowDialog(true);
 
-    // Auto-close dialog after 3 seconds
     setTimeout(() => {
       setShowDialog(false);
     }, 3000);
     return;
   }
 
+  // Step 1: Show success message
   setDialogTitle("✅ Password Updated");
-  setDialogMessage("Redirecting you to login...");
+  setDialogMessage("Your password was successfully updated.");
   setShowDialog(true);
 
-  // ✅ Force logout after 2 seconds
+  // Step 2: After 1.5s, update dialog to show redirecting message
+  setTimeout(() => {
+    setDialogTitle("🔁 Redirecting...");
+    setDialogMessage("Redirecting you to login...");
+  }, 1500);
+
+  // Step 3: After total 3s, sign out and redirect
   setTimeout(async () => {
     await supabase.auth.signOut();
-    window.location.href = "https://applywizzcrm.vercel.app/"; // change to your login page path
-  }, 3200);
+    window.location.href = "https://applywizzcrm.vercel.app/";
+  }, 3000);
 };
+
 
 
   return (
