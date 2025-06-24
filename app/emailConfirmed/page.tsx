@@ -251,7 +251,7 @@ export default function EmailConfirmed() {
   setTimeout(async () => {
     await supabase.auth.signOut();
     window.location.href = "https://applywizzcrm.vercel.app/"; // change to your login page path
-  }, 2000);
+  }, 3200);
 };
 
 
