@@ -252,7 +252,7 @@ const handlePasswordUpdate = async () => {
     <div className="min-h-screen w-full flex items-center justify-center bg-gray-50 px-4">
       <Card className="w-full max-w-lg shadow-lg">
         <CardHeader>
-          <CardTitle className="text-center text-green-600 text-xl">
+          <CardTitle className="text-center text-blue-600 text-xl">
             ✅ Email Verified
           </CardTitle>
         </CardHeader>

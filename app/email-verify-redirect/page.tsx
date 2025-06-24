@@ -8,6 +8,7 @@ export default function EmailVerifyRedirect() {
 
   useEffect(() => {
     // ✅ Remove all query/hash tokens
+    window.history.replaceState(null, "", window.location.pathname);
 
     // ✅ Show message for 2 sec then redirect
     setTimeout(() => {
