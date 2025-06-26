@@ -346,7 +346,7 @@ export default function LinkExpired() {
         </p>
 
         <Button onClick={handleResend} disabled={!email || loading}>
-          {loading ? "Sending..." : "Resend Confirmation Email"}
+          {loading ? "Sending..." : "Resend Confirmation Email zigzag"}
         </Button>
 
         {message && <p className="mt-2 text-sm text-blue-600">{message}</p>}
