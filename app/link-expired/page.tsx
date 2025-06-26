@@ -22,28 +22,54 @@ export default function LinkExpired() {
     fetchEmail();
   }, []);
 
-  const handleResend = async () => {
-    setMessage("Resending...");
+//   const handleResend = async () => {
+//     setMessage("Resending...");
 
-    if (!email) {
-      setMessage("❌ We couldn’t detect your email. Please sign up again.");
-      return;
-    }
+//     if (!email) {
+//       setMessage("❌ We couldn’t detect your email. Please sign up again.");
+//       return;
+//     }
 
-    const { error } = await supabase.auth.resend({
-      type: "signup",
-      email,
-      options: {
-        emailRedirectTo: "https://applywizzcrm.vercel.app/email-verify-redirect",
-      },
-    });
+//     const { error } = await supabase.auth.resend({
+//       type: "signup",
+//       email,
+//       options: {
+//         emailRedirectTo: "https://applywizzcrm.vercel.app/email-verify-redirect",
+//       },
+//     });
 
-    if (error) {
-      setMessage("❌ Could not resend email. Please try again later.");
-    } else {
-      setMessage("✅ Confirmation email sent. Please check your inbox.");
-    }
-  };
+//     if (error) {
+//       setMessage("❌ Could not resend email. Please try again later.");
+//     } else {
+//       setMessage("✅ Confirmation email sent. Please check your inbox.");
+//     }
+//   };
+
+const handleResend = async () => {
+  setMessage("Resending...");
+
+  if (!email) {
+    setMessage("❌ We couldn’t detect your email. Please sign up again.");
+    return;
+  }
+
+  const res = await fetch("https://akbsvhaaajgwjlqrxikn.supabase.co/functions/v1/resend-confirmation", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ email }),
+  });
+
+  const result = await res.json();
+
+  if (!res.ok) {
+    setMessage("❌ " + (result.error || "Could not resend email."));
+  } else {
+    setMessage("✅ Confirmation email sent. Please check your inbox.");
+  }
+};
+
 
   return (
     <div className="min-h-screen w-full flex flex-col items-center justify-center bg-gray-50 px-4">
