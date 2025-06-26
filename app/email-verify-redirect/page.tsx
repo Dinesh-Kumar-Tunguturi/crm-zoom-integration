@@ -100,7 +100,7 @@ export default function EmailVerifyRedirect() {
       const redirectURL = email
         ? `/link-expired?email=${email}`
         : "/link-expired";
-      router.replace(redirectURL);
+      router.replace("/link-expired");
     } else {
       // Handle success or show a loader
       router.replace("/emailConfirmed"); // or wherever you want
