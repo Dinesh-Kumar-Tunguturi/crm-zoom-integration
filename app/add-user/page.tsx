@@ -230,6 +230,9 @@ export default function AddUserPage() {
       });
 
       if (signUpError) throw signUpError;
+
+      localStorage.setItem("applywizz_user_email", email);
+
       const authId = signUpData.user?.id;
       if (!authId) throw new Error("User ID not returned");
 

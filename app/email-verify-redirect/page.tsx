@@ -78,8 +78,56 @@
 //--------------------Till here-------------------------------------------
 
 
-"use client";
+// "use client";
 
+// import { useEffect } from "react";
+// import { useRouter } from "next/navigation";
+
+// export default function EmailVerifyRedirect() {
+//   const router = useRouter();
+
+//   useEffect(() => {
+//     const hash = window.location.hash;
+//     const params = new URLSearchParams(hash.substring(1));
+//     const errorCode = params.get("error_code");
+//     const errorDesc = params.get("error_description");
+
+//     // Extract email from the user's session or external source if available
+//     // You might already know the email based on your flow (optional improvement)
+//     const email = localStorage.getItem("applywizz_user_email"); // if stored earlier
+
+//     if (errorCode === "otp_expired" || errorCode === "invalid_email") {
+//       const redirectURL = email
+//         ? `/link-expired?email=${email}`
+//         : "/link-expired";
+//       router.replace("/link-expired");
+//     } else {
+//       // Handle success or show a loader
+//          window.history.replaceState(null, "", window.location.pathname);
+
+//     // ✅ Show message for 2 sec then redirect
+//     setTimeout(() => {
+//       router.push("/emailConfirmed");
+//     }, 1500);
+//       router.replace("/emailConfirmed"); // or wherever you want
+//     }
+//   }, [router]);
+
+//   return (
+//     <div className="min-h-screen flex items-center justify-center">
+//       <p className="text-blue-600">Verifying email, please wait...</p>
+//     </div>
+//   );
+// }
+
+
+
+
+
+
+
+
+"use client";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
@@ -90,26 +138,23 @@ export default function EmailVerifyRedirect() {
     const hash = window.location.hash;
     const params = new URLSearchParams(hash.substring(1));
     const errorCode = params.get("error_code");
-    const errorDesc = params.get("error_description");
 
-    // Extract email from the user's session or external source if available
-    // You might already know the email based on your flow (optional improvement)
-    const email = localStorage.getItem("applywizz_user_email"); // if stored earlier
+    const email = localStorage.getItem("applywizz_user_email");
 
     if (errorCode === "otp_expired" || errorCode === "invalid_email") {
       const redirectURL = email
-        ? `/link-expired?email=${email}`
-        : "/link-expired";
-      router.replace("/link-expired");
-    } else {
-      // Handle success or show a loader
-         window.history.replaceState(null, "", window.location.pathname);
+        ? `/link-expired?email=${encodeURIComponent(email)}`
+        : `/link-expired`;
 
-    // ✅ Show message for 2 sec then redirect
-    setTimeout(() => {
-      router.push("/emailConfirmed");
-    }, 1500);
-      router.replace("/emailConfirmed"); // or wherever you want
+      router.replace(redirectURL); // ✅ Pass email in query param
+    } else {
+      // clear URL junk
+      window.history.replaceState(null, "", window.location.pathname);
+
+      // ✅ Redirect to success screen after 1.5 sec
+      setTimeout(() => {
+        router.push("/emailConfirmed");
+      }, 1500);
     }
   }, [router]);
 
