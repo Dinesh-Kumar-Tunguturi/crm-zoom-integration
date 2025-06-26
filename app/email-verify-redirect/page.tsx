@@ -212,39 +212,49 @@
 
 
 
-
-
-// app/auth/verify/page.tsx
+// app/email-verify-redirect/page.tsx
 "use client";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useEmail } from '../context/EmailProvider';
+import { supabase } from "@/utils/supabase/client";
 
 export default function EmailVerifyRedirect() {
   const router = useRouter();
-  const { signupEmail } = useEmail();
 
   useEffect(() => {
-    const hash = window.location.hash;
-    const params = new URLSearchParams(hash.substring(1));
-    const errorCode = params.get("error_code");
-    
-    // Get email from URL params first, then context, then sessionStorage
-    const email = params.get("email") || 
-                 signupEmail || 
-                 sessionStorage.getItem('signup_email');
+    const verifySession = async () => {
+      // First check for any existing session
+      const { data: { session }, error } = await supabase.auth.getSession();
+      
+      if (error) {
+        router.replace("/link-expired");
+        return;
+      }
 
-    if (errorCode === "otp_expired" || errorCode === "invalid_email") {
-      router.replace(email ? `/link-expired?email=${email}` : '/link-expired');
-    } else {
-      window.history.replaceState(null, "", window.location.pathname);
-      setTimeout(() => router.push("/emailConfirmed"), 1500);
-    }
-  }, [router, signupEmail]);
+      if (session) {
+        // Session exists - redirect to confirmed page
+        router.replace("/emailConfirmed");
+      } else {
+        // No session - wait and retry
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // Check session again after delay
+        const { data: { session: retrySession } } = await supabase.auth.getSession();
+        
+        if (retrySession) {
+          router.replace("/emailConfirmed");
+        } else {
+          router.replace("/link-expired");
+        }
+      }
+    };
+
+    verifySession();
+  }, [router]);
 
   return (
     <div className="min-h-screen flex items-center justify-center">
-      <p className="text-blue-600">Verifying email, please wait...</p>
+      <p className="text-blue-600">Verifying your session, please wait...</p>
     </div>
   );
 }
