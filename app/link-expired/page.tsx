@@ -338,23 +338,30 @@ export default function LinkExpired() {
   }, [searchParams]);
 
   // app/link-expired/page.tsx
+// app/link-expired/page.tsx
 const handleResend = async () => {
   setLoading(true);
   setMessage("Sending...");
 
   try {
-    const response = await fetch('https://akbsvhaaajgwjlqrxikn.supabase.co/functions/v1/resend-confirmation', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ email })
-    });
+    const response = await fetch(
+      'https://akbsvhaaajgwjlqrxikn.supabase.co/functions/v1/resend-confirmation',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          // Add this authorization header
+          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`
+        },
+        body: JSON.stringify({ email })
+      }
+    );
 
-    const data = await response.json();
-    
-    if (!response.ok) throw new Error(data.error || "Failed to resend");
-    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || "Failed to resend");
+    }
+
     setMessage("✅ New confirmation email sent!");
   } catch (error) {
     setMessage(`❌ ${error instanceof Error ? error.message : "Failed to send"}`);
