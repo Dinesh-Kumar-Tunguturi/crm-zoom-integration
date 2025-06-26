@@ -262,7 +262,8 @@ export default function AddUserPage() {
 const timeString = now.toLocaleTimeString([], {
   hour: '2-digit',
   minute: '2-digit',
-  second: '2-digit'
+  second: '2-digit',
+  hour12: true
 });
 setMessage(`✅ User created at ${timeString}. Ask them to verify email.`);
 
