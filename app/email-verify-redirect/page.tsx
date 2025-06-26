@@ -281,15 +281,13 @@
 // }
 
 
-
 "use client";
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
 
-// ✅ Disable static rendering
-export const dynamic = "force-dynamic";
+export const dynamic = "force-dynamic"; // 👈 IMPORTANT!
 
 export default function EmailVerifyRedirect() {
   const router = useRouter();
@@ -301,41 +299,36 @@ export default function EmailVerifyRedirect() {
       const emailFromQuery = url.searchParams.get("email");
       const hash = window.location.hash;
 
-      // ✅ Always log email for debug
       if (emailFromQuery) {
-        console.log("📧 Email from query:", emailFromQuery);
+        console.log("✅ User email from URL:", emailFromQuery); // 👈 your log
         localStorage.setItem("applywizz_user_email", emailFromQuery);
       }
 
-      // ⛔ Supabase link error
       if (hash.includes("error=access_denied") || hash.includes("otp_expired")) {
         router.push("/link-expired");
         return;
       }
 
-      // ⛔ Missing code
       if (!authCode) {
-        console.error("❌ No auth code found in URL.");
+        console.error("No auth code found in URL.");
         router.push("/link-expired");
         return;
       }
 
-      // ✅ Exchange session
       const { error } = await supabase.auth.exchangeCodeForSession(authCode);
 
       if (error) {
-        console.error("❌ Supabase session error:", error.message);
         const msg = error.message.toLowerCase();
         if (msg.includes("expired") || msg.includes("invalid") || error.status === 400) {
           router.push("/link-expired");
+        } else {
+          console.error("Token exchange failed:", error.message);
         }
         return;
       }
 
-      // ✅ Clean URL
       window.history.replaceState(null, "", window.location.pathname);
 
-      // ✅ Success redirect
       setTimeout(() => {
         router.push("/emailConfirmed");
       }, 1500);
