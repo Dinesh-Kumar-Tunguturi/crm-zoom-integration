@@ -338,32 +338,27 @@ export default function LinkExpired() {
   }, [searchParams]);
 
   const handleResend = async () => {
-    if (!email) {
-      setMessage("No email available to resend");
-      return;
-    }
+  setLoading(true);
+  setMessage("");
 
-    setLoading(true);
-    setMessage("");
+  try {
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email: email,
+      options: {
+        emailRedirectTo: `${window.location.origin}/email-verify-redirect`
+      }
+    });
 
-    try {
-      const { error } = await supabase.auth.resend({
-        type: "signup",
-        email: email,
-        options: {
-          emailRedirectTo: `${window.location.origin}/email-verify-redirect?email=${encodeURIComponent(email)}`
-        }
-      });
+    if (error) throw error;
 
-      if (error) throw error;
-
-      setMessage("New confirmation email sent successfully!");
-    } catch (error: any) {
-      setMessage(`Failed to resend: ${error.message}`);
-    } finally {
-      setLoading(false);
-    }
-  };
+    setMessage("✅ New confirmation email sent!");
+  } catch (err) {
+    setMessage(`❌ ${err instanceof Error ? err.message : "Failed to send request"}`);
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
