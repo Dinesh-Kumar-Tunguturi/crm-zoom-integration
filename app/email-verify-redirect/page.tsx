@@ -103,6 +103,12 @@ export default function EmailVerifyRedirect() {
       router.replace("/link-expired");
     } else {
       // Handle success or show a loader
+         window.history.replaceState(null, "", window.location.pathname);
+
+    // ✅ Show message for 2 sec then redirect
+    setTimeout(() => {
+      router.push("/emailConfirmed");
+    }, 1500);
       router.replace("/emailConfirmed"); // or wherever you want
     }
   }, [router]);
