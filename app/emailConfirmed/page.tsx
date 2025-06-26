@@ -161,11 +161,10 @@
 
 
 
-
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -182,7 +181,6 @@ import {
 
 export default function EmailConfirmed() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
@@ -195,17 +193,18 @@ export default function EmailConfirmed() {
   useEffect(() => {
     const verifyEmail = async () => {
       setLoading(true);
-      
+
       try {
-        // Check for email confirmation in URL
-        const token_hash = searchParams.get("token_hash");
-        const type = searchParams.get("type");
-        
-        if (type === "email" && token_hash) {
+        const urlParams = new URLSearchParams(window.location.search);
+        const token_hash = urlParams.get("token_hash");
+        const type = urlParams.get("type");
+        const emailFromQuery = urlParams.get("email");
+
+        if (type === "email" && token_hash && emailFromQuery) {
           const { data, error } = await supabase.auth.verifyOtp({
             type: "email",
             token_hash,
-            email: searchParams.get("email") || undefined,
+            email: emailFromQuery,
           });
 
           if (error) {
@@ -219,14 +218,13 @@ export default function EmailConfirmed() {
           setVerificationStatus("verified");
           setEmail(data.user?.email || "");
         } else {
-          // Fallback to session check
           const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-          
+
           if (sessionError || !session?.user) {
             setVerificationStatus("expired");
             return;
           }
-          
+
           setVerificationStatus("verified");
           setEmail(session.user.email || "");
         }
@@ -239,18 +237,18 @@ export default function EmailConfirmed() {
     };
 
     verifyEmail();
-  }, [searchParams]);
+  }, []);
 
   const handlePasswordUpdate = async () => {
     if (!password || password.length < 6) return;
-    
+
     setLoading(true);
-    
+
     try {
       const { error } = await supabase.auth.updateUser({ password });
-      
+
       if (error) throw error;
-      
+
       setDialogTitle("✅ Password Updated");
       setDialogMessage("Your password was successfully updated.");
       setShowDialog(true);
@@ -270,15 +268,15 @@ export default function EmailConfirmed() {
 
   const handleResendConfirmation = async () => {
     setLoading(true);
-    
+
     try {
       const { error } = await supabase.auth.resend({
         type: "signup",
-        email: searchParams.get("email") || email,
+        email,
       });
-      
+
       if (error) throw error;
-      
+
       toast({
         title: "✅ Confirmation Sent",
         description: "A new verification email has been sent to your address.",
