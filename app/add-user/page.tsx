@@ -257,7 +257,15 @@ export default function AddUserPage() {
 
       if (profileError) throw profileError;
 
-      setMessage("✅ User created. Ask them to verify email.");
+      // setMessage("✅ User created. Ask them to verify email.");
+      const now = new Date();
+const timeString = now.toLocaleTimeString([], {
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit'
+});
+setMessage(`✅ User created at ${timeString}. Ask them to verify email.`);
+
     } catch (err: any) {
       setMessage("❌ " + err.message);
     } finally {
