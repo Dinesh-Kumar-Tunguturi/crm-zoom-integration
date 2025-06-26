@@ -337,24 +337,27 @@ export default function LinkExpired() {
     }
   }, [searchParams]);
 
-  const handleResend = async () => {
+  // app/link-expired/page.tsx
+const handleResend = async () => {
   setLoading(true);
-  setMessage("");
+  setMessage("Sending...");
 
   try {
-    const { error } = await supabase.auth.resend({
-      type: 'signup',
-      email: email,
-      options: {
-        emailRedirectTo: `${window.location.origin}/email-verify-redirect`
-      }
+    const response = await fetch('https://akbsvhaaajgwjlqrxikn.supabase.co/functions/v1/resend-confirmation', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email })
     });
 
-    if (error) throw error;
-
+    const data = await response.json();
+    
+    if (!response.ok) throw new Error(data.error || "Failed to resend");
+    
     setMessage("✅ New confirmation email sent!");
-  } catch (err) {
-    setMessage(`❌ ${err instanceof Error ? err.message : "Failed to send request"}`);
+  } catch (error) {
+    setMessage(`❌ ${error instanceof Error ? error.message : "Failed to send"}`);
   } finally {
     setLoading(false);
   }
