@@ -28,6 +28,56 @@
 
 
 
+// "use client";
+
+// import { useEffect } from "react";
+// import { useRouter } from "next/navigation";
+// import { supabase } from "@/utils/supabase/client";
+
+// export default function EmailVerifyRedirect() {
+//   const router = useRouter();
+
+//   useEffect(() => {
+//     const handleRedirect = async () => {
+//       // 👇 This exchanges the token from the URL and creates a session
+//       const url = new URL(window.location.href);
+//       const authCode = url.searchParams.get("code");
+//       if (!authCode) {
+//         console.error("No auth code found in URL.");
+//         return;
+//       }
+//       const { error } = await supabase.auth.exchangeCodeForSession(authCode);
+
+//       if (error) {
+//         console.error("Token exchange failed:", error.message);
+//         // Optional: show a user-friendly error or redirect to a fallback page
+//         return;
+//       }
+
+//       // ✅ Clean the URL (remove tokens)
+//       window.history.replaceState(null, "", window.location.pathname);
+
+//       // ✅ Redirect after token exchange
+//       setTimeout(() => {
+//         router.push("/emailConfirmed");
+//       }, 1500);
+//     };
+
+//     handleRedirect();
+//   }, []);
+
+//   return (
+//     <div className="min-h-screen w-full flex items-center justify-center bg-gray-50 px-4">
+//       <div className="text-lg font-medium text-blue-600">
+//         Verifying email, please wait...
+//       </div>
+//     </div>
+//   );
+// }
+
+
+
+
 "use client";
 
 import { useEffect } from "react";
@@ -39,32 +89,46 @@ export default function EmailVerifyRedirect() {
 
   useEffect(() => {
     const handleRedirect = async () => {
-      // 👇 This exchanges the token from the URL and creates a session
       const url = new URL(window.location.href);
       const authCode = url.searchParams.get("code");
-      if (!authCode) {
-        console.error("No auth code found in URL.");
+
+      // ⛔ Check if Supabase added error in hash (e.g., #error=access_denied...)
+      const hash = window.location.hash;
+
+      if (hash.includes("error=access_denied") && hash.includes("otp_expired")) {
+        router.push("/link-expired");
         return;
       }
+
+      if (!authCode) {
+        console.error("No auth code found in URL.");
+        router.push("/link-expired");
+        return;
+      }
+
       const { error } = await supabase.auth.exchangeCodeForSession(authCode);
 
       if (error) {
-        console.error("Token exchange failed:", error.message);
-        // Optional: show a user-friendly error or redirect to a fallback page
+        const msg = error.message.toLowerCase();
+        if (msg.includes("expired") || msg.includes("invalid") || error.status === 400) {
+          router.push("/link-expired");
+        } else {
+          console.error("Token exchange failed:", error.message);
+        }
         return;
       }
 
-      // ✅ Clean the URL (remove tokens)
+      // ✅ Clean the URL
       window.history.replaceState(null, "", window.location.pathname);
 
-      // ✅ Redirect after token exchange
+      // ✅ Redirect
       setTimeout(() => {
         router.push("/emailConfirmed");
       }, 1500);
     };
 
     handleRedirect();
-  }, []);
+  }, [router]);
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-gray-50 px-4">
