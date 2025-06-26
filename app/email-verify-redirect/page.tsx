@@ -346,70 +346,56 @@
 //   );
 // }
 
-//---------------------sendig re0-emails to users inbox-----------
-
+//---------------------sendig re-emails to users inbox-----------
 "use client";
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
 
-export const dynamic = "force-dynamic"; // Needed for Supabase auth in app router
-
 export default function EmailVerifyRedirect() {
   const router = useRouter();
 
   useEffect(() => {
-    const handleVerification = async () => {
+    const handleRedirect = async () => {
       const url = new URL(window.location.href);
-      const code = url.searchParams.get("code");
-      const email = url.searchParams.get("email");
-      const hash = window.location.hash;
+      const authCode = url.searchParams.get("code");
+      const emailFromQuery = url.searchParams.get("email");
 
-      // Log and store email
-      if (email) {
-        console.log("✅ Email from URL:", email);
-        localStorage.setItem("applywizz_user_email", email);
+      // ✅ Always store email for fallback in link-expired
+      if (emailFromQuery) {
+        localStorage.setItem("applywizz_user_email", emailFromQuery);
+        console.log("✅ Email stored:", emailFromQuery);
       }
 
-      // If Supabase returns expired or access denied in hash
-      if (hash.includes("error=access_denied") || hash.includes("otp_expired")) {
-        console.warn("⛔ Link expired via hash");
+      // ⛔ If code is missing from URL, redirect to expired page
+      if (!authCode) {
+        console.warn("❌ No auth code found in URL.");
         router.push("/link-expired");
         return;
       }
 
-      if (!code) {
-        console.error("⛔ No auth code found in URL.");
-        router.push("/link-expired");
-        return;
-      }
+      // ✅ Try exchanging code for session
+      const { error } = await supabase.auth.exchangeCodeForSession(authCode);
 
-      try {
-        const { error } = await supabase.auth.exchangeCodeForSession(code);
-
-        if (error) {
-          const msg = error.message.toLowerCase();
-          if (msg.includes("expired") || msg.includes("invalid")) {
-            console.warn("⛔ Link expired or invalid:", msg);
-            router.push("/link-expired");
-          } else {
-            console.error("❌ Auth error:", error.message);
-            router.push("/link-expired");
-          }
-          return;
+      if (error) {
+        const msg = error.message.toLowerCase();
+        console.warn("❌ Supabase error:", msg);
+        if (msg.includes("expired") || msg.includes("invalid") || error.status === 400) {
+          router.push("/link-expired");
+        } else {
+          // Rare errors: log for debugging
+          console.error("Unexpected error:", error.message);
+          router.push("/link-expired");
         }
-
-        // ✅ If session is created
-        console.log("✅ Email verified and session created.");
-        router.push("/emailConfirmed");
-      } catch (e) {
-        console.error("❌ Unexpected error during verification:", e);
-        router.push("/link-expired");
+        return;
       }
+
+      // ✅ Success: go to confirmation page
+      router.push("/emailConfirmed");
     };
 
-    handleVerification();
+    handleRedirect();
   }, [router]);
 
   return (
