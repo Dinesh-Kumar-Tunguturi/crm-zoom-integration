@@ -412,12 +412,106 @@
 
 
 // app/link-expired/page.tsx
+// "use client";
+
+// import { useState,useEffect} from "react";
+// import { useSearchParams } from "next/navigation";
+// import { createClient } from "@supabase/supabase-js";
+// import { Button } from "@/components/ui/button";
+// import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+// export default function LinkExpired() {
+//   const [email, setEmail] = useState("");
+//   const [loading, setLoading] = useState(false);
+//   const [message, setMessage] = useState("");
+//   const searchParams = useSearchParams();
+//   const supabase = createClient(
+//     process.env.NEXT_PUBLIC_SUPABASE_URL as string,
+//     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string
+//   );
+
+//   // Get email from URL params
+//   useEffect(() => {
+//     const emailParam = searchParams.get("email");
+//     if (emailParam) {
+//       setEmail(decodeURIComponent(emailParam));
+//     }
+//   }, [searchParams]);
+
+  
+
+//   const handleResend = async () => {
+//     setLoading(true);
+//     setMessage("Sending...");
+
+//     try {
+//       const { error } = await supabase.auth.resend({
+//         type: 'signup',
+//         email: email,
+//         options: {
+//           emailRedirectTo: `${window.location.origin}/email-verify-redirect?email=${encodeURIComponent(email)}`
+//         }
+//       });
+
+//       if (error) throw error;
+
+//       setMessage("✅ New confirmation email sent!");
+//     } catch (error: any) {
+//       setMessage(`❌ ${error.message || "Failed to send confirmation email"}`);
+//     } finally {
+//       setLoading(false);
+//     }
+//   };
+
+//   return (
+//     <div className="min-h-screen w-full flex items-center justify-center bg-gray-50 px-4">
+//       <Card className="w-full max-w-md">
+//         <CardHeader>
+//           <CardTitle className="text-center text-red-600">
+//             Confirmation Link Expired
+//           </CardTitle>
+//         </CardHeader>
+//         <CardContent className="space-y-4">
+//           <p className="text-center text-gray-600">
+//             Your verification link has expired. Don't worry! You can resend it.
+//           </p>
+
+//           {email && (
+//             <p className="text-center text-sm text-gray-500">
+//               Email: <span className="font-medium">{email}</span>
+//             </p>
+//           )}
+
+//           <Button
+//             onClick={handleResend}
+//             disabled={!email || loading}
+//             className="w-full"
+//           >
+//             {loading ? "Sending..." : "Resend Confirmation Email"}
+//           </Button>
+
+//           {message && (
+//             <p className={`text-center text-sm ${
+//               message.startsWith("✅") ? "text-green-600" : "text-red-600"
+//             }`}>
+//               {message}
+//             </p>
+//           )}
+//         </CardContent>
+//       </Card>
+//     </div>
+//   );
+// }
+
+
+// app/link-expired/page.tsx
 "use client";
 
-import { useState,useEffect} from "react";
+import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function LinkExpired() {
@@ -426,38 +520,41 @@ export default function LinkExpired() {
   const [message, setMessage] = useState("");
   const searchParams = useSearchParams();
   const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL as string,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
 
-  // Get email from URL params
+  // Pre-fill email if coming from verification link
   useEffect(() => {
     const emailParam = searchParams.get("email");
-    if (emailParam) {
-      setEmail(decodeURIComponent(emailParam));
-    }
+    if (emailParam) setEmail(decodeURIComponent(emailParam));
   }, [searchParams]);
 
-  
-
   const handleResend = async () => {
+    if (!email || !email.includes("@")) {
+      setMessage("❌ Please enter a valid email");
+      return;
+    }
+
     setLoading(true);
     setMessage("Sending...");
 
     try {
       const { error } = await supabase.auth.resend({
         type: 'signup',
-        email: email,
+        email: email.trim(),
         options: {
-          emailRedirectTo: `${window.location.origin}/email-verify-redirect?email=${encodeURIComponent(email)}`
+          emailRedirectTo: `${window.location.origin}/email-verify-redirect`
         }
       });
 
       if (error) throw error;
 
-      setMessage("✅ New confirmation email sent!");
+      setMessage("✅ New confirmation email sent! Check your inbox.");
     } catch (error: any) {
-      setMessage(`❌ ${error.message || "Failed to send confirmation email"}`);
+      setMessage(`❌ ${error.message.includes("already signed up") 
+        ? "This email is already verified. Try logging in." 
+        : "Failed to send. Please try again."}`);
     } finally {
       setLoading(false);
     }
@@ -468,26 +565,34 @@ export default function LinkExpired() {
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle className="text-center text-red-600">
-            Confirmation Link Expired
+            Verification Link Expired
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-center text-gray-600">
-            Your verification link has expired. Don't worry! You can resend it.
+            Enter your email to receive a new verification link
           </p>
 
-          {email && (
-            <p className="text-center text-sm text-gray-500">
-              Email: <span className="font-medium">{email}</span>
-            </p>
-          )}
+          <div className="space-y-2">
+            <label htmlFor="email" className="block text-sm font-medium">
+              Email Address
+            </label>
+            <Input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="your@email.com"
+              disabled={loading}
+            />
+          </div>
 
           <Button
             onClick={handleResend}
-            disabled={!email || loading}
+            disabled={loading || !email.includes("@")}
             className="w-full"
           >
-            {loading ? "Sending..." : "Resend Confirmation Email"}
+            {loading ? "Sending..." : "Send New Verification Email"}
           </Button>
 
           {message && (
