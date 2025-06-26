@@ -211,11 +211,85 @@
 
 
 
+// "use client";
+
+// import { useEffect } from "react";
+// import { useRouter } from "next/navigation";
+// import { supabase } from "@/utils/supabase/client";
+
+// export default function EmailVerifyRedirect() {
+//   const router = useRouter();
+
+//   useEffect(() => {
+//     const handleRedirect = async () => {
+//       const url = new URL(window.location.href);
+//       const authCode = url.searchParams.get("code");
+//       const emailFromQuery = url.searchParams.get("email");
+//       const hash = window.location.hash;
+
+//       // ✅ Store & print email
+//       if (emailFromQuery) {
+//         const decodedEmail = decodeURIComponent(emailFromQuery);
+//         localStorage.setItem("applywizz_user_email", decodedEmail);
+//         console.log("📨 Email from URL:", decodedEmail);
+//       }
+
+//       // ⛔ If Supabase added error in hash
+//       if (hash.includes("error=access_denied") || hash.includes("otp_expired")) {
+//         router.push("/link-expired");
+//         return;
+//       }
+
+//       // ⛔ If auth code is missing
+//       if (!authCode) {
+//         console.error("No auth code found in URL.");
+//         router.push("/link-expired");
+//         return;
+//       }
+
+//       // ✅ Try to exchange code for session
+//       const { error } = await supabase.auth.exchangeCodeForSession(authCode);
+
+//       if (error) {
+//         const msg = error.message.toLowerCase();
+//         if (msg.includes("expired") || msg.includes("invalid") || error.status === 400) {
+//           router.push("/link-expired");
+//         } else {
+//           console.error("Token exchange failed:", error.message);
+//         }
+//         return;
+//       }
+
+//       // ✅ Clean the URL and redirect to success page
+//       window.history.replaceState(null, "", window.location.pathname);
+
+//       setTimeout(() => {
+//         router.push("/emailConfirmed");
+//       }, 1500);
+//     };
+
+//     handleRedirect();
+//   }, [router]);
+
+//   // return (
+//   //   <div className="min-h-screen w-full flex items-center justify-center bg-gray-50 px-4">
+//   //     <div className="text-lg font-medium text-blue-600">
+//   //       Verifying email, please wait...
+//   //     </div>
+//   //   </div>
+//   // );
+// }
+
+
+
 "use client";
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
+
+// ✅ Disable static rendering
+export const dynamic = "force-dynamic";
 
 export default function EmailVerifyRedirect() {
   const router = useRouter();
@@ -227,42 +301,41 @@ export default function EmailVerifyRedirect() {
       const emailFromQuery = url.searchParams.get("email");
       const hash = window.location.hash;
 
-      // ✅ Store & print email
+      // ✅ Always log email for debug
       if (emailFromQuery) {
-        const decodedEmail = decodeURIComponent(emailFromQuery);
-        localStorage.setItem("applywizz_user_email", decodedEmail);
-        console.log("📨 Email from URL:", decodedEmail);
+        console.log("📧 Email from query:", emailFromQuery);
+        localStorage.setItem("applywizz_user_email", emailFromQuery);
       }
 
-      // ⛔ If Supabase added error in hash
+      // ⛔ Supabase link error
       if (hash.includes("error=access_denied") || hash.includes("otp_expired")) {
         router.push("/link-expired");
         return;
       }
 
-      // ⛔ If auth code is missing
+      // ⛔ Missing code
       if (!authCode) {
-        console.error("No auth code found in URL.");
+        console.error("❌ No auth code found in URL.");
         router.push("/link-expired");
         return;
       }
 
-      // ✅ Try to exchange code for session
+      // ✅ Exchange session
       const { error } = await supabase.auth.exchangeCodeForSession(authCode);
 
       if (error) {
+        console.error("❌ Supabase session error:", error.message);
         const msg = error.message.toLowerCase();
         if (msg.includes("expired") || msg.includes("invalid") || error.status === 400) {
           router.push("/link-expired");
-        } else {
-          console.error("Token exchange failed:", error.message);
         }
         return;
       }
 
-      // ✅ Clean the URL and redirect to success page
+      // ✅ Clean URL
       window.history.replaceState(null, "", window.location.pathname);
 
+      // ✅ Success redirect
       setTimeout(() => {
         router.push("/emailConfirmed");
       }, 1500);
