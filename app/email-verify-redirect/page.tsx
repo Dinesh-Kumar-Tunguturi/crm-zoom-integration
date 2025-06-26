@@ -141,13 +141,14 @@ export default function EmailVerifyRedirect() {
 
     const email = localStorage.getItem("applywizz_user_email");
 
-    if (errorCode === "otp_expired" || errorCode === "invalid_email") {
-      const redirectURL = email
-        ? `/link-expired?email=${encodeURIComponent(email)}`
-        : `/link-expired`;
+if (errorCode === "otp_expired" || errorCode === "invalid_email") {
+  const redirectURL = email
+    ? `/link-expired?email=${encodeURIComponent(email)}`
+    : "/link-expired";
 
-      router.replace(redirectURL); // ✅ Pass email in query param
-    } else {
+  router.replace(redirectURL);
+}
+ else {
       // clear URL junk
       window.history.replaceState(null, "", window.location.pathname);
 

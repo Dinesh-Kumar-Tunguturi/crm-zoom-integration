@@ -223,7 +223,9 @@ export default function AddUserPage() {
         options: {
           data: { full_name: fullName },
           // emailRedirectTo: "https://applywizzcrm.vercel.app/emailConfirmed",
-          emailRedirectTo: "https://applywizzcrm.vercel.app/email-verify-redirect",
+          // emailRedirectTo: "https://applywizzcrm.vercel.app/email-verify-redirect",
+          emailRedirectTo: `https://applywizzcrm.vercel.app/email-verify-redirect?email=${email}`
+
 
         }
 
