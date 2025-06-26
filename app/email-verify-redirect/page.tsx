@@ -168,40 +168,79 @@
 
 
 
+// "use client";
+// import { useEffect } from "react";
+// import { useRouter } from "next/navigation";
+
+// export default function EmailVerifyRedirect() {
+//   const router = useRouter();
+
+//   useEffect(() => {
+//     const hash = window.location.hash;
+//     const params = new URLSearchParams(hash.substring(1));
+//     const errorCode = params.get("error_code");
+//     const email = params.get("email") || localStorage.getItem("applywizz_user_email");
+
+//     if (errorCode === "otp_expired" || errorCode === "invalid_email") {
+//       const redirectURL = email
+//         ? `/link-expired?email=${encodeURIComponent(email)}`
+//         : "/link-expired";
+      
+//       // Clear localStorage email if exists to prevent conflicts
+//       if (email) {
+//         localStorage.removeItem("applywizz_user_email");
+//       }
+      
+//       router.replace(redirectURL);
+//     } else {
+//       // Clear URL junk
+//       window.history.replaceState(null, "", window.location.pathname);
+
+//       // Redirect to success screen after 1.5 sec
+//       setTimeout(() => {
+//         router.push("/emailConfirmed");
+//       }, 1500);
+//     }
+//   }, [router]);
+
+//   return (
+//     <div className="min-h-screen flex items-center justify-center">
+//       <p className="text-blue-600">Verifying email, please wait...</p>
+//     </div>
+//   );
+// }
+
+
+
+
+
+// app/auth/verify/page.tsx
 "use client";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useEmail } from '../context/EmailProvider';
 
 export default function EmailVerifyRedirect() {
   const router = useRouter();
+  const { signupEmail } = useEmail();
 
   useEffect(() => {
     const hash = window.location.hash;
     const params = new URLSearchParams(hash.substring(1));
     const errorCode = params.get("error_code");
-    const email = params.get("email") || localStorage.getItem("applywizz_user_email");
+    
+    // Get email from URL params first, then context, then sessionStorage
+    const email = params.get("email") || 
+                 signupEmail || 
+                 sessionStorage.getItem('signup_email');
 
     if (errorCode === "otp_expired" || errorCode === "invalid_email") {
-      const redirectURL = email
-        ? `/link-expired?email=${encodeURIComponent(email)}`
-        : "/link-expired";
-      
-      // Clear localStorage email if exists to prevent conflicts
-      if (email) {
-        localStorage.removeItem("applywizz_user_email");
-      }
-      
-      router.replace(redirectURL);
+      router.replace(email ? `/link-expired?email=${email}` : '/link-expired');
     } else {
-      // Clear URL junk
       window.history.replaceState(null, "", window.location.pathname);
-
-      // Redirect to success screen after 1.5 sec
-      setTimeout(() => {
-        router.push("/emailConfirmed");
-      }, 1500);
+      setTimeout(() => router.push("/emailConfirmed"), 1500);
     }
-  }, [router]);
+  }, [router, signupEmail]);
 
   return (
     <div className="min-h-screen flex items-center justify-center">

@@ -41,6 +41,7 @@ import { AuthProvider } from "@/components/providers/auth-provider"
 import { SidebarProvider } from "@/components/ui/sidebar" // ✅ added
 import { LoadingProvider } from "@/components/providers/LoadingContext"
 import SignupRedirectGuard from "@/components/providers/SignUpRedirectGuard"
+import { EmailProvider } from './context/EmailProvider';
 
 
 const inter = Inter({ subsets: ["latin"] })
@@ -64,8 +65,10 @@ export default function RootLayout({
          <LoadingProvider>
         <AuthProvider>
           <SidebarProvider> {/* ✅ Wrap your entire app with sidebar context */}
+            <EmailProvider>
               {children}
              <Toaster />
+             </EmailProvider>
           </SidebarProvider>
         </AuthProvider>
         </LoadingProvider>
