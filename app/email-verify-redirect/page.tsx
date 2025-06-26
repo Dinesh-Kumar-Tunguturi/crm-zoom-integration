@@ -211,50 +211,59 @@
 // }
 
 
-
 // app/email-verify-redirect/page.tsx
 "use client";
+
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
 
 export default function EmailVerifyRedirect() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
-    const verifySession = async () => {
-      // First check for any existing session
-      const { data: { session }, error } = await supabase.auth.getSession();
-      
-      if (error) {
+    const verifyToken = async () => {
+      const token_hash = searchParams.get("token_hash");
+      const type = searchParams.get("type");
+      const email = searchParams.get("email");
+
+      if (!type || !token_hash || !email) {
         router.replace("/link-expired");
         return;
       }
 
-      if (session) {
-        // Session exists - redirect to confirmed page
-        router.replace("/emailConfirmed");
-      } else {
-        // No session - wait and retry
-        await new Promise(resolve => setTimeout(resolve, 2000));
+      try {
+        const { error } = await supabase.auth.verifyOtp({
+          type: type as any,
+          token_hash,
+          email
+        });
+
+        if (error) {
+          // Token expired - redirect with email for resend
+          router.replace(`/link-expired?email=${encodeURIComponent(email)}`);
+          return;
+        }
+
+        // Success - verify session exists
+        const { data: { session } } = await supabase.auth.getSession();
         
-        // Check session again after delay
-        const { data: { session: retrySession } } = await supabase.auth.getSession();
-        
-        if (retrySession) {
+        if (session) {
           router.replace("/emailConfirmed");
         } else {
-          router.replace("/link-expired");
+          // Edge case: verified but no session
+          router.replace(`/link-expired?email=${encodeURIComponent(email)}`);
         }
+      } catch (error) {
+        router.replace(`/link-expired?email=${encodeURIComponent(email)}`);
       }
     };
 
-    verifySession();
-  }, [router]);
+    verifyToken();
+  }, [router, searchParams]);
 
-  return (
-    <div className="min-h-screen flex items-center justify-center">
-      <p className="text-blue-600">Verifying your session, please wait...</p>
-    </div>
-  );
+  return <div className="min-h-screen flex items-center justify-center">
+    <p className="text-blue-600">Verifying your email...</p>
+  </div>;
 }

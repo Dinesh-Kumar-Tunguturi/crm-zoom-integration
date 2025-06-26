@@ -308,75 +308,99 @@
 // }
 
 
-
 // app/link-expired/page.tsx
 "use client";
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
+
+import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
-import { useEmail } from '../context/EmailProvider';
+import { supabase } from "@/utils/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function LinkExpired() {
-  const [message, setMessage] = useState("");
+  const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
   const searchParams = useSearchParams();
-  const { signupEmail } = useEmail();
 
-  // Get email from URL params first, then context, then sessionStorage
-  const email = searchParams.get("email") || 
-               signupEmail || 
-               sessionStorage.getItem('signup_email');
+  useEffect(() => {
+    // Extract email from ALL possible sources
+    const emailFromParams = searchParams.get("email");
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const emailFromHash = hashParams.get("email");
+
+    const resolvedEmail = emailFromParams || emailFromHash;
+    if (resolvedEmail) {
+      setEmail(decodeURIComponent(resolvedEmail));
+      // Store as fallback
+      sessionStorage.setItem('pending_verification_email', resolvedEmail);
+    }
+  }, [searchParams]);
 
   const handleResend = async () => {
     if (!email) {
-      setMessage("❌ No email found. Please sign up again.");
+      setMessage("No email available to resend");
       return;
     }
 
     setLoading(true);
-    setMessage("Resending...");
+    setMessage("");
 
     try {
-      const res = await fetch("https://akbsvhaaajgwjlqrxikn.supabase.co/functions/v1/resend-confirmation", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email: email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/email-verify-redirect?email=${encodeURIComponent(email)}`
+        }
       });
 
-      if (!res.ok) throw new Error("Failed to resend email");
-      setMessage("✅ Confirmation email sent. Please check your inbox.");
-    } catch (err) {
-      setMessage(`❌ ${err instanceof Error ? err.message : "Failed to send request"}`);
+      if (error) throw error;
+
+      setMessage("New confirmation email sent successfully!");
+    } catch (error: any) {
+      setMessage(`Failed to resend: ${error.message}`);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen w-full flex flex-col items-center justify-center bg-gray-50 px-4">
-      <div className="text-center max-w-md space-y-4">
-        <h1 className="text-xl font-bold text-red-600">
-          Your confirmation link has expired.
-        </h1>
-        
-        {email && <p className="text-gray-700">We'll resend to: <strong>{email}</strong></p>}
-
-        <Button 
-          onClick={handleResend} 
-          disabled={!email || loading}
-          className="w-full max-w-xs"
-        >
-          {loading ? "Sending..." : "Resend Confirmation Email"}
-        </Button>
-
-        {message && (
-          <p className={`mt-2 text-sm ${
-            message.startsWith("✅") ? "text-green-600" : "text-red-600"
-          }`}>
-            {message}
+    <div className="min-h-screen flex items-center justify-center p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <CardTitle className="text-center text-red-600">
+            Link Expired
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-center text-gray-600">
+            Your verification link has expired (valid for 45 seconds).
           </p>
-        )}
-      </div>
+
+          {email && (
+            <p className="text-center text-sm font-medium">
+              Resending to: <span className="text-blue-600">{email}</span>
+            </p>
+          )}
+
+          <Button
+            onClick={handleResend}
+            disabled={!email || loading}
+            className="w-full"
+          >
+            {loading ? "Sending..." : "Send New Confirmation Email"}
+          </Button>
+
+          {message && (
+            <p className={`text-center text-sm ${
+              message.includes("successfully") ? "text-green-600" : "text-red-600"
+            }`}>
+              {message}
+            </p>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
