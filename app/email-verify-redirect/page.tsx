@@ -103,7 +103,7 @@ export default function EmailVerifyRedirect() {
       router.replace(redirectURL);
     } else {
       // Handle success or show a loader
-      router.replace("/"); // or wherever you want
+      router.replace("/emailConfirmed"); // or wherever you want
     }
   }, [router]);
 
