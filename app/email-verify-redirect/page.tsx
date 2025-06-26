@@ -70,6 +70,16 @@ export default function LinkExpired() {
       }
     };
 
+    useEffect(() => {
+  const urlParams = new URLSearchParams(window.location.search);
+  const emailFromQuery = urlParams.get("email");
+
+  if (emailFromQuery) {
+    setEmail(emailFromQuery);
+  }
+}, []);
+
+
     fetchEmail();
   }, []);
 
@@ -117,9 +127,19 @@ export default function LinkExpired() {
           Resend Confirmation Email
         </Button> */}
 
-        <Button onClick={handleResend} disabled={!email || loading}>
+        {/* <Button onClick={handleResend} disabled={!email || loading}>
+  {loading ? "Sending..." : "Resend Confirmation Email"}
+</Button> */}
+<Button onClick={handleResend} disabled={!email || loading}>
   {loading ? "Sending..." : "Resend Confirmation Email"}
 </Button>
+
+{!email && (
+  <p className="text-red-600 text-sm mt-2">
+    ⚠️ Email not found. Please try signing up again.
+  </p>
+)}
+
 
 
         {message && <p className="mt-2 text-sm text-blue-600">{message}</p>}
