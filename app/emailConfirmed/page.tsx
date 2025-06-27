@@ -250,7 +250,7 @@ export default function EmailConfirmed() {
       if (error) throw error;
 
       setDialogTitle("✅ Password Updated");
-      setDialogMessage("Your password was successfully updated.");
+      setDialogMessage("Your password was successfully updated../n /n🔁 Redirecting to Home page");
       setShowDialog(true);
 
       setTimeout(async () => {
