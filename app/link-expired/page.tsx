@@ -355,71 +355,104 @@
 //   );
 // }
 
-
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { toast } from "@/components/ui/use-toast";
 
-export default function LinkExpired() {
+export default function LinkExpiredPage() {
   const [email, setEmail] = useState("");
-  const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     const storedEmail = localStorage.getItem("applywizz_user_email");
-    console.log("🪪 Retrieved email from localStorage:", storedEmail);
-
     if (storedEmail) {
       setEmail(storedEmail);
+      console.log("🪪 Retrieved email from localStorage:", storedEmail);
     } else {
-      const href = window.location.href;
-      const emailMatch = href.match(/email=([^&#]+)/);
-      const fallbackEmail = emailMatch ? decodeURIComponent(emailMatch[1]) : "";
-      console.log("🔍 Fallback email from URL:", fallbackEmail);
-      setEmail(fallbackEmail);
+      console.warn("⚠️ No email found in localStorage.");
     }
   }, []);
 
-  const handleResend = async () => {
-    setLoading(true);
-    setMessage("Sending new confirmation...");
-
+  const handleResendConfirmation = async () => {
     if (!email) {
-      setMessage("❌ Email not found.");
+      toast({
+        title: "❌ Email not found",
+        description: "We couldn't find your email. Please try signing up again.",
+        variant: "destructive",
+      });
       return;
     }
 
-    const { error } = await supabase.auth.resend({
-      type: "signup",
-      email,
-      options: {
-        emailRedirectTo: "https://applywizzcrm.vercel.app/email-verify-redirect",
-      },
-    });
+    setLoading(true);
+    console.log("📤 Sending resend request for:", email);
 
-    if (error) {
-      setMessage("❌ Resend failed: " + error.message);
-    } else {
-      setMessage("✅ New confirmation sent to " + email);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      toast({
+        title: "✅ Confirmation Sent",
+        description: "A new verification link has been sent to your email.",
+      });
+
+      // Optional: redirect to login or confirmation wait page
+      setTimeout(() => {
+        router.push("/email-verify-redirect?email=" + encodeURIComponent(email));
+      }, 2000);
+    } catch (error: any) {
+      console.error("❌ Resend error:", error);
+      toast({
+        title: "❌ Error",
+        description: error.message || "Failed to resend confirmation email.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   return (
-    // <div className="min-h-screen flex flex-col items-center justify-center space-y-4">
-    <div className="min-h-screen w-full flex flex-col items-center justify-center space-y-4 bg-gray-50 px-4">
+    <div className="min-h-screen w-full flex items-center justify-center bg-gray-50 px-4">
+      <Card className="w-full max-w-md shadow-md">
+        <CardHeader>
+          <CardTitle className="text-center text-red-600 text-xl">
+            Your confirmation link expired
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-gray-600 text-center">
+            No problem. Click the button below to resend.
+          </p>
 
-    <h1 className="text-2xl text-red-600">Your confirmation link expired</h1>
-      <p className="text-gray-600">No problem. Click the button below to resend.</p>
-      <Input value={email} disabled className="max-w-md bg-gray-100 cursor-not-allowed" />
-      <Button onClick={handleResend} disabled={loading || !email}>
-        {loading ? "Sending..." : "Resend Confirmation Email"}
-      </Button>
-      <p className="text-blue-600">{message}</p>
+          <Input
+            type="email"
+            value={email}
+            disabled
+            className="cursor-not-allowed bg-gray-100"
+          />
+
+          <Button
+            onClick={handleResendConfirmation}
+            disabled={loading || !email}
+            className="w-full"
+          >
+            {loading ? "Sending..." : "Resend Confirmation Email"}
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   );
 }
