@@ -351,15 +351,50 @@
 "use client";
 
 import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/utils/supabase/client";
 
 export default function EmailVerifyRedirect() {
+  const router = useRouter();
+
   useEffect(() => {
-    console.log("🧪 Just landed on email-verify-redirect");
-  }, []);
+    const handleRedirect = async () => {
+      console.log("🧪 Email verify redirect triggered...");
+
+      const url = new URL(window.location.href);
+      const authCode = url.searchParams.get("code");
+      console.log("from email-veify-redirect",authCode);
+      const email = url.searchParams.get("email");
+      console.log("from email-veify-redirect",email);
+
+      if (email) {
+        localStorage.setItem("applywizz_user_email", email); // fallback for link-expired
+      }
+
+      if (!authCode) {
+        console.warn("No auth code found");
+        router.push("/link-expired");
+        return;
+      }
+
+      const { error } = await supabase.auth.exchangeCodeForSession(authCode);
+
+      if (error) {
+        console.error("❌ Session exchange failed:", error.message);
+        router.push("/link-expired");
+        return;
+      }
+
+      router.push("/emailConfirmed");
+    };
+
+    handleRedirect();
+  }, [router]);
 
   return (
-    <div className="min-h-screen flex justify-center items-center">
-      <h1 className="text-xl">Verifying your email...</h1>
+    <div className="min-h-screen flex justify-center items-center bg-gray-100">
+      <p className="text-lg font-semibold text-blue-600">Verifying email, please wait...</p>
     </div>
   );
 }
+

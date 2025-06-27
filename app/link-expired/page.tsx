@@ -275,11 +275,95 @@
 // }
 
 
+// "use client";
+
+// import { useState, useEffect } from "react";
+// import { supabase } from "@/utils/supabase/client";
+// import { Button } from "@/components/ui/button";
+
+// export default function LinkExpired() {
+//   const [email, setEmail] = useState("");
+//   const [message, setMessage] = useState("");
+//   const [loading, setLoading] = useState(false);
+
+//   useEffect(() => {
+//     const fetchEmail = async () => {
+//       // Try from session first
+//       const {
+//         data: { session },
+//       } = await supabase.auth.getSession();
+
+//       if (session?.user?.email) {
+//         setEmail(session.user.email);
+//         return;
+//       }
+
+//       // Fallback to localStorage
+//       const localEmail = localStorage.getItem("applywizz_user_email");
+//       if (localEmail) {
+//         setEmail(localEmail);
+//       }
+//     };
+
+//     fetchEmail();
+//   }, []);
+
+//   const handleResend = async () => {
+//     setLoading(true);
+//     setMessage("Resending...");
+
+//     if (!email) {
+//       setMessage("❌ We couldn’t detect your email. Please sign up again.");
+//       setLoading(false);
+//       return;
+//     }
+
+//     const { error } = await supabase.auth.resend({
+//       type: "signup",
+//       email,
+//       options: {
+//         emailRedirectTo: "https://applywizzcrm.vercel.app/email-verify-redirect",
+//       },
+//     });
+
+//     if (error) {
+//       setMessage("❌ Could not resend email. Please try again later.");
+//     } else {
+//       setMessage("✅ Confirmation email sent. Please check your inbox.");
+//     }
+
+//     setLoading(false);
+//   };
+
+//   return (
+//     <div className="min-h-screen w-full flex flex-col items-center justify-center bg-gray-50 px-4">
+//       <div className="text-center max-w-md space-y-4">
+//         <h1 className="text-xl font-bold text-red-600">
+//           Your confirmation link has expired.
+//         </h1>
+//         <p className="text-gray-700">
+//           Don’t worry! You can resend the verification email by clicking below.
+//         </p>
+
+//         <Button onClick={handleResend} disabled={!email || loading}>
+//           {loading ? "Sending..." : "Resend Confirmation Email zig"}
+//         </Button>
+
+//         {message && <p className="mt-2 text-sm text-blue-600">{message}</p>}
+//       </div>
+//     </div>
+//   );
+// }
+
+
+
 "use client";
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export default function LinkExpired() {
   const [email, setEmail] = useState("");
@@ -288,20 +372,24 @@ export default function LinkExpired() {
 
   useEffect(() => {
     const fetchEmail = async () => {
-      // Try from session first
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      const url = new URL(window.location.href);
+      const emailFromURL = url.searchParams.get("email");
 
-      if (session?.user?.email) {
-        setEmail(session.user.email);
+      if (emailFromURL) {
+        setEmail(emailFromURL);
+        localStorage.setItem("applywizz_user_email", emailFromURL);
         return;
       }
 
-      // Fallback to localStorage
       const localEmail = localStorage.getItem("applywizz_user_email");
       if (localEmail) {
         setEmail(localEmail);
+        return;
+      }
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user?.email) {
+        setEmail(session.user.email);
       }
     };
 
@@ -310,10 +398,10 @@ export default function LinkExpired() {
 
   const handleResend = async () => {
     setLoading(true);
-    setMessage("Resending...");
+    setMessage("");
 
     if (!email) {
-      setMessage("❌ We couldn’t detect your email. Please sign up again.");
+      setMessage("❌ No email found. Please sign up again.");
       setLoading(false);
       return;
     }
@@ -322,12 +410,12 @@ export default function LinkExpired() {
       type: "signup",
       email,
       options: {
-        emailRedirectTo: "https://applywizzcrm.vercel.app/email-verify-redirect",
+        emailRedirectTo: "https://applywizzcrm.vercel.app/email-verify-redirect?email=" + email,
       },
     });
 
     if (error) {
-      setMessage("❌ Could not resend email. Please try again later.");
+      setMessage("❌ Failed to resend confirmation. Try again.");
     } else {
       setMessage("✅ Confirmation email sent. Please check your inbox.");
     }
@@ -336,20 +424,28 @@ export default function LinkExpired() {
   };
 
   return (
-    <div className="min-h-screen w-full flex flex-col items-center justify-center bg-gray-50 px-4">
-      <div className="text-center max-w-md space-y-4">
-        <h1 className="text-xl font-bold text-red-600">
-          Your confirmation link has expired.
-        </h1>
-        <p className="text-gray-700">
-          Don’t worry! You can resend the verification email by clicking below.
-        </p>
+    <div className="min-h-screen flex justify-center items-center bg-gray-100">
+      <div className="w-full max-w-md space-y-4 bg-white p-6 rounded shadow">
+        <h1 className="text-red-600 font-bold text-xl text-center">Verification Link Expired</h1>
 
-        <Button onClick={handleResend} disabled={!email || loading}>
-          {loading ? "Sending..." : "Resend Confirmation Email zig"}
+        <Label htmlFor="email">Email</Label>
+        <Input
+          id="email"
+          type="email"
+          value={email}
+          disabled
+          className="bg-gray-100"
+        />
+
+        <Button
+          onClick={handleResend}
+          disabled={loading || !email}
+          className="w-full"
+        >
+          {loading ? "Sending..." : "Resend Confirmation Email"}
         </Button>
 
-        {message && <p className="mt-2 text-sm text-blue-600">{message}</p>}
+        {message && <p className="text-sm text-blue-600 text-center">{message}</p>}
       </div>
     </div>
   );
