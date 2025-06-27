@@ -358,29 +358,34 @@ export default function EmailVerifyRedirect() {
 
   useEffect(() => {
     const handleRedirect = async () => {
+      const href = window.location.href;
+      console.log(href);
+
       console.log("🧪 Just landed on email-verify-redirect");
 
-      const href = window.location.href;
-      const hasCode = href.includes("code=");
+      // Extract email safely (before any # or &)
       const emailMatch = href.match(/email=([^&#]+)/);
-      const authCodeMatch = href.match(/code=([^&]+)/);
       const email = emailMatch ? decodeURIComponent(emailMatch[1]) : null;
-      const authCode = authCodeMatch ? authCodeMatch[1] : null;
-
       console.log("🔍 Extracted email:", email);
-      console.log("🔍 Extracted authCode:", authCode);
 
       if (email) {
         localStorage.setItem("applywizz_user_email", email);
         console.log("📦 Email stored in localStorage");
       }
 
-      if (!authCode) {
-        console.warn("❌ No auth code found in URL");
+      // Extract code safely (before any # or &)
+      const codeMatch = href.match(/code=([^&#]+)/);
+      const authCode = codeMatch ? decodeURIComponent(codeMatch[1]) : null;
+      console.log("🔍 Extracted authCode:", authCode);
+
+      // ⛔ If code is missing or contains error values, redirect
+      if (!authCode || authCode === "otp_expired" || authCode === "access_denied") {
+        console.warn("🚫 Invalid or expired auth code");
         router.push("/link-expired");
         return;
       }
 
+      // ✅ Attempt to exchange code for session
       const { error } = await supabase.auth.exchangeCodeForSession(authCode);
 
       if (error) {
@@ -389,7 +394,7 @@ export default function EmailVerifyRedirect() {
         return;
       }
 
-      console.log("✅ Session exchange successful");
+      // ✅ Go to confirmation page
       router.push("/emailConfirmed");
     };
 
@@ -398,7 +403,9 @@ export default function EmailVerifyRedirect() {
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-gray-50 px-4">
-      <h1 className="text-xl">Verifying your email...</h1>
+      <div className="text-lg font-medium text-blue-600">
+        Verifying your email...
+      </div>
     </div>
   );
 }
