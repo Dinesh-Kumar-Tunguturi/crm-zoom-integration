@@ -281,70 +281,70 @@
 // }
 
 //--------------------SEIDNING re-emails to users inbox--------------
-// "use client";
+"use client";
 
-// import { useEffect } from "react";
-// import { useRouter } from "next/navigation";
-// import { supabase } from "@/utils/supabase/client";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/utils/supabase/client";
 
-// export const dynamic = "force-dynamic"; // 👈 IMPORTANT!
+export const dynamic = "force-dynamic"; // 👈 IMPORTANT!
 
-// export default function EmailVerifyRedirect() {
-//   const router = useRouter();
+export default function EmailVerifyRedirect() {
+  const router = useRouter();
 
-//   useEffect(() => {
-//     const handleRedirect = async () => {
-//       const url = new URL(window.location.href);
-//       const authCode = url.searchParams.get("code");
-//       const emailFromQuery = url.searchParams.get("email");
-//       const hash = window.location.hash;
+  useEffect(() => {
+    const handleRedirect = async () => {
+      const url = new URL(window.location.href);
+      const authCode = url.searchParams.get("code");
+      const emailFromQuery = url.searchParams.get("email");
+      const hash = window.location.hash;
 
-//       if (emailFromQuery) {
-//         console.log("✅ User email from URL:", emailFromQuery); // 👈 your log
-//         localStorage.setItem("applywizz_user_email", emailFromQuery);
-//       }
+      if (emailFromQuery) {
+        console.log("✅ User email from URL:", emailFromQuery); // 👈 your log
+        localStorage.setItem("applywizz_user_email", emailFromQuery);
+      }
 
-//       if (hash.includes("error=access_denied") || hash.includes("otp_expired")) {
-//         router.push("/link-expired");
-//         return;
-//       }
+      if (hash.includes("error=access_denied") || hash.includes("otp_expired")) {
+        router.push("/link-expired");
+        return;
+      }
 
-//       if (!authCode) {
-//         console.error("No auth code found in URL.");
-//         router.push("/link-expired");
-//         return;
-//       }
+      if (!authCode) {
+        console.error("No auth code found in URL.");
+        router.push("/link-expired");
+        return;
+      }
 
-//       const { error } = await supabase.auth.exchangeCodeForSession(authCode);
+      const { error } = await supabase.auth.exchangeCodeForSession(authCode);
 
-//       if (error) {
-//         const msg = error.message.toLowerCase();
-//         if (msg.includes("expired") || msg.includes("invalid") || error.status === 400) {
-//           router.push("/link-expired");
-//         } else {
-//           console.error("Token exchange failed:", error.message);
-//         }
-//         return;
-//       }
+      if (error) {
+        const msg = error.message.toLowerCase();
+        if (msg.includes("expired") || msg.includes("invalid") || error.status === 400) {
+          router.push("/link-expired");
+        } else {
+          console.error("Token exchange failed:", error.message);
+        }
+        return;
+      }
 
-//       window.history.replaceState(null, "", window.location.pathname);
+      window.history.replaceState(null, "", window.location.pathname);
 
-//       setTimeout(() => {
-//         router.push("/emailConfirmed");
-//       }, 1500);
-//     };
+      setTimeout(() => {
+        router.push("/emailConfirmed");
+      }, 1500);
+    };
 
-//     handleRedirect();
-//   }, [router]);
+    handleRedirect();
+  }, [router]);
 
-//   return (
-//     <div className="min-h-screen w-full flex items-center justify-center bg-gray-50 px-4">
-//       <div className="text-lg font-medium text-blue-600">
-//         Verifying email, please wait...
-//       </div>
-//     </div>
-//   );
-// }
+  return (
+    <div className="min-h-screen w-full flex items-center justify-center bg-gray-50 px-4">
+      <div className="text-lg font-medium text-blue-600">
+        Verifying email, please wait...
+      </div>
+    </div>
+  );
+}
 
 //---------------------sendig re-emails to users inbox-----------
 // "use client";
@@ -412,74 +412,74 @@
 
 
 
-"use client";
+// "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { supabase } from "@/utils/supabase/client";
+// import { useEffect } from "react";
+// import { useRouter } from "next/navigation";
+// import { supabase } from "@/utils/supabase/client";
 
-export const dynamic = "force-dynamic"; // Avoid caching for auth flow
+// export const dynamic = "force-dynamic"; // Avoid caching for auth flow
 
-export default function EmailVerifyRedirect() {
-  const router = useRouter();
+// export default function EmailVerifyRedirect() {
+//   const router = useRouter();
 
-  useEffect(() => {
-    const handleRedirect = async () => {
-      const hash = window.location.hash; // e.g. #access_token=abc&refresh_token=xyz&type=signup&email=abc@example.com&expires_in=3600
-      const queryString = hash.startsWith("#") ? hash.slice(1) : hash; // remove #
-      const queryParts = queryString.split("&");
+//   useEffect(() => {
+//     const handleRedirect = async () => {
+//       const hash = window.location.hash; // e.g. #access_token=abc&refresh_token=xyz&type=signup&email=abc@example.com&expires_in=3600
+//       const queryString = hash.startsWith("#") ? hash.slice(1) : hash; // remove #
+//       const queryParts = queryString.split("&");
 
-      const params: Record<string, string> = {};
-      for (const part of queryParts) {
-        const [key, value] = part.split("=");
-        if (key && value) {
-          params[key] = decodeURIComponent(value);
-        }
-      }
+//       const params: Record<string, string> = {};
+//       for (const part of queryParts) {
+//         const [key, value] = part.split("=");
+//         if (key && value) {
+//           params[key] = decodeURIComponent(value);
+//         }
+//       }
 
-      const authCode = params["code"];
-      const emailFromQuery = params["email"];
+//       const authCode = params["code"];
+//       const emailFromQuery = params["email"];
 
-      if (emailFromQuery) {
-        localStorage.setItem("applywizz_user_email", emailFromQuery);
-        console.log("✅ Email stored:", emailFromQuery);
-      }
+//       if (emailFromQuery) {
+//         localStorage.setItem("applywizz_user_email", emailFromQuery);
+//         console.log("✅ Email stored:", emailFromQuery);
+//       }
 
-      if (!authCode) {
-        console.warn("❌ Auth code missing in hash.");
-        router.push("/link-expired");
-        return;
-      }
+//       if (!authCode) {
+//         console.warn("❌ Auth code missing in hash.");
+//         router.push("/link-expired");
+//         return;
+//       }
 
-      const { error } = await supabase.auth.exchangeCodeForSession(authCode);
+//       const { error } = await supabase.auth.exchangeCodeForSession(authCode);
 
-      if (error) {
-        const msg = error.message.toLowerCase();
-        console.warn("❌ Supabase error:", msg);
-        if (msg.includes("expired") || msg.includes("invalid") || error.status === 400) {
-          router.push("/link-expired");
-        } else {
-          console.error("🔴 Unknown error:", error.message);
-          router.push("/link-expired");
-        }
-        return;
-      }
+//       if (error) {
+//         const msg = error.message.toLowerCase();
+//         console.warn("❌ Supabase error:", msg);
+//         if (msg.includes("expired") || msg.includes("invalid") || error.status === 400) {
+//           router.push("/link-expired");
+//         } else {
+//           console.error("🔴 Unknown error:", error.message);
+//           router.push("/link-expired");
+//         }
+//         return;
+//       }
 
-      window.history.replaceState(null, "", window.location.pathname);
+//       window.history.replaceState(null, "", window.location.pathname);
 
-      setTimeout(() => {
-        router.push("/emailConfirmed");
-      }, 1000);
-    };
+//       setTimeout(() => {
+//         router.push("/emailConfirmed");
+//       }, 1000);
+//     };
 
-    handleRedirect();
-  }, [router]);
+//     handleRedirect();
+//   }, [router]);
 
-  return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-gray-50 px-4">
-      <div className="text-lg font-medium text-blue-600">
-        Verifying email, please wait...
-      </div>
-    </div>
-  );
-}
+//   return (
+//     <div className="min-h-screen w-full flex items-center justify-center bg-gray-50 px-4">
+//       <div className="text-lg font-medium text-blue-600">
+//         Verifying email, please wait...
+//       </div>
+//     </div>
+//   );
+// }
