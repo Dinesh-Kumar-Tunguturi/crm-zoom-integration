@@ -329,9 +329,9 @@ export default function EmailVerifyRedirect() {
 
       // window.history.replaceState(null, "", window.location.pathname);
 
-      setTimeout(() => {
-        router.push("/emailConfirmed");
-      }, 1500);
+      // setTimeout(() => {
+      //   router.push("/emailConfirmed");
+      // }, 1500);
     };
 
     handleRedirect();
