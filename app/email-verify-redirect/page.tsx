@@ -281,28 +281,28 @@
 // }
 
 //--------------------SEIDNING re-emails to users inbox--------------
-"use client";
+// "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { supabase } from "@/utils/supabase/client";
+// import { useEffect } from "react";
+// import { useRouter } from "next/navigation";
+// import { supabase } from "@/utils/supabase/client";
 
-export const dynamic = "force-dynamic"; // 👈 IMPORTANT!
+// export const dynamic = "force-dynamic"; // 👈 IMPORTANT!
 
-export default function EmailVerifyRedirect() {
-  const router = useRouter();
+// export default function EmailVerifyRedirect() {
+//   const router = useRouter();
 
-  useEffect(() => {
-    const handleRedirect = async () => {
-      const url = new URL(window.location.href);
-      const authCode = url.searchParams.get("code");
-      const emailFromQuery = url.searchParams.get("email");
-      const hash = window.location.hash;
+//   useEffect(() => {
+//     const handleRedirect = async () => {
+//       const url = new URL(window.location.href);
+//       const authCode = url.searchParams.get("code");
+//       const emailFromQuery = url.searchParams.get("email");
+//       const hash = window.location.hash;
 
-      if (emailFromQuery) {
-        console.log("✅ User email from URL:", emailFromQuery); // 👈 your log
-        localStorage.setItem("applywizz_user_email", emailFromQuery);
-      }
+//       if (emailFromQuery) {
+//         console.log("✅ User email from URL:", emailFromQuery); // 👈 your log
+//         localStorage.setItem("applywizz_user_email", emailFromQuery);
+//       }
 
       // if (hash.includes("error=access_denied") || hash.includes("otp_expired")) {
       //   router.push("/link-expired");
@@ -332,18 +332,34 @@ export default function EmailVerifyRedirect() {
       // setTimeout(() => {
       //   router.push("/emailConfirmed");
       // }, 1500);
-    };
+//     };
 
-    handleRedirect();
-  }, [router]);
+//     handleRedirect();
+//   }, [router]);
+
+//   return (
+//     <div className="min-h-screen w-full flex items-center justify-center bg-gray-50 px-4">
+//       <div className="text-lg font-medium text-blue-600">
+//         Verifying email.., please wait ...
+//       </div>
+//     </div>
+//   );
+// }
+
+//---------------------sendig re-emails to users inbox-----------
+
+"use client";
+
+import { useEffect } from "react";
+
+export default function EmailVerifyRedirect() {
+  useEffect(() => {
+    console.log("🧪 Just landed on email-verify-redirect");
+  }, []);
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-gray-50 px-4">
-      <div className="text-lg font-medium text-blue-600">
-        Verifying email.., please wait ...
-      </div>
+    <div className="min-h-screen flex justify-center items-center">
+      <h1 className="text-xl">Verifying your email...</h1>
     </div>
   );
 }
-
-//---------------------sendig re-emails to users inbox-----------
