@@ -471,8 +471,15 @@ export default function AddUserPage() {
       setSignupEmail('');
       sessionStorage.removeItem('signup_email');
       localStorage.removeItem("applywizz_user_email");
-      
+      if(err.message===`insert or update on table "profiles" violates foreign key constraint "fk_user"`)
+      {
+        setMessage("User already exist, Try again with different Email id");
+      }
+      else{
       setMessage("❌ " + (err.message || "Failed to create user"));
+
+      }
+      
     } finally {
       setLoading(false);
     }
