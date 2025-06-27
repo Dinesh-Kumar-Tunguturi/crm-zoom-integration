@@ -424,10 +424,14 @@ export default function LinkExpired() {
   };
 
   return (
-    <div className="min-h-screen flex justify-center items-center bg-gray-100">
-      <div className="w-full max-w-md space-y-4 bg-white p-6 rounded shadow">
-        <h1 className="text-red-600 font-bold text-xl text-center">Verification Link Expired</h1>
-
+   <div className="min-h-screen w-full flex flex-col items-center justify-center bg-gray-50 px-4">
+      <div className="text-center max-w-md space-y-4">
+         <h1 className="text-xl font-bold text-red-600">
+           Your confirmation link has expired.
+         </h1>
+         <p className="text-gray-700">
+           Don’t worry! You can resend the verification email by clicking below.
+         </p>
         <Label htmlFor="email">Email</Label>
         <Input
           id="email"
