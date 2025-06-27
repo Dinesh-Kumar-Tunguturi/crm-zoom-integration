@@ -411,7 +411,7 @@ export default function LinkExpired() {
 
   return (
     // <div className="min-h-screen flex flex-col items-center justify-center space-y-4">
-    <div className="min-h-screen w-full flex items-center justify-center bg-gray-50 px-4">
+    <div className="min-h-screen w-full flex flex-col items-center justify-center space-y-4 bg-gray-50 px-4">
 
     <h1 className="text-2xl text-red-600">Your confirmation link expired</h1>
       <p className="text-gray-600">No problem. Click the button below to resend.</p>
