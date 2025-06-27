@@ -347,58 +347,106 @@
 // }
 
 //---------------------sendig re-emails to users inbox-----------
+// "use client";
+
+// import { useEffect } from "react";
+// import { useRouter } from "next/navigation";
+// import { supabase } from "@/utils/supabase/client";
+
+// export default function EmailVerifyRedirect() {
+//   const router = useRouter();
+
+//   useEffect(() => {
+//     const handleRedirect = async () => {
+//       const href = window.location.href;
+//       console.log(href);
+
+//       console.log("🧪 Just landed on email-verify-redirect");
+
+//       // Extract email safely (before any # or &)
+//       const emailMatch = href.match(/email=([^&#]+)/);
+//       const email = emailMatch ? decodeURIComponent(emailMatch[1]) : null;
+//       console.log("🔍 Extracted email:", email);
+
+//       if (email) {
+//         localStorage.setItem("applywizz_user_email", email);
+//         console.log("📦 Email stored in localStorage");
+//       }
+
+//       // Extract code safely (before any # or &)
+//       const codeMatch = href.match(/code=([^&#]+)/);
+//       const authCode = codeMatch ? decodeURIComponent(codeMatch[1]) : null;
+//       console.log("🔍 Extracted authCode:", authCode);
+
+//       // ⛔ If code is missing or contains error values, redirect
+//       if (!authCode || authCode === "otp_expired" || authCode === "access_denied") {
+//         console.warn("🚫 Invalid or expired auth code");
+//         router.push("/link-expired");
+//         return;
+//       }
+
+//       // ✅ Attempt to exchange code for session
+//       const { error } = await supabase.auth.exchangeCodeForSession(authCode);
+
+//       if (error) {
+//         console.error("❌ Session exchange failed:", error.message);
+//         router.push("/link-expired");
+//         return;
+//       }
+
+//       // ✅ Go to confirmation page
+//       router.push("/emailConfirmed");
+//     };
+
+//     handleRedirect();
+//   }, [router]);
+
+//   return (
+//     <div className="min-h-screen w-full flex items-center justify-center bg-gray-50 px-4">
+//       <div className="text-lg font-medium text-blue-600">
+//         Verifying your email...
+//       </div>
+//     </div>
+//   );
+// }
+
+
+
 "use client";
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/utils/supabase/client";
 
 export default function EmailVerifyRedirect() {
   const router = useRouter();
 
   useEffect(() => {
-    const handleRedirect = async () => {
-      const href = window.location.href;
-      console.log(href);
+    const href = window.location.href;
+    const hash = window.location.hash;
 
-      console.log("🧪 Just landed on email-verify-redirect");
+    console.log("href : ",href);
+    console.log("hash : ",hash);
+    console.log("🧪 Just landed on email-verify-redirect");
 
-      // Extract email safely (before any # or &)
-      const emailMatch = href.match(/email=([^&#]+)/);
-      const email = emailMatch ? decodeURIComponent(emailMatch[1]) : null;
-      console.log("🔍 Extracted email:", email);
+    // ✅ Extract email
+    const emailMatch = href.match(/email=([^&#]+)/);
+    const email = emailMatch ? decodeURIComponent(emailMatch[1]) : null;
+    console.log("🔍 Extracted email:", email);
 
-      if (email) {
-        localStorage.setItem("applywizz_user_email", email);
-        console.log("📦 Email stored in localStorage");
-      }
+    if (email) {
+      localStorage.setItem("applywizz_user_email", email);
+      console.log("📦 Email stored in localStorage");
+    }
 
-      // Extract code safely (before any # or &)
-      const codeMatch = href.match(/code=([^&#]+)/);
-      const authCode = codeMatch ? decodeURIComponent(codeMatch[1]) : null;
-      console.log("🔍 Extracted authCode:", authCode);
+    // ✅ Check if hash contains error info
+    if (hash.includes("error=access_denied") || hash.includes("error=otp_expired")) {
+      console.warn("🚫 Link is expired or access denied");
+      router.push("/link-expired");
+      return;
+    }
 
-      // ⛔ If code is missing or contains error values, redirect
-      if (!authCode || authCode === "otp_expired" || authCode === "access_denied") {
-        console.warn("🚫 Invalid or expired auth code");
-        router.push("/link-expired");
-        return;
-      }
-
-      // ✅ Attempt to exchange code for session
-      const { error } = await supabase.auth.exchangeCodeForSession(authCode);
-
-      if (error) {
-        console.error("❌ Session exchange failed:", error.message);
-        router.push("/link-expired");
-        return;
-      }
-
-      // ✅ Go to confirmation page
-      router.push("/emailConfirmed");
-    };
-
-    handleRedirect();
+    // ✅ Else, redirect to confirmation page
+    router.push("/emailConfirmed");
   }, [router]);
 
   return (
