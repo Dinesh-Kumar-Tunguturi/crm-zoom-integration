@@ -308,31 +308,31 @@ export default function EmailConfirmed() {
     );
   }
 
-  if (verificationStatus === "expired") {
-    return (
-      <div className="min-h-screen w-full flex items-center justify-center bg-gray-50 px-4">
-        <Card className="w-full max-w-lg shadow-lg">
-          <CardHeader>
-            <CardTitle className="text-center text-red-600 text-xl">
-              Verification Link Expired
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-gray-600 text-center">
-              Your verification link has expired. Please request a new one.
-            </p>
-            <Button
-              className="w-full"
-              onClick={handleResendConfirmation}
-              disabled={loading}
-            >
-              {loading ? "Sending..." : "Resend Verification Email"}
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  // if (verificationStatus === "expired") {
+  //   return (
+  //     <div className="min-h-screen w-full flex items-center justify-center bg-gray-50 px-4">
+  //       <Card className="w-full max-w-lg shadow-lg">
+  //         <CardHeader>
+  //           <CardTitle className="text-center text-red-600 text-xl">
+  //             Verification Link Expired
+  //           </CardTitle>
+  //         </CardHeader>
+  //         <CardContent className="space-y-4">
+  //           <p className="text-gray-600 text-center">
+  //             Your verification link has expired. Please request a new one.
+  //           </p>
+  //           <Button
+  //             className="w-full"
+  //             onClick={handleResendConfirmation}
+  //             disabled={loading}
+  //           >
+  //             {loading ? "Sending..." : "Resend Verification Email"}
+  //           </Button>
+  //         </CardContent>
+  //       </Card>
+  //     </div>
+  //   );
+  // }
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-gray-50 px-4">
