@@ -356,14 +356,12 @@
 // }
 
 
-
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/utils/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 
 export default function LinkExpired() {
   const [email, setEmail] = useState("");
@@ -371,38 +369,26 @@ export default function LinkExpired() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const fetchEmail = async () => {
-      const url = new URL(window.location.href);
-      const emailFromURL = url.searchParams.get("email");
+    const storedEmail = localStorage.getItem("applywizz_user_email");
+    console.log("🪪 Retrieved email from localStorage:", storedEmail);
 
-      if (emailFromURL) {
-        setEmail(emailFromURL);
-        localStorage.setItem("applywizz_user_email", emailFromURL);
-        return;
-      }
-
-      const localEmail = localStorage.getItem("applywizz_user_email");
-      if (localEmail) {
-        setEmail(localEmail);
-        return;
-      }
-
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user?.email) {
-        setEmail(session.user.email);
-      }
-    };
-
-    fetchEmail();
+    if (storedEmail) {
+      setEmail(storedEmail);
+    } else {
+      const href = window.location.href;
+      const emailMatch = href.match(/email=([^&]+)/);
+      const fallbackEmail = emailMatch ? decodeURIComponent(emailMatch[1]) : "";
+      console.log("🔍 Fallback email from URL:", fallbackEmail);
+      setEmail(fallbackEmail);
+    }
   }, []);
 
   const handleResend = async () => {
     setLoading(true);
-    setMessage("");
+    setMessage("Sending new confirmation...");
 
     if (!email) {
-      setMessage("❌ No email found. Please sign up again.");
-      setLoading(false);
+      setMessage("❌ Email not found.");
       return;
     }
 
@@ -410,47 +396,28 @@ export default function LinkExpired() {
       type: "signup",
       email,
       options: {
-        emailRedirectTo: "https://applywizzcrm.vercel.app/email-verify-redirect?email=" + email,
+        emailRedirectTo: "https://applywizzcrm.vercel.app/email-verify-redirect",
       },
     });
 
     if (error) {
-      setMessage("❌ Failed to resend confirmation. Try again.");
+      setMessage("❌ Resend failed: " + error.message);
     } else {
-      setMessage("✅ Confirmation email sent. Please check your inbox.");
+      setMessage("✅ New confirmation sent to " + email);
     }
 
     setLoading(false);
   };
 
   return (
-   <div className="min-h-screen w-full flex flex-col items-center justify-center bg-gray-50 px-4">
-      <div className="text-center max-w-md space-y-4">
-         <h1 className="text-xl font-bold text-red-600">
-           Your confirmation link has expired.
-         </h1>
-         <p className="text-gray-700">
-           Don’t worry! You can resend the verification email by clicking below.
-         </p>
-        <Label htmlFor="email">Email</Label>
-        <Input
-          id="email"
-          type="email"
-          value={email}
-          disabled
-          className="bg-gray-100"
-        />
-
-        <Button
-          onClick={handleResend}
-          disabled={loading || !email}
-          className="w-full"
-        >
-          {loading ? "Sending..." : "Resend Confirmation Email"}
-        </Button>
-
-        {message && <p className="text-sm text-blue-600 text-center">{message}</p>}
-      </div>
+    <div className="min-h-screen flex flex-col items-center justify-center space-y-4">
+      <h1 className="text-2xl text-red-600">Your confirmation link expired</h1>
+      <p className="text-gray-600">No problem. Click the button below to resend.</p>
+      <Input value={email} disabled className="max-w-md bg-gray-100 cursor-not-allowed" />
+      <Button onClick={handleResend} disabled={loading || !email}>
+        {loading ? "Sending..." : "Resend Confirmation Email"}
+      </Button>
+      <p className="text-blue-600">{message}</p>
     </div>
   );
 }

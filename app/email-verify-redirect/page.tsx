@@ -347,7 +347,6 @@
 // }
 
 //---------------------sendig re-emails to users inbox-----------
-
 "use client";
 
 import { useEffect } from "react";
@@ -359,20 +358,25 @@ export default function EmailVerifyRedirect() {
 
   useEffect(() => {
     const handleRedirect = async () => {
-      console.log("🧪 Email verify redirect triggered...");
+      console.log("🧪 Just landed on email-verify-redirect");
 
-      const url = new URL(window.location.href);
-      const authCode = url.searchParams.get("code");
-      console.log("from email-veify-redirect",authCode);
-      const email = url.searchParams.get("email");
-      console.log("from email-veify-redirect",email);
+      const href = window.location.href;
+      const hasCode = href.includes("code=");
+      const emailMatch = href.match(/email=([^&]+)/);
+      const authCodeMatch = href.match(/code=([^&]+)/);
+      const email = emailMatch ? decodeURIComponent(emailMatch[1]) : null;
+      const authCode = authCodeMatch ? authCodeMatch[1] : null;
+
+      console.log("🔍 Extracted email:", email);
+      console.log("🔍 Extracted authCode:", authCode);
 
       if (email) {
-        localStorage.setItem("applywizz_user_email", email); // fallback for link-expired
+        localStorage.setItem("applywizz_user_email", email);
+        console.log("📦 Email stored in localStorage");
       }
 
       if (!authCode) {
-        console.warn("No auth code found");
+        console.warn("❌ No auth code found in URL");
         router.push("/link-expired");
         return;
       }
@@ -385,6 +389,7 @@ export default function EmailVerifyRedirect() {
         return;
       }
 
+      console.log("✅ Session exchange successful");
       router.push("/emailConfirmed");
     };
 
@@ -392,9 +397,8 @@ export default function EmailVerifyRedirect() {
   }, [router]);
 
   return (
-    <div className="min-h-screen flex justify-center items-center bg-gray-100">
-      <p className="text-lg font-semibold text-blue-600">Verifying email, please wait...</p>
+    <div className="min-h-screen flex justify-center items-center">
+      <h1 className="text-xl">Verifying your email...</h1>
     </div>
   );
 }
-
