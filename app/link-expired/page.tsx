@@ -376,7 +376,7 @@ export default function LinkExpired() {
       setEmail(storedEmail);
     } else {
       const href = window.location.href;
-      const emailMatch = href.match(/email=([^&]+)/);
+      const emailMatch = href.match(/email=([^&#]+)/);
       const fallbackEmail = emailMatch ? decodeURIComponent(emailMatch[1]) : "";
       console.log("🔍 Fallback email from URL:", fallbackEmail);
       setEmail(fallbackEmail);
@@ -410,8 +410,10 @@ export default function LinkExpired() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center space-y-4">
-      <h1 className="text-2xl text-red-600">Your confirmation link expired</h1>
+    // <div className="min-h-screen flex flex-col items-center justify-center space-y-4">
+    <div className="min-h-screen w-full flex items-center justify-center bg-gray-50 px-4">
+
+    <h1 className="text-2xl text-red-600">Your confirmation link expired</h1>
       <p className="text-gray-600">No problem. Click the button below to resend.</p>
       <Input value={email} disabled className="max-w-md bg-gray-100 cursor-not-allowed" />
       <Button onClick={handleResend} disabled={loading || !email}>

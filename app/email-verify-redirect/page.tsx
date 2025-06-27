@@ -200,7 +200,7 @@
 //   }, [router]);
 
 //   return (
-//     <div className="min-h-screen w-full flex items-center justify-center bg-gray-50 px-4">
+    // <div className="min-h-screen w-full flex items-center justify-center bg-gray-50 px-4">
 //       <div className="text-lg font-medium text-blue-600">
 //         Verifying email, please wait...
 //       </div>
@@ -362,7 +362,7 @@ export default function EmailVerifyRedirect() {
 
       const href = window.location.href;
       const hasCode = href.includes("code=");
-      const emailMatch = href.match(/email=([^&]+)/);
+      const emailMatch = href.match(/email=([^&#]+)/);
       const authCodeMatch = href.match(/code=([^&]+)/);
       const email = emailMatch ? decodeURIComponent(emailMatch[1]) : null;
       const authCode = authCodeMatch ? authCodeMatch[1] : null;
@@ -397,7 +397,7 @@ export default function EmailVerifyRedirect() {
   }, [router]);
 
   return (
-    <div className="min-h-screen flex justify-center items-center">
+    <div className="min-h-screen w-full flex items-center justify-center bg-gray-50 px-4">
       <h1 className="text-xl">Verifying your email...</h1>
     </div>
   );
