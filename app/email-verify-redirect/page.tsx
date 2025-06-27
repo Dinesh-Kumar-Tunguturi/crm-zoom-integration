@@ -304,28 +304,28 @@ export default function EmailVerifyRedirect() {
         localStorage.setItem("applywizz_user_email", emailFromQuery);
       }
 
-      if (hash.includes("error=access_denied") || hash.includes("otp_expired")) {
-        router.push("/link-expired");
-        return;
-      }
+      // if (hash.includes("error=access_denied") || hash.includes("otp_expired")) {
+      //   router.push("/link-expired");
+      //   return;
+      // }
 
-      if (!authCode) {
-        console.error("No auth code found in URL.");
-        router.push("/link-expired");
-        return;
-      }
+      // if (!authCode) {
+      //   console.error("No auth code found in URL.");
+      //   router.push("/link-expired");
+      //   return;
+      // }
 
-      const { error } = await supabase.auth.exchangeCodeForSession(authCode);
+      // const { error } = await supabase.auth.exchangeCodeForSession(authCode);
 
-      if (error) {
-        const msg = error.message.toLowerCase();
-        if (msg.includes("expired") || msg.includes("invalid") || error.status === 400) {
-          router.push("/link-expired");
-        } else {
-          console.error("Token exchange failed:", error.message);
-        }
-        return;
-      }
+      // if (error) {
+      //   const msg = error.message.toLowerCase();
+      //   if (msg.includes("expired") || msg.includes("invalid") || error.status === 400) {
+      //     router.push("/link-expired");
+      //   } else {
+      //     console.error("Token exchange failed:", error.message);
+      //   }
+      //   return;
+      // }
 
       // window.history.replaceState(null, "", window.location.pathname);
 
@@ -340,7 +340,7 @@ export default function EmailVerifyRedirect() {
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-gray-50 px-4">
       <div className="text-lg font-medium text-blue-600">
-        Verifying email, please wait...
+        Verifying email.., please wait ...
       </div>
     </div>
   );
