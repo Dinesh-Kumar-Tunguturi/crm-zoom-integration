@@ -319,15 +319,9 @@ export default function EmailConfirmed() {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-gray-600 text-center">
-              Your verification link has expired. Please request a new one.
+              We sent a new link to your email, please check once.
             </p>
-            <Button
-              className="w-full"
-              onClick={handleResendConfirmation}
-              disabled={loading}
-            >
-              {loading ? "Sending..." : "Resend Verification Email"}
-            </Button>
+           
           </CardContent>
         </Card>
       </div>
