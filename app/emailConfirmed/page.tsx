@@ -229,7 +229,7 @@ export default function EmailConfirmed() {
           setEmail(session.user.email || "");
         }
       } catch (error: any) {
-        console.error("Verification error:", error);
+        // console.error("Verification error:", error);
         setVerificationStatus("expired");
       } finally {
         setLoading(false);
@@ -250,7 +250,7 @@ export default function EmailConfirmed() {
       if (error) throw error;
 
       setDialogTitle("✅ Password Updated");
-      setDialogMessage("Your password was successfully updated../n /n🔁 Redirecting to Home page");
+      setDialogMessage("Your password was successfully updated../n /n🔁 Redirecting to sign in page");
       setShowDialog(true);
 
       setTimeout(async () => {

@@ -487,9 +487,9 @@ export default function LinkExpiredPage() {
     const storedEmail = localStorage.getItem("applywizz_user_email");
     if (storedEmail) {
       setEmail(storedEmail);
-      console.log("🪪 Retrieved email from localStorage:", storedEmail);
+      // console.log("🪪 Retrieved email from localStorage:", storedEmail);
     } else {
-      console.warn("⚠️ No email found in localStorage.");
+      // console.warn("⚠️ No email found in localStorage.");
     }
   }, []);
 
@@ -502,7 +502,7 @@ export default function LinkExpiredPage() {
     }
 
     setLoading(true);
-    console.log("📤 Sending resend request for:", email);
+    // console.log("📤 Sending resend request for:", email);
 
     try {
       const { error } = await supabase.auth.resend({
@@ -520,7 +520,7 @@ export default function LinkExpiredPage() {
         router.push("/email-verify-redirect?email=" + encodeURIComponent(email));
       }, 2000);
     } catch (error: any) {
-      console.error("❌ Resend error:", error);
+      // console.error("❌ Resend error:", error);
       setDialogTitle("❌ Error");
       setDialogMessage(error.message || "Failed to resend confirmation email.");
       setShowDialog(true);
