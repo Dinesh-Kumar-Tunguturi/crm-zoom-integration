@@ -80,7 +80,7 @@ export async function POST(request: Request) {
       
       try {
         // 1. Fetch CSV from Google Sheets
-        console.log(`  ⏳ Fetching sheet from URL: ${sheet.url}`);
+        // console.log(`  ⏳ Fetching sheet from URL: ${sheet.url}`);
         const fetchStart = Date.now();
         const res = await fetch(sheet.url, {
           cache: 'no-store', // Ensure fresh data
@@ -92,10 +92,10 @@ export async function POST(request: Request) {
         }
 
         const csvText = await res.text();
-        console.log(`  ✅ Fetched ${csvText.length} bytes in ${fetchTime}ms`);
+        // console.log(`  ✅ Fetched ${csvText.length} bytes in ${fetchTime}ms`);
 
         // 2. Parse CSV
-        console.log('  ⏳ Parsing CSV...');
+        // console.log('  ⏳ Parsing CSV...');
         const { data: parsedRows, errors: parseErrors } = Papa.parse(csvText, {
           header: true,
           skipEmptyLines: true,
