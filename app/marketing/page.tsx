@@ -36,6 +36,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { MoreVertical, PlusCircle } from "lucide-react";
+
 import { Upload, Search, UserPlus, Download } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -44,6 +52,7 @@ import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { supabase } from "@/utils/supabase/client";
 import { LoadingContext } from "@/components/providers/LoadingContext";
 import FullScreenLoader from "@/components/ui/FullScreenLoader";
+import { toast } from "react-hot-toast";
 
 interface Lead {
   id: string;
@@ -92,6 +101,27 @@ export default function MarketingPage() {
   const [allLeadsStats, setAllLeadsStats] = useState({ total: 0, assigned: 0, new: 0 });
   const [showReassignDialog, setShowReassignDialog] = useState(false);
   const [pendingAssignee, setPendingAssignee] = useState<string | null>(null);
+
+  const [googleSheetDialogOpen, setGoogleSheetDialogOpen] = useState(false);
+  const [newSheetName, setNewSheetName] = useState("");
+  const [newSheetUrl, setNewSheetUrl] = useState("");
+  const [resultDialogOpen, setResultDialogOpen] = useState(false);
+  const [resultMessage, setResultMessage] = useState({
+    title: '',
+    description: '',
+    isError: false
+  });
+
+  // Add this effect to auto-close the dialog
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (resultDialogOpen) {
+      timer = setTimeout(() => {
+        setResultDialogOpen(false);
+      }, 5000); // 3 seconds
+    }
+    return () => clearTimeout(timer); // Cleanup on unmount
+  }, [resultDialogOpen]);
 
 
 
@@ -428,6 +458,7 @@ export default function MarketingPage() {
     });
   };
 
+
   const getSourceBadgeColor = (source: string) => {
     switch (source) {
       case "Instagram":
@@ -453,6 +484,66 @@ export default function MarketingPage() {
         return "bg-gray-100 text-gray-800";
     }
   };
+
+  const handleAddNewSheet = async () => {
+    try {
+      setLoading(true);
+
+      if (!newSheetUrl.match(/https:\/\/docs\.google\.com\/spreadsheets\/.+/)) {
+        throw new Error('Must be a valid Google Sheets URL (https://docs.google.com/spreadsheets/...)');
+      }
+
+      const { data, error } = await supabase
+        .from('google_sheets_config')
+        .insert([{
+          name: newSheetName.trim(),
+          url: newSheetUrl.trim()
+        }])
+        .select()
+        .single(); // Ensures we get a single record
+
+      if (error) {
+        console.error('Supabase insert error:', error);
+        throw new Error(error.message || 'Failed to save sheet configuration');
+      }
+
+      // Show success (will auto-close in 3s via useEffect)
+      setResultMessage({
+        title: 'Success ✅',
+        description: `"${newSheetName}" added successfully!`,
+        isError: false
+      });
+      setResultDialogOpen(true);
+
+      // Reset form
+      setGoogleSheetDialogOpen(false);
+      setNewSheetName('');
+      setNewSheetUrl('');
+
+      // Trigger async fetch without awaiting (fire-and-forget)
+      fetch('/api/fetch-google-sheet', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.CRON_SECRET || "local_dev_secret"}`
+        },
+      }).catch(console.error); // Silently handle fetch errors
+
+    } catch (error) {
+      // Show error (will auto-close in 3s via useEffect)
+      setResultMessage({
+        title: 'Error ❌',
+        description: error instanceof Error ?
+          error.message.replace('Invalid Google Sheets URL - ', '') :
+          'Operation failed',
+        isError: true
+      });
+      setResultDialogOpen(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
 
   return (
     <>
@@ -595,7 +686,25 @@ export default function MarketingPage() {
                     </DialogContent>
                   </Dialog>
 
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="icon">
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        className="cursor-pointer"
+                        onClick={() => {
 
+                          setGoogleSheetDialogOpen(true);
+                        }}
+                      >
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        <span>Add new Google Sheet to autofetch</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
 
                   <Dialog open={successDialogOpen} onOpenChange={setSuccessDialogOpen}>
                     <DialogContent className="max-w-md">
@@ -609,6 +718,86 @@ export default function MarketingPage() {
                     </DialogContent>
                   </Dialog>
 
+                  <Dialog open={googleSheetDialogOpen} onOpenChange={setGoogleSheetDialogOpen}>
+                    <DialogContent className="max-w-md">
+                      <DialogHeader>
+                        <DialogTitle>Add New Google Sheet</DialogTitle>
+                        <DialogDescription>
+                          Connect a new Google Sheet to automatically import leads
+                        </DialogDescription>
+                      </DialogHeader>
+
+                      <div className="space-y-4">
+                        <div>
+                          <Label>Sheet Name</Label>
+                          <Input
+                            placeholder="e.g., Nikhil_reel_3_leads"
+                            value={newSheetName}
+                            onChange={(e) => setNewSheetName(e.target.value)}
+                          />
+                        </div>
+
+                        <div>
+                          <Label>Google Sheet URL</Label>
+                          <Input
+                            placeholder="https://docs.google.com/spreadsheets/d/..."
+                            value={newSheetUrl}
+                            onChange={(e) => setNewSheetUrl(e.target.value)}
+                          />
+                        </div>
+
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              setGoogleSheetDialogOpen(false);
+                              setNewSheetName('');
+                              setNewSheetUrl('');
+                            }}
+                            disabled={loading}
+                          >
+                            Cancel
+                          </Button>
+
+                          <Button
+                            onClick={handleAddNewSheet}
+                            disabled={!newSheetName || !newSheetUrl || loading}
+                          >
+                            {loading ? (
+                              <span className="flex items-center gap-2">
+                                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                                </svg>
+                                Adding...
+                              </span>
+                            ) : (
+                              "Add Sheet"
+                            )}
+                          </Button>
+                        </div>
+
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+
+                  <Dialog open={resultDialogOpen} onOpenChange={setResultDialogOpen}>
+                    <DialogContent className="max-w-sm">
+                      <DialogHeader>
+                        <DialogTitle className={resultMessage.isError ? "text-red-600" : "text-green-600"}>
+                          {resultMessage.title}
+                        </DialogTitle>
+                      </DialogHeader>
+                      <div className="py-2">
+                        <p>{resultMessage.description}</p>
+                      </div>
+                      {/* Progress bar for visual countdown */}
+                      <div className="h-1 w-full bg-gray-200">
+                        <div
+                          className={`h-full ${resultMessage.isError ? 'bg-red-500' : 'bg-green-500'} animate-[shrink_3s_linear_forwards]`}
+                        />
+                      </div>
+                    </DialogContent>
+                  </Dialog>
 
                 </div>
               </div>
@@ -776,7 +965,12 @@ export default function MarketingPage() {
                       </TableHeader>
                       <TableBody>
                         {filteredLeads.map((lead, index) => (
-                          <TableRow key={lead.id}>
+                          // <TableRow key={lead.id}>
+                          <TableRow
+                            key={lead.id}
+                            className="cursor-pointer hover:bg-gray-100"
+                            onClick={() => window.open(`/leads/${lead.business_id}`, "_blank")}
+                          >
 
 
                             <TableCell>
