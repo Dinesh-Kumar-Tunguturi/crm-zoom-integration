@@ -1,0 +1,13 @@
+name: 🔁 Fetch Google Sheet Every Hour
+
+on:
+  schedule:
+    - cron: '0 * * * *' # Runs every hour
+  workflow_dispatch:    # Allows manual trigger too
+
+jobs:
+  fetch-leads:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call Vercel Endpoint
+        run: curl -X GET https://final-applywizz-crm.vercel.app/api/fetch-google-sheet
