@@ -11,3 +11,4 @@ jobs:
     steps:
       - name: Call Vercel Endpoint
         run: curl -X GET https://final-applywizz-crm.vercel.app/api/fetch-google-sheet
+  
