@@ -1,9 +1,7 @@
 
 "use client"
 
-
 import type React from "react"
-
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
@@ -13,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useAuth } from "@/components/providers/auth-provider"
 import { Building2 } from "lucide-react"
-  
+
 export function LoginForm() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -22,12 +20,10 @@ export function LoginForm() {
   const [loading, setLoading] = useState(false)
   const { login } = useAuth()
 
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError("")
-
 
     const success = await login(email, password)
     if (!success) {
@@ -111,11 +107,9 @@ export function LoginForm() {
               {loading ? "Signing in..." : "Sign In"}
             </Button>
           </form>
-         
+
         </CardContent>
       </Card>
     </div>
   )
 }
-
-

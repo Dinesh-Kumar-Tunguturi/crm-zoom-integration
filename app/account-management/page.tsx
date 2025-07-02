@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -310,8 +309,6 @@ export default function AccountManagementPage() {
       );
     }
   };
-
-
 
   const handleStageUpdate = (clientId: string, newStage: AccountStage) => {
     setClients((prev) => prev.map((client) => (client.id === clientId ? { ...client, stage: newStage } : client)));

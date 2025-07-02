@@ -93,7 +93,7 @@ export default function EmailConfirmed() {
 
       setTimeout(async () => {
         await supabase.auth.signOut();
-        window.location.href = "https://applywizzcrm.vercel.app/";
+        window.location.href = "https://applywizz-crm-tool.vercel.app/";
       }, 2000);
     } catch (error: any) {
       setDialogTitle("❌ Update Failed");
@@ -185,11 +185,11 @@ export default function EmailConfirmed() {
             <p>Your email is now verified.</p>
             <p className="mt-1 text-blue-600 underline">
               <a
-                href="https://applywizzcrm.vercel.app/"
+                href="https://applywizz-crm-tool.vercel.app/"
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                https://applywizzcrm.vercel.app/
+                https://applywizz-crm-tool.vercel.app/
               </a>
             </p>
           </div>

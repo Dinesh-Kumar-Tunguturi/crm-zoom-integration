@@ -6,7 +6,6 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    // console.log("📦 Assign Leads Body:", body);
 
     const { selectedLeads, assignedTo, assignedAt } = body;
 

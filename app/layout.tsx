@@ -10,13 +10,15 @@ import { LoadingProvider } from "@/components/providers/LoadingContext"
 import SignupRedirectGuard from "@/components/providers/SignUpRedirectGuard"
 import { EmailProvider } from './context/EmailProvider';
 
-
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
   title: "ApplyWizz CRM",
   description: "Enterprise CRM Solution",
-    generator: 'v0.dev'
+  generator: 'v0.dev',
+  icons: {
+    icon: "/applywizz_logo_favicon.png",
+  },
 }
 
 export default function RootLayout({
@@ -27,17 +29,17 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-                <SignupRedirectGuard /> {/* 🛑 Stops auto-login after email verification */}
+        <SignupRedirectGuard /> {/* 🛑 Stops auto-login after email verification */}
 
-         <LoadingProvider>
-        <AuthProvider>
-          <SidebarProvider> {/* ✅ Wrap your entire app with sidebar context */}
-            <EmailProvider>
-              {children}
-             <Toaster />
-             </EmailProvider>
-          </SidebarProvider>
-        </AuthProvider>
+        <LoadingProvider>
+          <AuthProvider>
+            <SidebarProvider> {/* ✅ Wrap your entire app with sidebar context */}
+              <EmailProvider>
+                {children}
+                <Toaster />
+              </EmailProvider>
+            </SidebarProvider>
+          </AuthProvider>
         </LoadingProvider>
       </body>
     </html>

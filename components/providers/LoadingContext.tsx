@@ -11,7 +11,7 @@ interface LoadingContextType {
 export const LoadingContext = createContext<LoadingContextType>({
   loading: false,
   message: "",
-  setLoading: () => {},
+  setLoading: () => { },
 });
 
 export const useLoading = () => useContext(LoadingContext);

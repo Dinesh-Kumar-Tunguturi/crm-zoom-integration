@@ -93,10 +93,7 @@ export default function MarketingPage() {
   const [leadTab, setLeadTab] = useState<"New" | "Assigned">("New");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  // const pageSize = 20;
   const [pageSize, setPageSize] = useState(15);
-  // const [currentPage, setCurrentPage] = useState(1);
-
   const [allLeadsStats, setAllLeadsStats] = useState({ total: 0, assigned: 0, new: 0 });
   const [showReassignDialog, setShowReassignDialog] = useState(false);
   const [pendingAssignee, setPendingAssignee] = useState<string | null>(null);
@@ -117,13 +114,10 @@ export default function MarketingPage() {
     if (resultDialogOpen) {
       timer = setTimeout(() => {
         setResultDialogOpen(false);
-      }, 5000); // 3 seconds
+      }, 5000); // 5 seconds
     }
-    return () => clearTimeout(timer); // Cleanup on unmount
+    return () => clearTimeout(timer); 
   }, [resultDialogOpen]);
-
-
-
 
   const filteredLeads = leads.filter((lead) => {
     const matchesSearch =
@@ -136,12 +130,7 @@ export default function MarketingPage() {
     return matchesSearch && matchesStatus && matchesSource;
   });
 
-  //   const startIndex = (currentPage - 1) * pageSize;
-  // const endIndex = startIndex + pageSize;
-
-  // const filteredLeads = searchedLeads.slice(startIndex, endIndex);
-
-
+  
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
       const selectableLeadIds = filteredLeads
@@ -163,8 +152,6 @@ export default function MarketingPage() {
 
   const handleBulkAssign = async (assignedTo: string) => {
     setLoading(true);
-
-
     try {
       const res = await fetch("/api/assign-leads", {
         method: "POST",
@@ -180,9 +167,8 @@ export default function MarketingPage() {
       if (!res.ok) throw new Error(result.error || "Assignment failed");
 
       setAssignSuccessMessage(`Assigned ${selectedLeads.length} lead(s) to ${assignedTo}.`);
-      setSuccessDialogOpen(true); // ✅ Open dialog
+      setSuccessDialogOpen(true); //  Open dialog
       setTimeout(() => setSuccessDialogOpen(false), 3000);
-
 
       setSelectedLeads([]);
       setBulkAssignDialogOpen(false);
@@ -329,9 +315,6 @@ export default function MarketingPage() {
     return `${day}-${month}-${year} ${pad(hours)}:${minutes}:${seconds} ${ampm}`;
   };
 
-
-
-
   const downloadCSV = (data: Lead[]) => {
     const csvContent = [
       [
@@ -386,8 +369,6 @@ export default function MarketingPage() {
       },
     });
   };
-
-
 
   const formatFileSize = (size: number) =>
     size >= 1024 * 1024
@@ -447,7 +428,7 @@ export default function MarketingPage() {
 
           await fetchLeadCounts();
 
-          // ✅ Fetch only 15 new leads after upload
+          // Fetch only 15 new leads after upload
           await fetchLeadsAndSales(1, "New", "", "all", "all");
           setCurrentPage(1); // Reset pagination
 
@@ -514,12 +495,9 @@ export default function MarketingPage() {
       });
       setResultDialogOpen(true);
 
-      // Reset form
       setGoogleSheetDialogOpen(false);
       setNewSheetName('');
       setNewSheetUrl('');
-
-      // Trigger async fetch without awaiting (fire-and-forget)
       fetch('/api/fetch-google-sheet', {
         method: 'POST',
         headers: {

@@ -18,7 +18,7 @@ export default function AddUserPage() {
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("Sales");
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState(""); 
   const [showPassword, setShowPassword] = useState(false);
   const [fullName, setFullName] = useState("");
   const { setSignupEmail } = useEmail();
@@ -38,7 +38,7 @@ export default function AddUserPage() {
         password,
         options: {
           data: { full_name: fullName },
-    emailRedirectTo: `https://applywizzcrm.vercel.app/email-verify-redirect?email=${email}`,
+    emailRedirectTo: `https://applywizz-crm-tool.vercel.app/email-verify-redirect?email=${email}`,
         }
       });
 

@@ -36,8 +36,6 @@ export default function FinancePage() {
     fetchSalesData();
   }, []);
 
-
-
   async function fetchSalesData() {
     const { data: salesData, error: salesError } = await supabase
       .from("sales_closure")

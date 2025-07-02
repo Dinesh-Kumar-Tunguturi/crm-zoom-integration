@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -15,8 +14,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Eye, Search } from "lucide-react";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
-
-
 
 type SalesStage = "Prospect" | "DNP" | "Out of TG" | "Not Interested" | "Conversation Done" | "Sale Done";
 
@@ -86,10 +83,6 @@ export default function SalesPage() {
     payment_mode: "" as unknown as SaleClosing["payment_mode"]
   });
 
-
-
-
-
   useEffect(() => { fetchLeads() }, []);
 
   const fetchLeads = async () => {
@@ -115,8 +108,6 @@ export default function SalesPage() {
     }
   };
 
-
-
   const fetchFollowUps = async () => {
 
     const { data: leadsData, error: leadsError } = await supabase
@@ -131,7 +122,6 @@ export default function SalesPage() {
 
     const businessIds = leadsData.map((l) => l.business_id);
 
-
     const { data: historyData, error: historyError } = await supabase
       .from("call_history")
       .select("lead_id, followup_date, notes")
@@ -142,7 +132,6 @@ export default function SalesPage() {
       console.error("❌ Error fetching call history:", historyError);
       return [];
     }
-
 
     const mostRecentMap = new Map<string, { followup_date: string; notes: string }>();
     for (const entry of historyData) {
@@ -161,7 +150,6 @@ export default function SalesPage() {
     }));
   };
 
-
   const filteredLeads = leads.filter((lead) => {
     const matchesSearch = lead.client_name.toLowerCase().includes(searchTerm.toLowerCase())
       || lead.email.toLowerCase().includes(searchTerm.toLowerCase())
@@ -169,21 +157,6 @@ export default function SalesPage() {
     const matchesStage = stageFilter === "all" || lead.current_stage === stageFilter;
     return matchesSearch && matchesStage;
   });
-
-
-  //   const handleSaleClosingDialogClose = (open: boolean) => {
-  //   if (!open && pendingStageUpdate && previousStage) {
-  //     setLeads((prev) =>
-  //       prev.map((l) =>
-  //         l.id === pendingStageUpdate.leadId ? { ...l, current_stage: previousStage } : l
-  //       )
-  //     );
-  //   }
-
-  //   setSaleClosingDialogOpen(open);
-  //   setPendingStageUpdate(null);
-  //   setPreviousStage(null);
-  // };
 
 
   const handleStageUpdate = async (leadId: string, newStage: SalesStage) => {
@@ -214,7 +187,6 @@ export default function SalesPage() {
       setSaleClosingDialogOpen(true);
       return;
     }
-
 
     // Immediate update for other stages
     const updatedLead = { ...lead, current_stage: newStage };
@@ -276,7 +248,6 @@ export default function SalesPage() {
       )
     );
 
-
     setFollowUpDialogOpen(false);
     setFollowUpData({ follow_up_date: "", notes: "" });
     setPendingStageUpdate(null);
@@ -285,7 +256,6 @@ export default function SalesPage() {
     // 👇 After updating stage and call_history
     const updatedFollowUps = await fetchFollowUps();
     setFollowUpsData(updatedFollowUps);
-
   };
 
   const handleFollowUpDialogClose = (open: boolean) => {
@@ -296,13 +266,10 @@ export default function SalesPage() {
         )
       );
     }
-
     setFollowUpDialogOpen(open);
     setPendingStageUpdate(null);
     setPreviousStage(null);
   };
-
-
 
   const handleSaleClosureSubmit = async () => {
     if (!selectedLead || !pendingStageUpdate) return;
@@ -316,7 +283,6 @@ export default function SalesPage() {
         l.id === pendingStageUpdate.leadId ? { ...l, current_stage: pendingStageUpdate.stage } : l
       )
     );
-
 
     const { error: saleError } = await supabase.from("sales_closure").insert([{
       lead_id: selectedLead.business_id,
@@ -346,20 +312,16 @@ export default function SalesPage() {
     setPendingStageUpdate(null);
     setPreviousStage(null);
 
-
     setSaleData({
       sale_value: 0,
       subscription_cycle: "" as unknown as 15 | 30 | 60 | 90, // Reset to placeholder
       payment_mode: "" as unknown as SaleClosing["payment_mode"],
     });
-    // 👇 After updating stage and call_history
+    // After updating stage and call_history
     const updatedFollowUps = await fetchFollowUps();
     setFollowUpsData(updatedFollowUps);
 
-
   };
-
-
 
   const totalLeadsCount = leads.length;
   const prospectCount = leads.filter(l => l.current_stage === "Prospect").length;
@@ -370,8 +332,6 @@ export default function SalesPage() {
   const othersCount = leads.filter(l =>
     !["Prospect", "DNP", "Conversation Done", "Sale Done"].includes(l.current_stage)
   ).length;
-
-
 
   const fetchCallHistory = async (leadId: string) => {
     const lead = leads.find((l) => l.id === leadId);
@@ -411,15 +371,8 @@ export default function SalesPage() {
             }}>
               Follow Ups
             </Button>
-
-
-
-
           </div>
-
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-
-
             <Dialog open={followUpsDialogOpen} onOpenChange={setFollowUpsDialogOpen}>
               {/* <DialogContent className="max-w-7xl"> */}
               <DialogContent className="max-w-7xl" onPointerDownOutside={(e) => e.preventDefault()}>
@@ -513,8 +466,6 @@ export default function SalesPage() {
                                           <Badge className={getStageColor(stage)}>{stage}</Badge>
                                         </SelectItem>
                                       ))}
-
-
                                   </SelectContent>
                                 </Select>
                               </TableCell>
@@ -524,12 +475,10 @@ export default function SalesPage() {
                           ))
                       )}
                     </TableBody>
-
                   </Table>
                 </div>
               </DialogContent>
             </Dialog>
-
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium">All leads</CardTitle>
@@ -584,7 +533,6 @@ export default function SalesPage() {
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <Input placeholder="Search..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-10" />
             </div>
-
             <Select value={stageFilter} onValueChange={setStageFilter}>
               <SelectTrigger className="w-full sm:w-48">
                 <SelectValue placeholder="Filter by stage" />
@@ -595,7 +543,6 @@ export default function SalesPage() {
               </SelectContent>
             </Select>
           </div>
-
 
           <Card>
             <CardHeader><CardTitle>Sales Pipeline</CardTitle></CardHeader>
@@ -626,7 +573,6 @@ export default function SalesPage() {
                         <TableCell>
                           <Select value={lead.current_stage} onValueChange={(value: SalesStage) => handleStageUpdate(lead.id, value)}
                           >
-                            {/* <SelectTrigger className="w-40"><SelectValue /></SelectTrigger> */}
                             <SelectTrigger
                               className={`w-40 ${lead.current_stage === "Sale Done"
                                 ? "pointer-events-none opacity-100 text-black bg-gray-100 border border-gray-300 cursor-not-allowed"
@@ -643,8 +589,6 @@ export default function SalesPage() {
                                     <Badge className={getStageColor(stage)}>{stage}</Badge>
                                   </SelectItem>
                                 ))}
-
-
                             </SelectContent>
                           </Select>
                         </TableCell>
@@ -703,13 +647,8 @@ export default function SalesPage() {
             </DialogContent>
           </Dialog>
 
-          {/* Follow-Up Dialog */}
-          {/* <Dialog open={followUpDialogOpen} onOpenChange={handleFollowUpDialogClose}> */}
-          {/* <DialogContent> */}
           <Dialog open={followUpDialogOpen} onOpenChange={handleFollowUpDialogClose}>
             <DialogContent onPointerDownOutside={(e) => e.preventDefault()}>
-
-              {/* <DialogContent onPointerDownOutside={(e) => e.preventDefault()}> */}
 
               <DialogHeader><DialogTitle>Schedule Follow-up</DialogTitle></DialogHeader>
               <div className="space-y-4">
@@ -753,9 +692,7 @@ export default function SalesPage() {
             setSaleClosingDialogOpen(open);
           }}>
 
-
             <DialogContent onPointerDownOutside={(e) => e.preventDefault()}>
-
               <DialogHeader><DialogTitle>Close Sale</DialogTitle></DialogHeader>
               <div className="space-y-4">
                 <div><Label>Sale Value</Label>
