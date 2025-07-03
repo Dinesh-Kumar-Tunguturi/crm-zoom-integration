@@ -193,6 +193,7 @@ export default function EmailConfirmed() {
               >
                 https://applywizz-crm-tool.vercel.app/
               </a> */}
+              
             </p>
           </div>
 
