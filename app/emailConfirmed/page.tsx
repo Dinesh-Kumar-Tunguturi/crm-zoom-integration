@@ -185,7 +185,7 @@ export default function EmailConfirmed() {
             <p>Your email is now verified.</p>
             <p className="mt-1 text-blue-600 underline">
               <a
-                href="https://applywizz-crm-tool.vercel.app/"
+                href="https://applywizz-crm-tool.vercel.app/" 
                 target="_blank"
                 rel="noopener noreferrer"
               >
