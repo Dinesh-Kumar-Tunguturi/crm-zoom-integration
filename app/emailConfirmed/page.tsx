@@ -183,13 +183,13 @@ export default function EmailConfirmed() {
           <div className="text-center text-gray-600">
             <p>Your email is now verified.</p>
             <p className="mt-1 text-blue-600 underline">
-              {/* <a
+              <a
                 href="https://applywizz-crm-tool.vercel.app/" 
                 target="_blank"
                 rel="noopener noreferrer"
               >
                 https://applywizz-crm-tool.vercel.app/
-              </a> */}
+              </a>
 
             </p>
           </div>
