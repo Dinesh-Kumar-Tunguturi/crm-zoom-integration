@@ -55,6 +55,20 @@ process.on('unhandledRejection', (error) => {
 process.on('uncaughtException', (error) => {
 });
 
+function formatIST(date: Date): string {
+  return date.toLocaleString('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    hour12: true,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  });
+}
+
+
 async function fetchSheets() {
   const cycleId = Math.random().toString(36).substring(2, 8);
   const startTime = Date.now();
@@ -62,8 +76,10 @@ async function fetchSheets() {
   const now = new Date();
   const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
   
-  console.log(`\n Starting fetch at ${now.toISOString()}`);
-  console.log(`  ⏳ Fetching records between ${oneHourAgo.toISOString()} and ${now.toISOString()}`);
+  // console.log(`\n Starting fetch at ${now.toISOString()}`);
+  // console.log(`  ⏳ Fetching records between ${oneHourAgo.toISOString()} and ${now.toISOString()}`);
+  console.log(`\n Starting fetch at ${formatIST(now)}`);
+console.log(`  ⏳ Fetching records between ${formatIST(oneHourAgo)} and ${formatIST(now)}`);
 
   try {
     const { data: sheets, error: sheetsError } = await supabase

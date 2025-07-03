@@ -97,6 +97,19 @@ export function LoginForm() {
                   )}
                 </button>
               </div>
+
+              <p className="text-xs text-gray-500 mt-1">
+            Password must contain:
+            <ul className="list-disc list-inside space-y-0.5">
+              <li>At least 6 characters</li>
+              <li>One uppercase letter (A-Z)</li>
+              <li>One lowercase letter (a-z)</li>
+              <li>One number (0-9)</li>
+              <li>One special character (!@#$%^&*)</li>
+              <li>example: Ram@123</li>
+            </ul>
+          </p>
+
             </div>
             {error && (
               <Alert variant="destructive">
