@@ -70,10 +70,13 @@ export function AppSidebar() {
         <div className="flex flex-col items-center gap-1">
           <Link href="/" className="cursor-pointer">
             <img
-              src="/applywizz_logo.png" // Ensure this image is in public/applywizz_logo.png
-              alt="Apply Wizz Logo"
-              className="h-10 w-auto"
-            />
+              // src="/applywizz_logo.png" // Ensure this image is in public/applywizz_logo.png
+              // alt="Apply Wizz Logo"
+              
+  src="https://storage.googleapis.com/solwizz/website_content/Black%20Version.png" 
+  alt="Applywizz logo"
+  className="w-[100%] max-w-[120px] h-auto"  // Custom responsive sizing
+/>
           </Link>
           <p className="text-sm text-gray-500">CRM System</p>
         </div>
