@@ -25,6 +25,6 @@ export default function ProtectedRoute({
     }
   }, [user]);
 
-  
+
   return <>{children}</>;
 }
