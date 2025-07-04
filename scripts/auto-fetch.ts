@@ -144,29 +144,79 @@ console.log(`  ⏳ Fetching records between ${formatIST(oneHourAgo)} and ${forma
           continue;
         }
 
-        // Prepare data for insertion
-        const leadsToInsert = newLeads.map((row: any) => ({
-          name: row['Full name'] || '',
-          phone: row['Phone Number (Country Code)'] || '',
-          email: row['Email']?.toLowerCase() || '',
-          city: row['city'] || '',
-          source: sheet.name,
-          status: 'New',
-          // created_at: new Date().toISOString(),
-          created_at: row['Timestamp']
-  ? parseGoogleSheetsTimestamp(row['Timestamp'])?.toISOString() || new Date().toISOString()
-  : new Date().toISOString(),
+        // Get existing leads in the 1-hour window to avoid full duplicates
+const existingCheck = await supabase
+  .from('leads')
+  .select('name, email, phone, city, created_at')
+  .gte('created_at', oneHourAgo.toISOString())
+  .lte('created_at', now.toISOString());
 
-          metadata: {
-            original_timestamp: row['Timestamp'],
-            sheet_id: sheet.id,
-            import_cycle: cycleId,
-            import_window: {
-              start: oneHourAgo.toISOString(),
-              end: now.toISOString()
-            }
-          }
-        }));
+const existing = existingCheck.data || [];
+
+const leadsToInsert = newLeads
+  .filter((row: any) => {
+    const name = row['Full name']?.trim();
+    const email = row['Email']?.toLowerCase().trim();
+    const phone = row['Phone Number (Country Code)']?.trim();
+    const city = row['city']?.trim();
+    const timestamp = parseGoogleSheetsTimestamp(row['Timestamp'])?.toISOString();
+
+    // If timestamp couldn't be parsed, consider it unique (safe fallback)
+    if (!timestamp) return true;
+
+    return !existing.some(e =>
+      e.name?.trim() === name &&
+      e.email?.toLowerCase().trim() === email &&
+      e.phone?.trim() === phone &&
+      e.city?.trim() === city &&
+      new Date(e.created_at).toISOString() === timestamp
+    );
+  })
+  .map((row: any) => ({
+    name: row['Full name'] || '',
+    phone: row['Phone Number (Country Code)'] || '',
+    email: row['Email']?.toLowerCase() || '',
+    city: row['city'] || '',
+    source: sheet.name,
+    status: 'New',
+    created_at: row['Timestamp']
+      ? parseGoogleSheetsTimestamp(row['Timestamp'])?.toISOString() || new Date().toISOString()
+      : new Date().toISOString(),
+    metadata: {
+      original_timestamp: row['Timestamp'],
+      sheet_id: sheet.id,
+      import_cycle: cycleId,
+      import_window: {
+        start: oneHourAgo.toISOString(),
+        end: now.toISOString()
+      }
+    }
+  }));
+
+
+        // Prepare data for insertion
+  //       const leadsToInsert = newLeads.map((row: any) => ({
+  //         name: row['Full name'] || '',
+  //         phone: row['Phone Number (Country Code)'] || '',
+  //         email: row['Email']?.toLowerCase() || '',
+  //         city: row['city'] || '',
+  //         source: sheet.name,
+  //         status: 'New',
+  //         // created_at: new Date().toISOString(),
+  //         created_at: row['Timestamp']
+  // ? parseGoogleSheetsTimestamp(row['Timestamp'])?.toISOString() || new Date().toISOString()
+  // : new Date().toISOString(),
+
+  //         metadata: {
+  //           original_timestamp: row['Timestamp'],
+  //           sheet_id: sheet.id,
+  //           import_cycle: cycleId,
+  //           import_window: {
+  //             start: oneHourAgo.toISOString(),
+  //             end: now.toISOString()
+  //           }
+  //         }
+  //       }));
 
         // Insert new leads
         const { error: insertError, count } = await supabase
