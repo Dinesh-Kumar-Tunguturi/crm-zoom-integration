@@ -152,7 +152,11 @@ console.log(`  ⏳ Fetching records between ${formatIST(oneHourAgo)} and ${forma
           city: row['city'] || '',
           source: sheet.name,
           status: 'New',
-          created_at: new Date().toISOString(),
+          // created_at: new Date().toISOString(),
+          created_at: row['Timestamp']
+  ? parseGoogleSheetsTimestamp(row['Timestamp'])?.toISOString() || new Date().toISOString()
+  : new Date().toISOString(),
+
           metadata: {
             original_timestamp: row['Timestamp'],
             sheet_id: sheet.id,

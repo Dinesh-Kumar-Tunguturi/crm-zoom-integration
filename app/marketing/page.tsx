@@ -99,7 +99,7 @@ export default function MarketingPage() {
   const [showReassignDialog, setShowReassignDialog] = useState(false);
   const [pendingAssignee, setPendingAssignee] = useState<string | null>(null);
 
-  const [googleSheets, setGoogleSheets] = useState<{id: number, name: string, url: string}[]>([]);
+  const [googleSheets, setGoogleSheets] = useState<{ id: number, name: string, url: string }[]>([]);
   const [showSheetsDialog, setShowSheetsDialog] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
   const [googleSheetDialogOpen, setGoogleSheetDialogOpen] = useState(false);
@@ -120,23 +120,23 @@ export default function MarketingPage() {
         setResultDialogOpen(false);
       }, 2500); // 2.5 seconds
     }
-    return () => clearTimeout(timer); 
+    return () => clearTimeout(timer);
   }, [resultDialogOpen]);
 
   useEffect(() => {
-  fetchGoogleSheets();
-  // ... your other useEffect code
-}, []);
+    fetchGoogleSheets();
+    // ... your other useEffect code
+  }, []);
 
-useEffect(() => {
-  let timer: NodeJS.Timeout;
-  if (copySuccess) {
-    timer = setTimeout(() => {
-      setCopySuccess(false);
-    }, 3000); // 3 seconds
-  }
-  return () => clearTimeout(timer);
-}, [copySuccess]);
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (copySuccess) {
+      timer = setTimeout(() => {
+        setCopySuccess(false);
+      }, 3000); // 3 seconds
+    }
+    return () => clearTimeout(timer);
+  }, [copySuccess]);
 
   const filteredLeads = leads.filter((lead) => {
     const matchesSearch =
@@ -149,7 +149,7 @@ useEffect(() => {
     return matchesSearch && matchesStatus && matchesSource;
   });
 
-  
+
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
       const selectableLeadIds = filteredLeads
@@ -541,18 +541,18 @@ useEffect(() => {
   };
 
   const fetchGoogleSheets = async () => {
-  try {
-    const { data, error } = await supabase
-      .from('google_sheets_config')
-      .select('id, name, url')
-      .order('created_at', { ascending: false });
+    try {
+      const { data, error } = await supabase
+        .from('google_sheets_config')
+        .select('id, name, url')
+        .order('created_at', { ascending: false });
 
-    if (error) throw error;
-    setGoogleSheets(data || []);
-  } catch (err) {
-    console.error('Error fetching Google Sheets:', err);
-  }
-};
+      if (error) throw error;
+      setGoogleSheets(data || []);
+    } catch (err) {
+      console.error('Error fetching Google Sheets:', err);
+    }
+  };
 
 
   return (
@@ -716,32 +716,32 @@ useEffect(() => {
                     </DropdownMenuContent>
                   </DropdownMenu> */}
 
-                    <DropdownMenu>
-  <DropdownMenuTrigger asChild>
-    <Button variant="outline" size="icon">
-      <MoreVertical className="h-4 w-4" />
-    </Button>
-  </DropdownMenuTrigger>
-  <DropdownMenuContent align="end">
-    <DropdownMenuItem
-      className="cursor-pointer"
-      onClick={() => setGoogleSheetDialogOpen(true)}
-    >
-      <PlusCircle className="mr-2 h-4 w-4" />
-      <span>Add new Google Sheet</span>
-    </DropdownMenuItem>
-    <DropdownMenuItem
-      className="cursor-pointer"
-      onClick={() => {
-        fetchGoogleSheets();
-        setShowSheetsDialog(true);
-      }}
-    >
-      <List className="mr-2 h-4 w-4" />
-      <span>View all Google Sheets</span>
-    </DropdownMenuItem>
-  </DropdownMenuContent>
-</DropdownMenu>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="icon">
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        className="cursor-pointer"
+                        onClick={() => setGoogleSheetDialogOpen(true)}
+                      >
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        <span>Add new Google Sheet</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="cursor-pointer"
+                        onClick={() => {
+                          fetchGoogleSheets();
+                          setShowSheetsDialog(true);
+                        }}
+                      >
+                        <List className="mr-2 h-4 w-4" />
+                        <span>View all Google Sheets</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
 
                   <Dialog open={successDialogOpen} onOpenChange={setSuccessDialogOpen}>
                     <DialogContent className="max-w-md">
@@ -817,83 +817,83 @@ useEffect(() => {
                     </DialogContent>
                   </Dialog>
 
-                            <Dialog open={showSheetsDialog} onOpenChange={setShowSheetsDialog}>
-  <DialogContent className="max-w-2xl" onInteractOutside={(e) => e.preventDefault()}>
-    <DialogHeader>
-      <DialogTitle>Google Sheets Configuration</DialogTitle>
-      <DialogDescription>
-        All connected Google Sheets for lead imports
-      </DialogDescription>
-    </DialogHeader>
-    
-    {copySuccess && (
-      <div className="p-3 mb-4 bg-green-100 text-green-800 rounded-md text-center">
-        URL copied to clipboard!
-      </div>
-    )}
-    
-    <div className="max-h-[500px] overflow-y-auto">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-[100px]">ID</TableHead>
-            <TableHead>Sheet Name</TableHead>
-            <TableHead>URL</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {googleSheets.map((sheet) => (
-            <TableRow key={sheet.id}>
-              <TableCell className="font-medium">{sheet.id}</TableCell>
-              <TableCell>{sheet.name}</TableCell>
-              <TableCell>
-                <a 
-                  href={sheet.url} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:underline"
-                >
-                  {sheet.url.length > 40 
-                    ? `${sheet.url.substring(0, 40)}...` 
-                    : sheet.url}
-                </a>
-              </TableCell>
-              <TableCell className="text-right">
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  onClick={() => {
-                    navigator.clipboard.writeText(sheet.url);
-                    setCopySuccess(true);
-                  }}
-                >
-                  Copy URL
-                </Button>
-              </TableCell>
-            </TableRow>
-          ))}
-          {googleSheets.length === 0 && (
-            <TableRow>
-              <TableCell colSpan={4} className="text-center py-8 text-gray-500">
-                No Google Sheets configured yet
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
-    </div>
-    
-    <DialogFooter>
-      <Button onClick={() => {
-        setShowSheetsDialog(false);
-        setCopySuccess(false);
-      }}>
-        Close
-      </Button>
-    </DialogFooter>
-  </DialogContent>
-</Dialog>
+                  <Dialog open={showSheetsDialog} onOpenChange={setShowSheetsDialog}>
+                    <DialogContent className="max-w-2xl" onInteractOutside={(e) => e.preventDefault()}>
+                      <DialogHeader>
+                        <DialogTitle>Google Sheets Configuration</DialogTitle>
+                        <DialogDescription>
+                          All connected Google Sheets for lead imports
+                        </DialogDescription>
+                      </DialogHeader>
+
+                      {copySuccess && (
+                        <div className="p-3 mb-4 bg-green-100 text-green-800 rounded-md text-center">
+                          URL copied to clipboard!
+                        </div>
+                      )}
+
+                      <div className="max-h-[500px] overflow-y-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="w-[100px]">ID</TableHead>
+                              <TableHead>Sheet Name</TableHead>
+                              <TableHead>URL</TableHead>
+                              <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {googleSheets.map((sheet) => (
+                              <TableRow key={sheet.id}>
+                                <TableCell className="font-medium">{sheet.id}</TableCell>
+                                <TableCell>{sheet.name}</TableCell>
+                                <TableCell>
+                                  <a
+                                    href={sheet.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-600 hover:underline"
+                                  >
+                                    {sheet.url.length > 40
+                                      ? `${sheet.url.substring(0, 40)}...`
+                                      : sheet.url}
+                                  </a>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(sheet.url);
+                                      setCopySuccess(true);
+                                    }}
+                                  >
+                                    Copy URL
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                            {googleSheets.length === 0 && (
+                              <TableRow>
+                                <TableCell colSpan={4} className="text-center py-8 text-gray-500">
+                                  No Google Sheets configured yet
+                                </TableCell>
+                              </TableRow>
+                            )}
+                          </TableBody>
+                        </Table>
+                      </div>
+
+                      <DialogFooter>
+                        <Button onClick={() => {
+                          setShowSheetsDialog(false);
+                          setCopySuccess(false);
+                        }}>
+                          Close
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
 
                   <Dialog open={resultDialogOpen} onOpenChange={setResultDialogOpen}>
                     <DialogContent className="max-w-sm">
@@ -1096,12 +1096,12 @@ useEffect(() => {
                             <TableCell className="font-medium">{(currentPage - 1) * pageSize + index + 1}</TableCell>
                             <TableCell className="font-medium">{lead.business_id}</TableCell>
 
-                            <TableCell 
-          className="font-medium max-w-[150px] break-words whitespace-normal cursor-pointer text-blue-600 hover:underline"
-          onClick={() => window.open(`/leads/${lead.business_id}`, "_blank")}
-        >
-          {lead.name}
-        </TableCell>
+                            <TableCell
+                              className="font-medium max-w-[150px] break-words whitespace-normal cursor-pointer text-blue-600 hover:underline"
+                              onClick={() => window.open(`/leads/${lead.business_id}`, "_blank")}
+                            >
+                              {lead.name}
+                            </TableCell>
                             {/* <TableCell className="font-medium max-w-[150px] break-words whitespace-normal">{lead.name}</TableCell> */}
                             <TableCell className="max-w-[100px] break-words whitespace-normal">{lead.phone}</TableCell>
                             <TableCell className="max-w-[120px] break-words whitespace-normal">{lead.email}</TableCell>
@@ -1112,7 +1112,16 @@ useEffect(() => {
                             <TableCell className="max-w-[80px] break-words whitespace-normal">
                               <Badge className={getStatusBadgeColor(lead.status)}>{lead.status}</Badge>
                             </TableCell>
-                            <TableCell className="max-w-[100px] break-words whitespace-normal">{new Date(lead.created_at).toLocaleDateString()}</TableCell>
+                            <TableCell className="max-w-[100px] break-words whitespace-normal">{new Date(lead.created_at).toLocaleString('en-IN', {
+                              timeZone: 'Asia/Kolkata',
+                              year: 'numeric',
+                              month: '2-digit',
+                              day: '2-digit',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              hour12: true
+                            })
+                            }</TableCell>
                             <TableCell className="max-w-[100px] break-words whitespace-normal">
                               {lead.status === "New" ? (
                                 <Select onValueChange={(value) => handleIndividualAssign(lead.id, value)}>

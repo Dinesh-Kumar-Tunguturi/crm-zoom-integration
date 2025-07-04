@@ -8,7 +8,11 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
  */
 export const GET = async () => {
   try {
-    console.log("📥 [GET] /api/sales-users → Fetching sales team...");
+    const istTime = new Date().toLocaleString("en-IN", {
+  timeZone: "Asia/Kolkata",
+  hour12: true
+});
+    console.log(`📥 [GET] /api/sales-users → Fetching sales team... [${istTime} IST]`);
 
     const { data, error } = await supabaseAdmin.rpc('get_sales_team_names');
 

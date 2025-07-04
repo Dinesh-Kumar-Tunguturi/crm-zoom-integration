@@ -141,7 +141,10 @@ export async function POST(request: Request) {
               source: sheet.name,
               status: "New",
               assigned_to: "",
-              created_at: new Date().toISOString(),
+              // created_at: new Date().toISOString(),
+              created_at: row['Timestamp']
+  ? parseGoogleSheetsTimestamp(row['Timestamp'])?.toISOString() || new Date().toISOString()
+  : new Date().toISOString(),
               metadata: {
                 original_timestamp: timestamp,
                 sheet_id: sheet.id,
