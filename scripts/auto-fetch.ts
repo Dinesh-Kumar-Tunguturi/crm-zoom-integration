@@ -81,6 +81,18 @@ function formatIST12Hour(date: Date): string {
   }) + ' (IST)';
 }
 
+function convertISTStringToUTC(timestamp: string): Date {
+  const [datePart, timePart] = timestamp.split(" ");
+  const [day, month, year] = datePart.split("/").map(Number);
+  const [hour, minute, second] = timePart.split(":").map(Number);
+
+  // Create a date in IST
+  const istDate = new Date(Date.UTC(year, month - 1, day, hour - 5, minute - 30, second));
+  
+  // This creates a UTC Date object that matches original IST
+  return istDate;
+}
+
 
 async function fetchSheets() {
   const cycleId = Math.random().toString(36).substring(2, 8);
@@ -200,7 +212,7 @@ const leadsToInsert = newLeads
   // ? formatIST12Hour(parseGoogleSheetsTimestamp(row['Timestamp']) || new Date())
   // : formatIST12Hour(new Date()),
 
-  created_at: new Date(new Date(row['Timestamp']).getTime() + 5.5 * 60 * 60 * 1000),
+created_at: convertISTStringToUTC(row["Timestamp"]),
 
 
     metadata: {
