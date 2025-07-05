@@ -99,6 +99,9 @@ export default function MarketingPage() {
   const [showReassignDialog, setShowReassignDialog] = useState(false);
   const [pendingAssignee, setPendingAssignee] = useState<string | null>(null);
 
+  const [startDate, setStartDate] = useState<string>("");
+const [endDate, setEndDate] = useState<string>("");
+
   const [googleSheets, setGoogleSheets] = useState<{ id: number, name: string, url: string }[]>([]);
   const [showSheetsDialog, setShowSheetsDialog] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
@@ -281,6 +284,16 @@ export default function MarketingPage() {
         .range(from, to)
         .order("created_at", { ascending: false });
 
+//         if (startDate && endDate) {
+//   query = query.gte("created_at", `${startDate}T00:00:00`).lte("created_at", `${endDate}T23:59:59`);
+// }
+if (startDate && endDate) {
+  query = query
+    .gte("created_at", `${startDate}T00:00:00+05:30`)
+    .lte("created_at", `${endDate}T23:59:59+05:30`);
+}
+
+
       if (tab) query = query.eq("status", tab);
       if (search) {
         query = query.or(`name.ilike.%${search}%,phone.ilike.%${search}%,email.ilike.%${search}%,city.ilike.%${search}%`);
@@ -289,13 +302,13 @@ export default function MarketingPage() {
       if (status !== "all") query = query.eq("status", status);
 
       const { data: leadsData, error, count } = await query;
-      leadsData?.sort((a, b) => {
-        const numA = parseInt(a.business_id.replace("AWL-", ""), 10);
-        const numB = parseInt(b.business_id.replace("AWL-", ""), 10);
-        return numA - numB;
-      });
+      // leadsData?.sort((a, b) => {
+      //   const numA = parseInt(a.business_id.replace("AWL-", ""), 10);
+      //   const numB = parseInt(b.business_id.replace("AWL-", ""), 10);
+      //   return numA - numB;
+      // });
 
-      setLeads(leadsData ?? []);
+      // setLeads(leadsData ?? []);
 
       if (error) throw error;
 
@@ -315,9 +328,14 @@ export default function MarketingPage() {
     }
   };
 
+  // useEffect(() => {
+  //   fetchLeadsAndSales(currentPage, leadTab, searchTerm, statusFilter, sourceFilter);
+  // }, [currentPage, leadTab, pageSize, searchTerm, statusFilter, sourceFilter]);
+
   useEffect(() => {
-    fetchLeadsAndSales(currentPage, leadTab, searchTerm, statusFilter, sourceFilter);
-  }, [currentPage, leadTab, pageSize, searchTerm, statusFilter, sourceFilter]);
+  fetchLeadsAndSales(currentPage, leadTab, searchTerm, statusFilter, sourceFilter);
+}, [currentPage, leadTab, pageSize, searchTerm, statusFilter, sourceFilter, startDate, endDate]);
+
 
 
   const formatDateTime = (dateString: string) => {
@@ -559,9 +577,13 @@ export default function MarketingPage() {
     <>
       {loading && <FullScreenLoader />}
       <ProtectedRoute allowedRoles={["Marketing", "Super Admin"]}>
-        <div className="w-full overflow-x-hidden">
+        {/* <div className="w-full overflow-x-hidden"> */}
+        <div className="w-full px-4 md:px-6 lg:px-8 overflow-x-hidden">
+
           <DashboardLayout>
-            <div className="space-y-6">
+            {/* <div className="space-y-6"> */}
+            <main className="container mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+
 
               <div className="flex justify-between items-center">
                 <div>
@@ -647,7 +669,9 @@ export default function MarketingPage() {
                       </Button>
                     </DialogTrigger>
 
-                    <DialogContent className="max-w-md">
+                    {/* <DialogContent className="max-w-md"> */}
+                    <DialogContent className="w-[95%] sm:max-w-md">
+
                       <DialogHeader>
                         <DialogTitle>Upload Files</DialogTitle>
                         <p className="text-sm text-muted-foreground">Upload your user-downloadable files.</p>
@@ -744,7 +768,9 @@ export default function MarketingPage() {
                   </DropdownMenu>
 
                   <Dialog open={successDialogOpen} onOpenChange={setSuccessDialogOpen}>
-                    <DialogContent className="max-w-md">
+                    {/* <DialogContent className="max-w-md"> */}
+                    <DialogContent className="w-[95%] sm:max-w-md">
+
                       <DialogHeader>
                         <DialogTitle>Assignment Success</DialogTitle>
                       </DialogHeader>
@@ -756,7 +782,9 @@ export default function MarketingPage() {
                   </Dialog>
 
                   <Dialog open={googleSheetDialogOpen} onOpenChange={setGoogleSheetDialogOpen}>
-                    <DialogContent className="max-w-md">
+                    {/* <DialogContent className="max-w-md"> */}
+                    <DialogContent className="w-[95%] sm:max-w-md">
+
                       <DialogHeader>
                         <DialogTitle>Add New Google Sheet</DialogTitle>
                         <DialogDescription>
@@ -918,7 +946,9 @@ export default function MarketingPage() {
               </div>
 
 
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              {/* <div className="grid grid-cols-1 md:grid-cols-4 gap-4"> */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+
                 <Card>
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium">Overall Stats (All Leads)</CardTitle>
@@ -979,7 +1009,10 @@ export default function MarketingPage() {
                 </CardHeader>
                 <CardContent>
 
-                  <div className="flex flex-col sm:flex-row gap-4 mb-6">
+                  {/* <div className="flex flex-col sm:flex-row gap-4 mb-6"> */}
+
+                  {/* <div  className="w-full sm:w-auto">
+
                     <div className="relative flex-1">
                       <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                       <Input
@@ -1013,9 +1046,101 @@ export default function MarketingPage() {
                       </SelectContent>
 
                     </Select>
+                  </div> */}
+
+                  <div className="flex flex-wrap gap-4 mb-6 items-start">
+                    <div className="flex-1 min-w-[250px] relative">
+                      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                      <Input
+                        placeholder="Search by name, phone, email, or city..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-10 w-full"
+                      />
+                    </div>
+
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                      <SelectTrigger className="min-w-[150px] w-full sm:w-auto">
+                        <SelectValue placeholder="Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Status</SelectItem>
+                        <SelectItem value="New">New</SelectItem>
+                        <SelectItem value="Assigned">Assigned</SelectItem>
+                      </SelectContent>
+                    </Select>
+
+                    <Select value={sourceFilter} onValueChange={setSourceFilter}>
+                      <SelectTrigger className="min-w-[150px] w-full sm:w-auto">
+                        <SelectValue placeholder="Source" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Sources</SelectItem>
+                        {uniqueSources.map((source) => (
+                          <SelectItem key={source} value={source}>
+                            {source}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    <div className="flex flex-col sm:flex-row gap-2">
+
+    <DropdownMenu>
+  <DropdownMenuTrigger asChild>
+    <Button variant="outline" className="min-w-[200px]">
+      {startDate && endDate
+        ? `📅 ${startDate} → ${endDate}`
+        : "📅 Date Range"}
+    </Button>
+  </DropdownMenuTrigger>
+
+  <DropdownMenuContent className="p-4 space-y-4 w-[250px] sm:w-[300px]">
+    <div className="space-y-2">
+      <Label className="text-sm text-gray-600">Start Date</Label>
+      <Input
+        type="date"
+        value={startDate}
+        onChange={(e) => {
+          setStartDate(e.target.value);
+          setCurrentPage(1);
+        }}
+      />
+    </div>
+
+    <div className="space-y-2">
+      <Label className="text-sm text-gray-600">End Date</Label>
+      <Input
+        type="date"
+        value={endDate}
+        onChange={(e) => {
+          setEndDate(e.target.value);
+          setCurrentPage(1);
+        }}
+      />
+    </div>
+
+    <Button
+      variant="ghost"
+      className="text-red-500 text-sm p-0"
+      onClick={() => {
+        setStartDate("");
+        setEndDate("");
+        setCurrentPage(1);
+      }}
+    >
+      ❌ Clear Filter
+    </Button>
+  </DropdownMenuContent>
+</DropdownMenu>
+
+</div>
+
+
                   </div>
 
-                  <div className="flex gap-2">
+
+                  <div className="flex flex-wrap gap-2">
                     <Button
                       variant={leadTab === "New" ? "default" : "outline"}
                       onClick={() => {
@@ -1035,7 +1160,7 @@ export default function MarketingPage() {
                       Assigned Leads
                     </Button>
 
-                    <div className="flex justify-end mb-2">
+                    <div className="w-full sm:w-auto flex justify-end">
                       <Select onValueChange={(value) => setPageSize(Number(value))}>
                         <SelectTrigger className="w-[150px]">
                           <SelectValue placeholder={`${pageSize} per page`} />
@@ -1052,9 +1177,13 @@ export default function MarketingPage() {
 
 
                   </div>
-                  <div className="rounded-md border max-h-[600px] overflow-y-auto">
+                  {/* <div className="rounded-md border max-h-[600px] overflow-y-auto">
 
-                    <Table className="table-fixed w-full break-words text-center">
+                    <Table className="table-fixed w-full break-words text-center"> */}
+
+                  <div className="w-full overflow-x-auto">
+
+                    <Table className="min-w-[1000px] w-full break-words text-center">
 
                       <TableHeader >
                         <TableRow className="center">
@@ -1173,7 +1302,11 @@ export default function MarketingPage() {
 
 
               <Dialog open={bulkAssignDialogOpen} onOpenChange={setBulkAssignDialogOpen}>
-                <DialogContent>
+                {/* <DialogContent> */}
+                {/* <DialogContent className="max-w-md"> */}
+                <DialogContent className="w-[95%] sm:max-w-md">
+
+
                   <DialogHeader>
                     <DialogTitle>Bulk Assign Leads</DialogTitle>
                     <DialogDescription>Assign {selectedLeads.length} selected leads to a sales team member</DialogDescription>
@@ -1217,7 +1350,8 @@ export default function MarketingPage() {
 
                 </DialogContent>
               </Dialog>
-            </div>
+              {/* </div> */}
+            </main>
           </DashboardLayout>
         </div>
       </ProtectedRoute>
