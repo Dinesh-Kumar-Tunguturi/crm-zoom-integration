@@ -196,9 +196,12 @@ const leadsToInsert = newLeads
     //   ? parseGoogleSheetsTimestamp(row['Timestamp'])?.toISOString() || new Date().toISOString()
     //   : new Date().toISOString(),
 
-    created_at: row['Timestamp']
-  ? formatIST12Hour(parseGoogleSheetsTimestamp(row['Timestamp']) || new Date())
-  : formatIST12Hour(new Date()),
+  //   created_at: row['Timestamp']
+  // ? formatIST12Hour(parseGoogleSheetsTimestamp(row['Timestamp']) || new Date())
+  // : formatIST12Hour(new Date()),
+
+  created_at: new Date(new Date(row['Timestamp']).getTime() + 5.5 * 60 * 60 * 1000),
+
 
     metadata: {
       original_timestamp: row['Timestamp'],
