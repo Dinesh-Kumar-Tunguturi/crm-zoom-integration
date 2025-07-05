@@ -276,35 +276,69 @@ const leadsToInsert = newLeads
 }
 
 // Enhanced timestamp parser
+// function parseGoogleSheetsTimestamp(timestamp: string): Date | null {
+//   if (!timestamp) return null;
+  
+//   const formats = [
+//     // Format: "DD/MM/YYYY HH:MM:SS"
+//     { regex: /(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2}):(\d{2})/, handler: (d: string, m: string, y: string) => `${y}-${m}-${d}` },
+//     // Format: "MM/DD/YYYY HH:MM:SS" 
+//     { regex: /(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2}):(\d{2})/, handler: (m: string, d: string, y: string) => `${y}-${m}-${d}` },
+//     // Format: "DD-MM-YYYY HH:MM:SS"
+//     { regex: /(\d{2})-(\d{2})-(\d{4}) (\d{2}):(\d{2}):(\d{2})/, handler: (d: string, m: string, y: string) => `${y}-${m}-${d}` },
+//     // Format: "YYYY-MM-DD HH:MM:SS"
+//     { regex: /(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})/, handler: (y: string, m: string, d: string) => `${y}-${m}-${d}` }
+//   ];
+
+//   for (const { regex, handler } of formats) {
+//     const match = timestamp.match(regex);
+//     if (match) {
+//       try {
+//         const [, p1, p2, p3, hours, minutes, seconds] = match;
+//         const datePart = handler(p1, p2, p3);
+//         return new Date(`${datePart}T${hours}:${minutes}:${seconds}`);
+//       } catch (e) {
+//         continue;
+//       }
+//     }
+//   }
+
+//   return null;
+// }
+
+
 function parseGoogleSheetsTimestamp(timestamp: string): Date | null {
   if (!timestamp) return null;
-  
+
   const formats = [
-    // Format: "DD/MM/YYYY HH:MM:SS"
-    { regex: /(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2}):(\d{2})/, handler: (d: string, m: string, y: string) => `${y}-${m}-${d}` },
-    // Format: "MM/DD/YYYY HH:MM:SS" 
-    { regex: /(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2}):(\d{2})/, handler: (m: string, d: string, y: string) => `${y}-${m}-${d}` },
-    // Format: "DD-MM-YYYY HH:MM:SS"
-    { regex: /(\d{2})-(\d{2})-(\d{4}) (\d{2}):(\d{2}):(\d{2})/, handler: (d: string, m: string, y: string) => `${y}-${m}-${d}` },
-    // Format: "YYYY-MM-DD HH:MM:SS"
-    { regex: /(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})/, handler: (y: string, m: string, d: string) => `${y}-${m}-${d}` }
+    /(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2}):(\d{2})/, // DD/MM/YYYY
+    /(\d{2})-(\d{2})-(\d{4}) (\d{2}):(\d{2}):(\d{2})/,    // DD-MM-YYYY
+    /(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})/     // YYYY-MM-DD
   ];
 
-  for (const { regex, handler } of formats) {
-    const match = timestamp.match(regex);
+  for (const format of formats) {
+    const match = timestamp.match(format);
     if (match) {
-      try {
-        const [, p1, p2, p3, hours, minutes, seconds] = match;
-        const datePart = handler(p1, p2, p3);
-        return new Date(`${datePart}T${hours}:${minutes}:${seconds}`);
-      } catch (e) {
-        continue;
+      const [_, p1, p2, p3, hour, min, sec] = match;
+      let day, month, year;
+
+      if (timestamp.includes('/')) {
+        [day, month, year] = [p1, p2, p3];
+      } else if (timestamp.includes('-') && timestamp.indexOf('-') === 2) {
+        [day, month, year] = [p1, p2, p3];
+      } else {
+        [year, month, day] = [p1, p2, p3];
       }
+
+      // Construct a Date object in IST and convert to UTC
+      const istDate = new Date(`${year}-${month}-${day}T${hour}:${min}:${sec}+05:30`);
+      return new Date(istDate.toISOString()); // Ensures it's in UTC
     }
   }
 
   return null;
 }
+
 
 // Configure scheduling to run at every one hour
 cron.schedule('0 * * * *', fetchSheets, {

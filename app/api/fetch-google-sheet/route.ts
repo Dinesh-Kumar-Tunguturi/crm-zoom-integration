@@ -244,24 +244,58 @@ import { NextResponse } from 'next/server';
 import Papa from "papaparse";
 
 // Parse timestamp into Date object
+// function parseGoogleSheetsTimestamp(timestamp: string): Date | null {
+//   if (!timestamp) return null;
+//   try {
+//     if (timestamp.includes('/')) {
+//       const [datePart, timePart] = timestamp.split(' ');
+//       const [day, month, year] = datePart.split('/');
+//       return new Date(`${year}-${month}-${day}T${timePart}`);
+//     } else if (timestamp.includes('-')) {
+//       const [datePart, timePart] = timestamp.split(' ');
+//       const [day, month, year] = datePart.split('-');
+//       return new Date(`${year}-${month}-${day}T${timePart}`);
+//     }
+//     return null;
+//   } catch (error) {
+//     console.error('Failed to parse timestamp:', timestamp, error);
+//     return null;
+//   }
+// }
+
+
 function parseGoogleSheetsTimestamp(timestamp: string): Date | null {
   if (!timestamp) return null;
-  try {
-    if (timestamp.includes('/')) {
-      const [datePart, timePart] = timestamp.split(' ');
-      const [day, month, year] = datePart.split('/');
-      return new Date(`${year}-${month}-${day}T${timePart}`);
-    } else if (timestamp.includes('-')) {
-      const [datePart, timePart] = timestamp.split(' ');
-      const [day, month, year] = datePart.split('-');
-      return new Date(`${year}-${month}-${day}T${timePart}`);
+
+  const formats = [
+    /(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2}):(\d{2})/, // DD/MM/YYYY
+    /(\d{2})-(\d{2})-(\d{4}) (\d{2}):(\d{2}):(\d{2})/,    // DD-MM-YYYY
+    /(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})/     // YYYY-MM-DD
+  ];
+
+  for (const format of formats) {
+    const match = timestamp.match(format);
+    if (match) {
+      const [_, p1, p2, p3, hour, min, sec] = match;
+      let day, month, year;
+
+      if (timestamp.includes('/')) {
+        [day, month, year] = [p1, p2, p3];
+      } else if (timestamp.includes('-') && timestamp.indexOf('-') === 2) {
+        [day, month, year] = [p1, p2, p3];
+      } else {
+        [year, month, day] = [p1, p2, p3];
+      }
+
+      // Construct a Date object in IST and convert to UTC
+      const istDate = new Date(`${year}-${month}-${day}T${hour}:${min}:${sec}+05:30`);
+      return new Date(istDate.toISOString()); // Ensures it's in UTC
     }
-    return null;
-  } catch (error) {
-    console.error('Failed to parse timestamp:', timestamp, error);
-    return null;
   }
+
+  return null;
 }
+
 
 export async function POST(request: Request) {
   console.log('🔵 [API] Fetch Google Sheets endpoint hit');
