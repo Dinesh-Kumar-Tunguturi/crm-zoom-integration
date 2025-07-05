@@ -68,6 +68,19 @@ function formatIST(date: Date): string {
   });
 }
 
+function formatIST12Hour(date: Date): string {
+  return date.toLocaleString('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true
+  }) + ' (IST)';
+}
+
 
 async function fetchSheets() {
   const cycleId = Math.random().toString(36).substring(2, 8);
@@ -179,11 +192,19 @@ const leadsToInsert = newLeads
     city: row['city'] || '',
     source: sheet.name,
     status: 'New',
+    // created_at: row['Timestamp']
+    //   ? parseGoogleSheetsTimestamp(row['Timestamp'])?.toISOString() || new Date().toISOString()
+    //   : new Date().toISOString(),
+
     created_at: row['Timestamp']
-      ? parseGoogleSheetsTimestamp(row['Timestamp'])?.toISOString() || new Date().toISOString()
-      : new Date().toISOString(),
+  ? formatIST12Hour(parseGoogleSheetsTimestamp(row['Timestamp']) || new Date())
+  : formatIST12Hour(new Date()),
+
     metadata: {
       original_timestamp: row['Timestamp'],
+      created_at_ist: row['Timestamp']
+    ? formatIST12Hour(parseGoogleSheetsTimestamp(row['Timestamp']) || new Date())
+    : formatIST12Hour(new Date()),
       sheet_id: sheet.id,
       import_cycle: cycleId,
       import_window: {
@@ -246,11 +267,11 @@ const leadsToInsert = newLeads
       .insert({
         cycle_id: cycleId,
         status: 'success',
-        execution_time: Date.now() - startTime,
+        // execution_time: Date.now() - startTime,
         sheets_processed: sheets.length,
-        leads_added: totalNewLeads,
-        time_window_start: oneHourAgo.toISOString(),
-        time_window_end: now.toISOString(),
+        // leads_added: totalNewLeads,
+        // time_window_start: oneHourAgo.toISOString(),
+        // time_window_end: now.toISOString(),
         details: {
           results,
           summary: {
@@ -266,12 +287,27 @@ const leadsToInsert = newLeads
     const errorMsg = error instanceof Error ? error.message : 'Unknown error';
     // console.error(`❌ [Cycle ${cycleId}] Failed:`, errorMsg);
 
+    // await supabase.from('auto_fetch_logs').insert({
+    //   cycle_id: cycleId,
+    //   status: 'error',
+    //   execution_time: Date.now() - startTime,
+    //   error: errorMsg
+    // });
+
+
     await supabase.from('auto_fetch_logs').insert({
-      cycle_id: cycleId,
-      status: 'error',
-      execution_time: Date.now() - startTime,
-      error: errorMsg
-    });
+  cycle_id: cycleId,
+  status: 'error',
+  error: errorMsg,
+  sheets_processed: 0,
+  details: {
+    summary: 'Auto-fetch failed',
+    reason: errorMsg,
+    time: new Date().toISOString()
+  }
+});
+
+
   }
 }
 
