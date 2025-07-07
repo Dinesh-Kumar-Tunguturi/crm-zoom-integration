@@ -1,3 +1,4 @@
+//components/dashboard/dashboard-home.tsx
 "use client"
 
 import { useAuth } from "@/components/providers/auth-provider"

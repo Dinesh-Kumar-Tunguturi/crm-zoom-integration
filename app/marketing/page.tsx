@@ -578,11 +578,12 @@ if (startDate && endDate) {
       {loading && <FullScreenLoader />}
       <ProtectedRoute allowedRoles={["Marketing", "Super Admin"]}>
         {/* <div className="w-full overflow-x-hidden"> */}
-        <div className="w-full px-4 md:px-6 lg:px-8 overflow-x-hidden">
+        {/* <div className="w-full px-4 md:px-6 lg:px-8 overflow-x-hidden"> */}
 
           <DashboardLayout>
             {/* <div className="space-y-6"> */}
-            <main className="container mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+            {/* <main className="container mx-auto px-4 sm:px-6 lg:px-8 space-y-6"> */}
+          <div className="space-y-6">
 
 
               <div className="flex justify-between items-center">
@@ -946,8 +947,8 @@ if (startDate && endDate) {
               </div>
 
 
-              {/* <div className="grid grid-cols-1 md:grid-cols-4 gap-4"> */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              {/* <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"> */}
 
                 <Card>
                   <CardHeader className="pb-2">
@@ -1048,8 +1049,8 @@ if (startDate && endDate) {
                     </Select>
                   </div> */}
 
-                  <div className="flex flex-wrap gap-4 mb-6 items-start">
-                    <div className="flex-1 min-w-[250px] relative">
+              <div className="flex flex-col sm:flex-row gap-4 mb-6">
+                <div className="relative flex-1">
                       <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                       <Input
                         placeholder="Search by name, phone, email, or city..."
@@ -1350,10 +1351,10 @@ if (startDate && endDate) {
 
                 </DialogContent>
               </Dialog>
-              {/* </div> */}
-            </main>
+              </div>
+            {/* </main> */}
           </DashboardLayout>
-        </div>
+        {/* </div> */}
       </ProtectedRoute>
     </>
   );
