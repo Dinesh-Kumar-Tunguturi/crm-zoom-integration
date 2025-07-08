@@ -15,6 +15,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Eye, MessageSquare, Star, Calendar } from "lucide-react";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import Papa from "papaparse";
+import { useContext } from "react";
+import { LoadingContext } from "@/components/providers/LoadingContext";
+import FullScreenLoader from "@/components/ui/FullScreenLoader";
 
 type AccountStage = "DNP" | "Call Again" | "Conversation Done";
 
@@ -57,6 +61,8 @@ const getStageColor = (stage: AccountStage) => {
       return "bg-gray-100 text-gray-800";
   }
 };
+// const { loading, setLoading } = useContext(LoadingContext);
+
 
 // Utility to safely format dates
 const formatDate = (dateString: string | undefined): string => {
@@ -86,6 +92,7 @@ function renderStars(rating: number) {
 
 export default function AccountManagementPage() {
   const [clients, setClients] = useState<Client[]>([]);
+    const { loading, setLoading } = useContext(LoadingContext);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
   const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false);
@@ -106,90 +113,178 @@ export default function AccountManagementPage() {
   const [pendingStage, setPendingStage] = useState<AccountStage | null>(null);
   const [callHistory, setCallHistory] = useState<any[]>([]); // Store call history data
   const [clientFeedback, setClientFeedback] = useState<Feedback | null>(null); // Store client feedback data
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [csvData, setCsvData] = useState<any[]>([]);
 
-  // Fetch clients from Supabase sales_closure table and update stages from call_history
+  // // Fetch clients from Supabase sales_closure table and update stages from call_history
+  // useEffect(() => {
+  //   const fetchClients = async () => {
+  //     setLoading(true);
+  // try {
+  //     // Fetch sales_closure data
+  //     const { data: salesData, error: salesError } = await supabase
+  //       .from("sales_closure")
+  //       .select("*")
+  //       .order("closed_at", { ascending: false });
+
+  //     if (salesError) {
+  //       console.error("Error fetching clients from sales_closure:", JSON.stringify(salesError, null, 2));
+  //       return;
+  //     }
+
+  //     console.log("Sales closure data:", salesData); // Debug: Log the fetched data
+
+  //     // Map sales_closure data to clients and fetch missing data from leads
+  //     const mappedClients: Client[] = [];
+  //     for (const sale of salesData || []) {
+  //       let clientData: Partial<Client> = {
+  //         id: sale.lead_id, // Use lead_id (which is leads.business_id)
+  //         client_name: sale.name || sale.client_name || "Unnamed",
+  //         email: sale.email || "unknown@example.com",
+  //         phone: sale.phone || "N/A",
+  //         assigned_to: sale.assigned_to || "Unassigned",
+  //         created_at: sale.closed_at,
+  //       };
+
+  //       // Check if lead_id exists to fetch additional data from leads
+  //       const leadId = sale.lead_id;
+  //       if (leadId && (!sale.name || !sale.email || !sale.phone || !sale.assigned_to)) {
+  //         const { data: leadData, error: leadError } = await supabase
+  //           .from("leads")
+  //           .select("id, business_id, name, email, phone, assigned_to")
+  //           .eq("business_id", leadId); // Match with business_id, not id
+
+  //         if (leadError) {
+  //           console.error(`Error fetching lead data for lead_id ${leadId}:`, JSON.stringify(leadError, null, 2));
+  //         } else if (leadData && leadData.length > 0) {
+  //           const lead = leadData[0]; // Take the first lead if multiple are returned
+  //           console.log(`Lead data for lead_id ${leadId}:`, lead);
+  //           clientData = {
+  //             ...clientData,
+  //             client_name: sale.name || sale.client_name || lead.name || "Unnamed",
+  //             email: sale.email || lead.email || "unknown@example.com",
+  //             phone: sale.phone || lead.phone || "N/A",
+  //             assigned_to: sale.assigned_to || lead.assigned_to || "Unassigned",
+  //           };
+  //         }
+  //       }
+
+        
+  //       // Fetch the most recent call history entry for this sale
+  //       const { data: callHistoryData, error: callHistoryError } = await supabase
+  //         .from("call_history")
+  //         .select("current_stage")
+  //         .eq("lead_id", sale.lead_id) // Use lead_id (which is leads.business_id)
+  //         .order("followup_date", { ascending: false })
+  //         .limit(1);
+
+  //       if (callHistoryError) {
+  //         console.error(`Error fetching call history for sale ${sale.lead_id}:`, JSON.stringify(callHistoryError, null, 2));
+  //       }
+
+  //       console.log(`Call history for sale ${sale.lead_id}:`, callHistoryData); // Debug: Log call history
+
+  //       // const recentStage = callHistoryData?.[0]?.current_stage as AccountStage || "DNP";
+  //       const recentStage = callHistoryData?.[0]?.current_stage as AccountStage | undefined;
+
+  //       mappedClients.push({
+  //         ...clientData,
+  //         id: sale.lead_id, // Ensure ID reflects the lead_id
+  //         stage: recentStage,
+  //         created_at: sale.closed_at,
+  //         follow_ups: [],
+  //         feedback: undefined,
+  //       } as Client);
+  //     }
+
+  //     setClients(mappedClients);
+  //   } catch (e) {
+  //   console.error("Error:", e);
+  // } finally {
+  //   setLoading(false);
+  // }
+  //   };
+
+  //   fetchClients();
+  // }, []);
+
+
   useEffect(() => {
-    const fetchClients = async () => {
-      // Fetch sales_closure data
+  const fetchClients = async () => {
+    setLoading(true);
+    try {
+      // 1. Fetch from sales_closure
       const { data: salesData, error: salesError } = await supabase
         .from("sales_closure")
-        .select("*")
+        .select("lead_id, email, closed_at")
         .order("closed_at", { ascending: false });
 
-      if (salesError) {
-        console.error("Error fetching clients from sales_closure:", JSON.stringify(salesError, null, 2));
+      if (salesError || !salesData) {
+        console.error("❌ sales_closure fetch failed", salesError);
         return;
       }
 
-      console.log("Sales closure data:", salesData); // Debug: Log the fetched data
+      // 2. Fetch from leads using all lead_ids in one go
+      const leadIds = salesData.map((s) => s.lead_id);
+      const { data: leadsData, error: leadsError } = await supabase
+        .from("leads")
+        .select("business_id, name, phone, assigned_to, email")
+        .in("business_id", leadIds);
 
-      // Map sales_closure data to clients and fetch missing data from leads
-      const mappedClients: Client[] = [];
-      for (const sale of salesData || []) {
-        let clientData: Partial<Client> = {
-          id: sale.lead_id, // Use lead_id (which is leads.business_id)
-          client_name: sale.name || sale.client_name || "Unnamed",
-          email: sale.email || "unknown@example.com",
-          phone: sale.phone || "N/A",
-          assigned_to: sale.assigned_to || "Unassigned",
-          created_at: sale.closed_at,
-        };
-
-        // Check if lead_id exists to fetch additional data from leads
-        const leadId = sale.lead_id;
-        if (leadId && (!sale.name || !sale.email || !sale.phone || !sale.assigned_to)) {
-          const { data: leadData, error: leadError } = await supabase
-            .from("leads")
-            .select("id, business_id, name, email, phone, assigned_to")
-            .eq("business_id", leadId); // Match with business_id, not id
-
-          if (leadError) {
-            console.error(`Error fetching lead data for lead_id ${leadId}:`, JSON.stringify(leadError, null, 2));
-          } else if (leadData && leadData.length > 0) {
-            const lead = leadData[0]; // Take the first lead if multiple are returned
-            console.log(`Lead data for lead_id ${leadId}:`, lead);
-            clientData = {
-              ...clientData,
-              client_name: sale.name || sale.client_name || lead.name || "Unnamed",
-              email: sale.email || lead.email || "unknown@example.com",
-              phone: sale.phone || lead.phone || "N/A",
-              assigned_to: sale.assigned_to || lead.assigned_to || "Unassigned",
-            };
-          }
-        }
-
-        // Fetch the most recent call history entry for this sale
-        const { data: callHistoryData, error: callHistoryError } = await supabase
-          .from("call_history")
-          .select("current_stage")
-          .eq("lead_id", sale.lead_id) // Use lead_id (which is leads.business_id)
-          .order("followup_date", { ascending: false })
-          .limit(1);
-
-        if (callHistoryError) {
-          console.error(`Error fetching call history for sale ${sale.lead_id}:`, JSON.stringify(callHistoryError, null, 2));
-        }
-
-        console.log(`Call history for sale ${sale.lead_id}:`, callHistoryData); // Debug: Log call history
-
-        // const recentStage = callHistoryData?.[0]?.current_stage as AccountStage || "DNP";
-        const recentStage = callHistoryData?.[0]?.current_stage as AccountStage | undefined;
-
-        mappedClients.push({
-          ...clientData,
-          id: sale.lead_id, // Ensure ID reflects the lead_id
-          stage: recentStage,
-          created_at: sale.closed_at,
-          follow_ups: [],
-          feedback: undefined,
-        } as Client);
+      if (leadsError || !leadsData) {
+        console.error("❌ leads fetch failed", leadsError);
+        return;
       }
 
-      setClients(mappedClients);
-    };
+      const leadsMap = Object.fromEntries(leadsData.map((l) => [l.business_id, l]));
 
-    fetchClients();
-  }, []);
+      // 3. Fetch latest call_history per lead_id
+      const { data: callRaw, error: callError } = await supabase
+        .from("call_history")
+        .select("lead_id, current_stage, followup_date")
+        .order("followup_date", { ascending: false });
+
+      if (callError) {
+        console.error("❌ call_history fetch failed", callError);
+      }
+
+      const latestCallMap: Record<string, any> = {};
+      for (const call of callRaw || []) {
+        if (!latestCallMap[call.lead_id]) {
+          latestCallMap[call.lead_id] = call;
+        }
+      }
+
+      // 4. Merge all into final Client[]
+      const mergedClients: Client[] = salesData.map((sale) => {
+        const lead = leadsMap[sale.lead_id] || {};
+        const call = latestCallMap[sale.lead_id];
+
+        return {
+          id: sale.lead_id,
+          client_name: lead.name || "Unnamed",
+          email: sale.email || lead.email || "unknown@example.com",
+          phone: lead.phone || "N/A",
+          assigned_to: lead.assigned_to || "Unassigned",
+          created_at: sale.closed_at,
+          stage: (call?.current_stage as AccountStage) || "DNP",
+          follow_ups: [],
+          feedback: undefined,
+        };
+      });
+
+      setClients(mergedClients);
+    } catch (err) {
+      console.error("❌ Unexpected error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchClients();
+}, []);
+
 
   // Fetch call history and client feedback when the History Dialog opens
   useEffect(() => {
@@ -199,6 +294,7 @@ export default function AccountManagementPage() {
       return;
     }
 
+    
     const fetchCallHistoryAndFeedback = async () => {
       // Fetch call history
       const { data: callHistoryData, error: callHistoryError } = await supabase
@@ -473,7 +569,87 @@ export default function AccountManagementPage() {
     }
   };
 
+
+
+
+// const handleCSVUpload = (file: File) => {
+//   Papa.parse(file, {
+//     header: true,
+//     skipEmptyLines: true,
+//     complete: function (results) {
+//       // Validate required fields exist in CSV
+//       const requiredFields = ['lead_id', 'sale_value', 'subscription_cycle', 'payment_mode', 'email'];
+//       const fields: string[] = Array.isArray(results.meta.fields) ? results.meta.fields as string[] : [];
+//       const missingFields = requiredFields.filter(field => !fields.includes(field));
+      
+//       if (missingFields.length > 0) {
+//         alert(`Missing required columns: ${missingFields.join(', ')}`);
+//         return;
+//       }
+
+//       setCsvData(results.data);
+//     },
+//     error: function (error) {
+//       console.error("CSV parsing error:", error);
+//       alert("Failed to parse CSV.");
+//     },
+//   });
+// };
+
+// const handleCSVSubmit = async () => {
+//   if (csvData.length === 0) {
+//     alert("No CSV data to submit");
+//     return;
+//   }
+
+//   const formattedRows = csvData.map((row) => {
+//     // Parse date from DD-MM-YYYY format to ISO string
+//     let closedAt;
+//     try {
+//       const [day, month, year] = row.closed_at.split('-');
+//       closedAt = new Date(`${year}-${month}-${day}`).toISOString();
+//     } catch (e) {
+//       console.warn(`Invalid date format for ${row.closed_at}, using current date`);
+//       closedAt = new Date().toISOString();
+//     }
+
+//     return {
+//       lead_id: row.lead_id, // Use the lead_id from CSV
+//       sale_value: Number(row.sale_value),
+//       subscription_cycle: Number(row.subscription_cycle),
+//       payment_mode: row.payment_mode,
+//       closed_at: closedAt,
+//       email: row.email,
+//       finance_status: row.finance_status || 'Paid',
+//     };
+//   });
+
+//   try {
+//     const { error } = await supabase
+//       .from("sales_closure")
+//       .insert(formattedRows);
+
+//     if (error) {
+//       console.error("Upload failed:", error);
+//       alert(`Upload failed: ${error.message}`);
+//       return;
+//     }
+
+//     alert(`🎉 Successfully uploaded ${formattedRows.length} records.`);
+//     setUploadDialogOpen(false);
+//     setCsvData([]);
+//     setCsvFile(null);
+//   } catch (err) {
+//     console.error("Unexpected error:", err);
+//     alert("An unexpected error occurred during upload");
+//   }
+// };
+
+
   return (
+      //  {loading && <FullScreenLoader />}
+      <>
+      {loading && <FullScreenLoader />}
     <ProtectedRoute allowedRoles={["Account Management", "Super Admin"]}>
 
       <DashboardLayout>
@@ -483,7 +659,11 @@ export default function AccountManagementPage() {
               <h1 className="text-3xl font-bold text-gray-900">Account Management CRM</h1>
               <p className="text-gray-600 mt-2">Manage client relationships and feedback</p>
             </div>
+            {/* <div className="flex justify-end mb-4">
+              <Button onClick={() => setUploadDialogOpen(true)}>Upload Sale Done CSV</Button>
+            </div> */}
           </div>
+
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <Card>
@@ -844,8 +1024,49 @@ export default function AccountManagementPage() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+
+          {/* <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
+  <DialogContent>
+    <DialogHeader>
+      <DialogTitle>Upload Sale Done CSV</DialogTitle>
+      <DialogDescription>
+        Upload your sales CSV. We'll parse and show the number of entries.
+      </DialogDescription>
+    </DialogHeader>
+
+    <div className="space-y-4">
+      <Input
+        type="file"
+        accept=".csv"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) {
+            setCsvFile(file);
+            handleCSVUpload(file);
+          }
+        }}
+      />
+      <p className="text-sm text-gray-600">
+        {csvData.length > 0
+          ? `✅ Detected ${csvData.length} records in file.`
+          : "No file parsed yet."}
+      </p>
+    </div>
+
+    <DialogFooter>
+      <Button variant="outline" onClick={() => setUploadDialogOpen(false)}>
+        Cancel
+      </Button>
+      <Button onClick={handleCSVSubmit} disabled={csvData.length === 0}>
+        Submit to Supabase
+      </Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
+ */}
         </div>
       </DashboardLayout>
     </ProtectedRoute>
+    </>
   );
 }
