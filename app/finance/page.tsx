@@ -84,20 +84,42 @@ export default function FinancePage() {
     }
   };
 
+  // const filteredSales = sales.filter((sale) => {
+  //   const matchesSearch =
+  //     sale.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  //     sale.lead_id.toLowerCase().includes(searchTerm.toLowerCase());
+
+  //   if (followUpFilter === "Today") {
+  //     const createdAt = new Date(sale.closed_at);
+  //     const now = new Date();
+  //     const diffInDays = Math.floor((now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24));
+  //     return diffInDays >= 5 && matchesSearch;
+  //   }
+
+  //   return matchesSearch;
+  // });
+
   const filteredSales = sales.filter((sale) => {
-    const matchesSearch =
-      sale.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      sale.lead_id.toLowerCase().includes(searchTerm.toLowerCase());
+  const matchesSearch =
+    sale.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    sale.lead_id.toLowerCase().includes(searchTerm.toLowerCase());
 
-    if (followUpFilter === "Today") {
-      const createdAt = new Date(sale.closed_at);
-      const now = new Date();
-      const diffInDays = Math.floor((now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24));
-      return diffInDays >= 5 && matchesSearch;
-    }
+  if (followUpFilter === "Today") {
+    const closedDate = new Date(sale.closed_at);
+    closedDate.setHours(0, 0, 0, 0);
 
-    return matchesSearch;
-  });
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const targetDate = new Date(today);
+    targetDate.setDate(today.getDate() - 25); // 25 days ago
+
+    return closedDate <= targetDate && matchesSearch;
+  }
+
+  return matchesSearch;
+});
+
 
   function getRenewWithinBadge(createdAt: string): React.ReactNode {
     const closedDate = new Date(createdAt);
@@ -244,6 +266,8 @@ export default function FinancePage() {
                   <TableHead>Client Id</TableHead>
                   <TableHead>Name</TableHead>
                   <TableHead>Email</TableHead>
+                  <TableHead>Sale Value</TableHead>
+                  <TableHead>Subscription Cycle</TableHead>
                   <TableHead>Assigned To</TableHead>
                   <TableHead>Stage</TableHead>
                   <TableHead>Created At</TableHead>
@@ -260,6 +284,8 @@ export default function FinancePage() {
                       <TableCell className="font-medium">{sale.lead_id}</TableCell>
                       <TableCell className="font-medium">{sale.leads?.name ?? "-"}</TableCell>
                       <TableCell>{sale.email}</TableCell>
+                      <TableCell>{formatCurrency(sale.sale_value)}</TableCell>
+                      <TableCell>{sale.subscription_cycle} days</TableCell>
                       <TableCell>Finance Team A</TableCell>
                       <TableCell>
                         <Badge className={getStageColor(sale.finance_status)}>
@@ -269,7 +295,7 @@ export default function FinancePage() {
                       <TableCell>{new Date(sale.closed_at).toLocaleDateString("en-GB")}</TableCell>
                       <TableCell>{getRenewWithinBadge(sale.closed_at)}</TableCell>
                       <TableCell>
-                        <Select
+                        {/* <Select
                           value={sale.finance_status}
                           onValueChange={(value: FinanceStatus) =>
                             handleFinanceStatusUpdate(sale.id, value)
@@ -283,7 +309,38 @@ export default function FinancePage() {
                             <SelectItem value="Unpaid">Unpaid</SelectItem>
                             <SelectItem value="Paused">Paused</SelectItem>
                           </SelectContent>
-                        </Select>
+                        </Select> */}
+
+                        {(() => {
+  const closedDate = new Date(sale.closed_at);
+  const today = new Date();
+  closedDate.setHours(0, 0, 0, 0);
+  today.setHours(0, 0, 0, 0);
+
+  const diffInDays = Math.floor((today.getTime() - closedDate.getTime()) / (1000 * 60 * 60 * 24));
+  const isOlderThan25Days = diffInDays >= 25;
+
+  return (
+    <Select
+      value={sale.finance_status}
+      onValueChange={(value: FinanceStatus) =>
+        handleFinanceStatusUpdate(sale.id, value)
+      }
+      disabled={followUpFilter === "All dates" && !isOlderThan25Days}
+    >
+      <SelectTrigger className="w-32">
+        <SelectValue placeholder="Select Status" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="Paid">Paid</SelectItem>
+        <SelectItem value="Unpaid">Unpaid</SelectItem>
+        <SelectItem value="Paused">Paused</SelectItem>
+      </SelectContent>
+    </Select>
+  );
+})()}
+
+
                       </TableCell>
                     </TableRow>
                   ))

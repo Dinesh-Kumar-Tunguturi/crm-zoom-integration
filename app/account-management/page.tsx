@@ -215,15 +215,39 @@ export default function AccountManagementPage() {
     setLoading(true);
     try {
       // 1. Fetch from sales_closure
-      const { data: salesData, error: salesError } = await supabase
-        .from("sales_closure")
-        .select("lead_id, email, closed_at")
-        .order("closed_at", { ascending: false });
+      // const { data: salesData, error: salesError } = await supabase
+      //   .from("sales_closure")
+      //   .select("lead_id, email, closed_at")
+      //   .order("closed_at", { ascending: false });
 
-      if (salesError || !salesData) {
-        console.error("❌ sales_closure fetch failed", salesError);
-        return;
-      }
+      // if (salesError || !salesData) {
+      //   console.error("❌ sales_closure fetch failed", salesError);
+      //   return;
+      // }
+
+      // 1. Fetch all sales_closure rows ordered by closed_at DESC
+const { data: rawSalesData, error: salesError } = await supabase
+  .from("sales_closure")
+  .select("lead_id, email, closed_at")
+  .order("closed_at", { ascending: false });
+
+if (salesError || !rawSalesData) {
+  console.error("❌ sales_closure fetch failed", salesError);
+  return;
+}
+
+// 2. Deduplicate: Keep only latest row per lead_id
+const salesDataMap = new Map<string, { lead_id: string; email: string; closed_at: string }>();
+
+for (const row of rawSalesData) {
+  if (!salesDataMap.has(row.lead_id)) {
+    salesDataMap.set(row.lead_id, row);
+  }
+}
+
+// 3. Convert Map to array
+const salesData = Array.from(salesDataMap.values());
+
 
       // 2. Fetch from leads using all lead_ids in one go
       const leadIds = salesData.map((s) => s.lead_id);
@@ -646,6 +670,213 @@ export default function AccountManagementPage() {
 // };
 
 
+// const handleCSVSubmit = async () => {
+//   if (csvData.length === 0) {
+//     alert("No CSV data to submit");
+//     return;
+//   }
+
+//   // Step 1: Extract all unique names from CSV
+//   const uniqueNames = [...new Set(csvData.map((row) => row.Name?.trim()).filter(Boolean))];
+
+//   // Step 2: Fetch all matching lead_ids from leads table
+//   const { data: leads, error: leadsError } = await supabase
+//     .from("leads")
+//     .select("name, business_id")
+//     .in("name", uniqueNames);
+
+//   if (leadsError) {
+//     console.error("Error fetching leads:", leadsError);
+//     alert("Failed to fetch lead IDs from database.");
+//     return;
+//   }
+
+//   // Step 3: Build a map from name -> lead_id
+//   const nameToLeadIdMap: Record<string, string> = {};
+//   leads.forEach((lead) => {
+//     if (lead.name && lead.business_id) {
+//       nameToLeadIdMap[lead.name.trim()] = lead.business_id;
+//     }
+//   });
+
+//   // Step 4: Transform CSV rows with matched lead_ids
+//   const formattedRows = csvData
+//     .map((row) => {
+//       const trimmedName = row.Name?.trim();
+//       const lead_id = nameToLeadIdMap[trimmedName];
+
+//       if (!lead_id) {
+//         console.warn(`❌ No lead_id found for Name: ${trimmedName}`);
+//         return null;
+//       }
+
+//       let closedAt;
+//       try {
+//         const [day, month, year] = row.closed_at.split("-");
+//         closedAt = new Date(`${year}-${month}-${day}`).toISOString();
+//       } catch (e) {
+//         console.warn(`⚠️ Invalid date format for ${row.closed_at}, using current date`);
+//         closedAt = new Date().toISOString();
+//       }
+
+//       return {
+//         lead_id,
+//         sale_value: Number(row.sale_value),
+//         subscription_cycle: Number(row.subscription_cycle),
+//         payment_mode: row.payment_mode,
+//         closed_at: closedAt,
+//         email: row.email,
+//         finance_status: row.finance_status || "Paid",
+//       };
+//     })
+//     .filter(Boolean); // remove nulls
+
+//   if (formattedRows.length === 0) {
+//     alert("No valid rows to insert (possibly due to unmatched names).");
+//     return;
+//   }
+
+//   // Step 5: Insert into Supabase
+//   try {
+//     const { error } = await supabase
+//       .from("sales_closure")
+//       .insert(formattedRows);
+
+//     if (error) {
+//       console.error("Upload failed:", error);
+//       alert(`Upload failed: ${error.message}`);
+//       return;
+//     }
+
+//     alert(`🎉 Successfully uploaded ${formattedRows.length} records.`);
+//     setUploadDialogOpen(false);
+//     setCsvData([]);
+//     setCsvFile(null);
+//   } catch (err) {
+//     console.error("Unexpected error:", err);
+//     alert("An unexpected error occurred during upload");
+//   }
+// };
+
+
+const handleCSVUpload = (file: File) => {
+  Papa.parse(file, {
+    header: true,
+    skipEmptyLines: true,
+    complete: function (results) {
+      // ✅ Updated required fields
+      const requiredFields = ['Name', 'sale_value', 'subscription_cycle', 'payment_mode', 'closed_at'];
+      const fields: string[] = Array.isArray(results.meta.fields) ? results.meta.fields as string[] : [];
+      const missingFields = requiredFields.filter(field => !fields.includes(field));
+
+      if (missingFields.length > 0) {
+        alert(`Missing required columns: ${missingFields.join(', ')}`);
+        return;
+      }
+
+      setCsvData(results.data);
+    },
+    error: function (error) {
+      console.error("CSV parsing error:", error);
+      alert("Failed to parse CSV.");
+    },
+  });
+};
+
+
+const handleCSVSubmit = async () => {
+  if (csvData.length === 0) {
+    alert("No CSV data to submit");
+    return;
+  }
+
+  // Step 1: Extract all unique names from CSV
+  const uniqueNames = [...new Set(csvData.map((row) => row.Name?.trim()).filter(Boolean))];
+
+  // Step 2: Fetch matching leads (lead_id + email) from leads table
+  const { data: leads, error: leadsError } = await supabase
+    .from("leads")
+    .select("name, business_id, email")
+    .in("name", uniqueNames);
+
+  if (leadsError) {
+    console.error("Error fetching leads:", leadsError);
+    alert("Failed to fetch lead data from database.");
+    return;
+  }
+
+  // Step 3: Map name => { lead_id, email }
+  const nameToLeadDetailsMap: Record<string, { lead_id: string; email: string }> = {};
+  leads.forEach((lead) => {
+    if (lead.name && lead.business_id && lead.email) {
+      nameToLeadDetailsMap[lead.name.trim()] = {
+        lead_id: lead.business_id,
+        email: lead.email,
+      };
+    }
+  });
+
+  // Step 4: Prepare rows using lead_id & email from DB
+  const formattedRows = csvData
+    .map((row) => {
+      const trimmedName = row.Name?.trim();
+      const leadDetails = nameToLeadDetailsMap[trimmedName];
+
+      if (!leadDetails) {
+        console.warn(`❌ No lead info found for Name: ${trimmedName}`);
+        return null;
+      }
+
+      // let closedAt;
+      // try {
+      //   const [day, month, year] = row.closed_at.split("-");
+      //   closedAt = new Date(`${year}-${month}-${day}`).toISOString();
+      // } catch (e) {
+      //   console.warn(`⚠️ Invalid date format for ${row.closed_at}, using current date`);
+      //   closedAt = new Date().toISOString();
+      // }
+      const closedAt = row.closed_at;
+
+      return {
+        lead_id: leadDetails.lead_id,
+        sale_value: Number(row.sale_value),
+        subscription_cycle: Number(row.subscription_cycle),
+        payment_mode: row.payment_mode,
+        closed_at: closedAt,
+        email: leadDetails.email, // ⬅️ override from DB
+        finance_status: row.finance_status || "Paid",
+      };
+    })
+    .filter(Boolean);
+
+  if (formattedRows.length === 0) {
+    alert("No valid rows to insert (possibly due to unmatched names).");
+    return;
+  }
+
+  // Step 5: Insert into Supabase
+  try {
+    const { error } = await supabase
+      .from("sales_closure")
+      .insert(formattedRows);
+
+    if (error) {
+      console.error("Upload failed:", error);
+      alert(`Upload failed: ${error.message}`);
+      return;
+    }
+
+    alert(`🎉 Successfully uploaded ${formattedRows.length} records.`);
+    setUploadDialogOpen(false);
+    setCsvData([]);
+    setCsvFile(null);
+  } catch (err) {
+    console.error("Unexpected error:", err);
+    alert("An unexpected error occurred during upload");
+  }
+};
+
+
   return (
       //  {loading && <FullScreenLoader />}
       <>
@@ -659,9 +890,9 @@ export default function AccountManagementPage() {
               <h1 className="text-3xl font-bold text-gray-900">Account Management CRM</h1>
               <p className="text-gray-600 mt-2">Manage client relationships and feedback</p>
             </div>
-            {/* <div className="flex justify-end mb-4">
+            <div className="flex justify-end mb-4">
               <Button onClick={() => setUploadDialogOpen(true)}>Upload Sale Done CSV</Button>
-            </div> */}
+            </div>
           </div>
 
 
@@ -1025,7 +1256,7 @@ export default function AccountManagementPage() {
             </DialogContent>
           </Dialog>
 
-          {/* <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
+           <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
   <DialogContent>
     <DialogHeader>
       <DialogTitle>Upload Sale Done CSV</DialogTitle>
@@ -1063,7 +1294,7 @@ export default function AccountManagementPage() {
     </DialogFooter>
   </DialogContent>
 </Dialog>
- */}
+ 
         </div>
       </DashboardLayout>
     </ProtectedRoute>
