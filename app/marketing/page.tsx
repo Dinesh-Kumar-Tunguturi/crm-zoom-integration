@@ -370,8 +370,8 @@ const filteredSales = salesHistory.filter((item) => {
 // }
 if (startDate && endDate) {
   query = query
-    .gte("created_at", `${startDate}T00:00:00+11:00`)
-    .lte("created_at", `${endDate}T23:59:59+11:00`);
+    .gte("created_at", `${startDate}T00:00:00+05:30`)
+    .lte("created_at", `${endDate}T23:59:59+05:30`);
 }
 
 
