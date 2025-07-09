@@ -91,16 +91,41 @@ export default function MarketingPage() {
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [successDialogOpen, setSuccessDialogOpen] = useState(false);
   const [assignSuccessMessage, setAssignSuccessMessage] = useState("");
-  const [leadTab, setLeadTab] = useState<"New" | "Assigned">("New");
+  // const [leadTab, setLeadTab] = useState<"New" | "Assigned">("New");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [pageSize, setPageSize] = useState(15);
+  const [cycleFilter, setCycleFilter] = useState("all");
+
   const [allLeadsStats, setAllLeadsStats] = useState({ total: 0, assigned: 0, new: 0 });
-  const [showReassignDialog, setShowReassignDialog] = useState(false);
-  const [pendingAssignee, setPendingAssignee] = useState<string | null>(null);
+  // const [showReassignDialog, setShowReassignDialog] = useState(false);
+  // const [pendingAssignee, setPendingAssignee] = useState<string | null>(null);
 
   const [startDate, setStartDate] = useState<string>("");
 const [endDate, setEndDate] = useState<string>("");
+
+  const [salesHistoryDialogOpen, setSalesHistoryDialogOpen] = useState(false);
+interface SalesHistoryItem {
+  id: string;
+  lead_id: string;
+  email: string;
+  sale_value: number;
+  subscription_cycle: number;
+  payment_mode: string;
+  finance_status: string;
+  closed_at: string;
+  leads?: {
+    name?: string;
+    phone?: string;
+  };
+  lead_name?: string;
+  lead_phone?: string;
+}
+
+const [salesHistory, setSalesHistory] = useState<SalesHistoryItem[]>([]);
+const [dateRange, setDateRange] = useState<{ from: Date | null; to: Date | null }>({ from: null, to: null });
+
+const [allLeads, setAllLeads] = useState([]);
 
   const [googleSheets, setGoogleSheets] = useState<{ id: number, name: string, url: string }[]>([]);
   const [showSheetsDialog, setShowSheetsDialog] = useState(false);
@@ -108,6 +133,9 @@ const [endDate, setEndDate] = useState<string>("");
   const [googleSheetDialogOpen, setGoogleSheetDialogOpen] = useState(false);
   const [newSheetName, setNewSheetName] = useState("");
   const [newSheetUrl, setNewSheetUrl] = useState("");
+  const [leadTab, setLeadTab] = useState<"New" | "Assigned" | "All">("New");
+  const [isAllView, setIsAllView] = useState(false);
+
   const [resultDialogOpen, setResultDialogOpen] = useState(false);
   const [resultMessage, setResultMessage] = useState({
     title: '',
@@ -141,16 +169,69 @@ const [endDate, setEndDate] = useState<string>("");
     return () => clearTimeout(timer);
   }, [copySuccess]);
 
-  const filteredLeads = leads.filter((lead) => {
-    const matchesSearch =
-      lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      lead.phone.includes(searchTerm) ||
-      lead.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      lead.city.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === "all" || lead.status === statusFilter;
-    const matchesSource = sourceFilter === "all" || lead.source === sourceFilter;
-    return matchesSearch && matchesStatus && matchesSource;
-  });
+  // const filteredLeads = leads.filter((lead) => {
+  //   const matchesSearch =
+  //     lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  //     lead.phone.includes(searchTerm) ||
+  //     lead.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  //     lead.city.toLowerCase().includes(searchTerm.toLowerCase());
+  //   const matchesStatus = statusFilter === "all" || lead.status === statusFilter;
+  //   const matchesSource = sourceFilter === "all" || lead.source === sourceFilter;
+  //   return matchesSearch && matchesStatus && matchesSource;
+  // });
+
+ const filteredLeads = leads.filter((lead) => {
+  const matchesSearch =
+    lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    lead.phone.includes(searchTerm) ||
+    lead.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    lead.city.toLowerCase().includes(searchTerm.toLowerCase());
+
+  const matchesStatus = statusFilter === "all" || lead.status === statusFilter;
+  const matchesSource = sourceFilter === "all" || lead.source === sourceFilter;
+
+  const matchesTab =
+    leadTab === "All" ||
+    (leadTab === "New" && lead.status === "New") ||
+    (leadTab === "Assigned" && lead.status === "Assigned");
+
+  return matchesSearch && matchesStatus && matchesSource && matchesTab;
+});
+
+const paginationPages = Math.ceil(filteredLeads.length / pageSize);
+
+// Slice for current page view
+// const paginatedLeads = filteredLeads.slice(
+//   (currentPage - 1) * pageSize,
+//   currentPage * pageSize
+// );
+
+const paginatedLeads = isAllView
+  ? filteredLeads // don’t slice, show all
+  : filteredLeads.slice(
+      (currentPage - 1) * pageSize,
+      currentPage * pageSize
+    );
+
+//     const filteredSales = salesHistory.filter((item) => {
+//   const closedDate = new Date(item.closed_at).toISOString().split("T")[0]; // Convert to YYYY-MM-DD
+
+//   const startMatch = !startDate || closedDate >= startDate;
+//   const endMatch = !endDate || closedDate <= endDate;
+
+//   return startMatch && endMatch;
+// });
+
+const filteredSales = salesHistory.filter((item) => {
+  const closedDate = new Date(item.closed_at).toISOString().split("T")[0];
+
+  const startMatch = !startDate || closedDate >= startDate;
+  const endMatch = !endDate || closedDate <= endDate;
+  const cycleMatch = cycleFilter === "all" || item.subscription_cycle === Number(cycleFilter);
+
+  return startMatch && endMatch && cycleMatch;
+});
+
 
 
   const handleSelectAll = (checked: boolean) => {
@@ -289,8 +370,8 @@ const [endDate, setEndDate] = useState<string>("");
 // }
 if (startDate && endDate) {
   query = query
-    .gte("created_at", `${startDate}T00:00:00+05:30`)
-    .lte("created_at", `${endDate}T23:59:59+05:30`);
+    .gte("created_at", `${startDate}T00:00:00+11:00`)
+    .lte("created_at", `${endDate}T23:59:59+11:00`);
 }
 
 
@@ -387,6 +468,35 @@ if (startDate && endDate) {
     link.click();
     document.body.removeChild(link);
   };
+
+
+
+const downloadSalesCSV = (data: any[]) => {
+  const cleanedData = data.map(item => ({
+    LeadID: item.lead_id,
+    Name: item.lead_name,
+    Phone: item.lead_phone?.normalize("NFKD") || "N/A",
+    Email: item.email,
+    SaleValue: item.sale_value,
+    Cycle: item.subscription_cycle,
+    PaymentMode: item.payment_mode,
+    Status: item.finance_status,
+    ClosedAt: new Date(item.closed_at).toLocaleDateString(),
+  }));
+
+  const csv = Papa.unparse(cleanedData);
+
+  // Add UTF-8 BOM prefix
+  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.setAttribute("download", "sales_history.csv");
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
+
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const openFileDialog = () => fileInputRef.current?.click();
@@ -596,13 +706,60 @@ if (startDate && endDate) {
                   <Dialog open={historyDialogOpen} onOpenChange={setHistoryDialogOpen}>
 
                     <DialogTrigger asChild>
-                      <Button variant="outline" onClick={() => {
+                      {/* <Button variant="outline" onClick={() => {
                         const filtered = leads.filter(lead => lead.status === "Assigned");
                         setAssignedLeads(filtered);
                         setHistoryDialogOpen(true);
                       }}>
-                        📜 History
-                      </Button>
+                        📜 History &#11206;
+                      </Button> */}
+
+                      <DropdownMenu>
+  <DropdownMenuTrigger asChild>
+    <Button variant="outline">📜 History &#11206;</Button>
+  </DropdownMenuTrigger>
+
+  <DropdownMenuContent>
+    <DropdownMenuItem
+      onClick={() => {
+        const filtered = leads.filter((lead) => lead.status === "Assigned");
+        setAssignedLeads(filtered);
+        setHistoryDialogOpen(true);
+      }}
+    >
+      Assigned Leads History
+    </DropdownMenuItem>
+
+    <DropdownMenuItem
+  onClick={async () => {
+    const { data: sales, error: salesErr } = await supabase
+  .from("sales_closure")
+  .select("*")
+  .order("closed_at", { ascending: false });
+
+const { data: leads, error: leadsErr } = await supabase
+  .from("leads")
+  .select("business_id, name, phone");
+
+const salesWithLeads = (sales ?? []).map((s) => {
+  const match = (leads ?? []).find((l) => l.business_id === s.lead_id);
+  return {
+    ...s,
+    lead_name: match?.name ?? "N/A",
+    lead_phone: match?.phone ?? "N/A",
+  };
+});
+
+setSalesHistory(salesWithLeads);
+setSalesHistoryDialogOpen(true);
+
+  }}
+>
+  Sales Done History
+</DropdownMenuItem>
+  </DropdownMenuContent>
+</DropdownMenu>
+
                     </DialogTrigger>
 
                     {historyDialogOpen && (
@@ -973,20 +1130,21 @@ if (startDate && endDate) {
                     <div className="text-2xl font-bold">{leads.length}</div>
                   </CardContent>
                 </Card>
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium">Not Assigned (New Leads)</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{leads.filter((l) => l.status === "New").length}</div>
-                  </CardContent>
-                </Card>
+                
                 <Card>
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium">Assigned Leads</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">{leads.filter((l) => l.status === "Assigned").length}</div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium">Not Assigned (New Leads)</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{leads.filter((l) => l.status === "New").length}</div>
                   </CardContent>
                 </Card>
 
@@ -1160,9 +1318,49 @@ if (startDate && endDate) {
                     >
                       Assigned Leads
                     </Button>
+                    <Button
+  variant={leadTab === "All" ? "default" : "outline"}
+  onClick={async () => {
+    setLeadTab("All");
+    setCurrentPage(1);
+    setIsAllView(true);
+
+    // Fetch all leads fresh from DB
+    const { data, error } = await supabase.from("leads").select("*").order("created_at", { ascending: false });
+    if (error) {
+      console.error("❌ Failed to fetch all leads:", error);
+    } else {
+      setLeads(data); // ✅ overwrite full lead list
+    }
+  }}
+>
+  All Leads
+</Button>
+
 
                     <div className="w-full sm:w-auto flex justify-end">
-                      <Select onValueChange={(value) => setPageSize(Number(value))}>
+                      {/* <Select onValueChange={(value) => setPageSize(Number(value))}> */}
+                      <Select
+  onValueChange={async (value) => {
+    if (value === "all") {
+      setIsAllView(true);
+      setCurrentPage(1);
+
+      // fetch fresh full data
+      const { data, error } = await supabase.from("leads").select("*").order("created_at", { ascending: false });
+      if (error) {
+        console.error("❌ Failed to fetch all leads for 'All':", error);
+      } else {
+        setLeads(data);
+      }
+    } else {
+      setIsAllView(false);
+      setPageSize(Number(value));
+      setCurrentPage(1);
+    }
+  }}
+>
+
                         <SelectTrigger className="w-[150px]">
                           <SelectValue placeholder={`${pageSize} per page`} />
                         </SelectTrigger>
@@ -1172,6 +1370,8 @@ if (startDate && endDate) {
                               {num} per page
                             </SelectItem>
                           ))}
+                                  <SelectItem value="all">All</SelectItem>
+
                         </SelectContent>
                       </Select>
                     </div>
@@ -1209,7 +1409,7 @@ if (startDate && endDate) {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {filteredLeads.map((lead, index) => (
+                        {paginatedLeads.map((lead, index) => (
                           // <TableRow key={lead.id}>
                           <TableRow
                             key={lead.id}
@@ -1286,7 +1486,15 @@ if (startDate && endDate) {
                         ⬅ Previous
                       </Button>
                       <span className="text-gray-600">
-                        Page {currentPage} of {totalPages}
+                        {/* Page {currentPage} of {paginationPages} */}
+                        {isAllView ? (
+  <span className="text-gray-600">Showing all {filteredLeads.length} leads</span>
+) : (
+  <span className="text-gray-600">
+    Page {currentPage} of {paginationPages}
+  </span>
+)}
+
                       </span>
                       <Button
                         variant="outline"
@@ -1300,6 +1508,192 @@ if (startDate && endDate) {
                   </div>
                 </CardContent>
               </Card>
+
+              <Dialog open={salesHistoryDialogOpen} onOpenChange={setSalesHistoryDialogOpen}>
+  <DialogContent className="max-w-7xl">
+    
+    <DialogHeader>
+      <DialogTitle>Sales Done History</DialogTitle>
+      <DialogDescription>List of all successfully closed deals</DialogDescription>
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+  {/* Left side - Record count */}
+  <div className="text-sm text-green-600">
+    Showing {filteredSales.length} {filteredSales.length === 1 ? "record" : "records"}
+  </div>
+
+<div className="flex flex-wrap justify-end gap-2">
+      <DropdownMenu>
+  <DropdownMenuTrigger asChild>
+    <Button variant="outline" className="min-w-[200px]">
+      ⏳ {cycleFilter !== "all" ? `${cycleFilter} days` : "Cycle Filter"}
+    </Button>
+  </DropdownMenuTrigger>
+  <DropdownMenuContent className="p-2 space-y-1 w-[200px]">
+    {["all", 15, 30, 60, 90].map((cycle) => (
+      <DropdownMenuItem
+        key={cycle}
+        onClick={() => {
+          setCycleFilter(cycle.toString());
+          setCurrentPage(1);
+        }}
+        className={cycleFilter === cycle.toString() ? "bg-gray-100 font-medium" : ""}
+      >
+        {cycle === "all" ? "All Cycles" : `${cycle} Days`}
+      </DropdownMenuItem>
+    ))}
+  </DropdownMenuContent>
+</DropdownMenu>
+
+      <DropdownMenu>
+  <DropdownMenuTrigger asChild>
+    <Button variant="outline" className="min-w-[200px]">
+      {startDate && endDate
+        ? `📅 ${startDate} → ${endDate}`
+        : "📅 Date Range"}
+    </Button>
+  </DropdownMenuTrigger>
+
+  <DropdownMenuContent className="p-4 space-y-4 w-[250px] sm:w-[300px]">
+    <div className="space-y-2">
+      <Label className="text-sm text-gray-600">Start Date</Label>
+      <Input
+        type="date"
+        value={startDate}
+        onChange={(e) => {
+          setStartDate(e.target.value);
+          setCurrentPage(1);
+        }}
+      />
+    </div>
+
+    <div className="space-y-2">
+      <Label className="text-sm text-gray-600">End Date</Label>
+      <Input
+        type="date"
+        value={endDate}
+        onChange={(e) => {
+          setEndDate(e.target.value);
+          setCurrentPage(1);
+        }}
+      />
+    </div>
+
+    <Button
+      variant="ghost"
+      className="text-red-500 text-sm p-0"
+      onClick={() => {
+        setStartDate("");
+        setEndDate("");
+        setCurrentPage(1);
+      }}
+    >
+      ❌ Clear Filter
+    </Button>
+  </DropdownMenuContent>
+</DropdownMenu>
+</div>
+</div>
+    </DialogHeader>
+    
+
+    {/* {salesHistory.length > 0 ? (
+      <div className="overflow-auto max-h-[400px] border rounded-lg">
+        
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>S.No</TableHead>
+              <TableHead>Lead ID</TableHead>
+              <TableHead>Name</TableHead>
+              <TableHead>Phone</TableHead>
+              <TableHead>Email</TableHead>
+              <TableHead>Sale $</TableHead>
+              <TableHead>Cycle (days)</TableHead>
+              <TableHead>Payment</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Closed At</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+              {filteredSales.map((item, index) => (
+              <TableRow key={item.id}>
+                <TableCell>{index+1}</TableCell>
+                <TableCell>{item.lead_id}</TableCell>
+                <TableCell>{item.lead_name}</TableCell>
+<TableCell>{item.lead_phone}</TableCell>
+
+                <TableCell>{item.email}</TableCell>
+                <TableCell>${item.sale_value}</TableCell>
+                <TableCell>{item.subscription_cycle}</TableCell>
+                <TableCell>{item.payment_mode}</TableCell>
+                <TableCell>{item.finance_status}</TableCell>
+                <TableCell>{new Date(item.closed_at).toLocaleDateString()}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    ) : (
+      <div className="py-6 text-center text-gray-500">
+        <p>No sales records yet.</p>
+      </div>
+    )}
+    
+    */}
+
+    {salesHistory.length > 0 ? (
+  <>
+    
+
+    <div className="overflow-auto max-h-[400px] border rounded-lg">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>S.No</TableHead>
+            <TableHead>Lead ID</TableHead>
+            <TableHead>Name</TableHead>
+            <TableHead>Phone</TableHead>
+            <TableHead>Email</TableHead>
+            <TableHead>Sale $</TableHead>
+            <TableHead>Cycle (days)</TableHead>
+            <TableHead>Payment</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Closed At</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {filteredSales.map((item, index) => (
+            <TableRow key={item.id}>
+              <TableCell>{index + 1}</TableCell>
+              <TableCell>{item.lead_id}</TableCell>
+              <TableCell>{item.lead_name}</TableCell>
+              <TableCell>{item.lead_phone}</TableCell>
+              <TableCell>{item.email}</TableCell>
+              <TableCell>${item.sale_value}</TableCell>
+              <TableCell>{item.subscription_cycle}</TableCell>
+              <TableCell>{item.payment_mode}</TableCell>
+              <TableCell>{item.finance_status}</TableCell>
+              <TableCell>{new Date(item.closed_at).toLocaleDateString()}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  </>
+) : (
+  <div className="py-6 text-center text-gray-500">
+    <p>No sales records yet.</p>
+  </div>
+)}
+
+    <div className="flex justify-end mt-4">
+  <Button onClick={() => downloadSalesCSV(filteredSales)}>
+    <Download className="h-4 w-4 mr-2" /> Download CSV
+  </Button>
+</div>
+
+  </DialogContent>
+</Dialog>
 
 
               <Dialog open={bulkAssignDialogOpen} onOpenChange={setBulkAssignDialogOpen}>
