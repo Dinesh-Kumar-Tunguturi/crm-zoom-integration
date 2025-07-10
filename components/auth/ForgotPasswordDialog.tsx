@@ -32,8 +32,7 @@ export function ForgotPasswordDialog({ open, onOpenChange }: ForgotPasswordDialo
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/email-verify-redirect?email=${encodeURIComponent(email)}`,
       });
-
-      console.log("🔗 Reset link sent to:", email);
+      
       if (error) throw error;
 
       setShowSuccessDialog(true);
