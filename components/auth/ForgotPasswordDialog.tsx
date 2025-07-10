@@ -32,7 +32,7 @@ export function ForgotPasswordDialog({ open, onOpenChange }: ForgotPasswordDialo
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/email-verify-redirect?email=${encodeURIComponent(email)}`,
       });
-      
+
       if (error) throw error;
 
       setShowSuccessDialog(true);
@@ -58,7 +58,11 @@ export function ForgotPasswordDialog({ open, onOpenChange }: ForgotPasswordDialo
             <DialogTitle>Forgot Password</DialogTitle>
           </DialogHeader>
 
-          <Label htmlFor="email">Reset password link sending to this email, check your mail</Label>
+          <p id="reset-password-description" className="text-sm text-muted-foreground mb-2">
+            Reset password link will be sent to this email. Please check your inbox.
+          </p>
+
+          <Label htmlFor="email">Email</Label>          
           <Input
             id="email"
             type="email"
