@@ -53,7 +53,7 @@ export function ForgotPasswordDialog({ open, onOpenChange }: ForgotPasswordDialo
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md" aria-describedby="reset-password-description">
           <DialogHeader>
             <DialogTitle>Forgot Password</DialogTitle>
           </DialogHeader>
@@ -62,7 +62,7 @@ export function ForgotPasswordDialog({ open, onOpenChange }: ForgotPasswordDialo
             Reset password link will be sent to this email. Please check your inbox.
           </p>
 
-          <Label htmlFor="email">Email</Label>          
+          <Label htmlFor="email">Email</Label>
           <Input
             id="email"
             type="email"
@@ -74,6 +74,7 @@ export function ForgotPasswordDialog({ open, onOpenChange }: ForgotPasswordDialo
             onPaste={(e) => e.preventDefault()}
             onContextMenu={(e) => e.preventDefault()}
           />
+
           <Button
             onClick={handleSendResetLink}
             disabled={loading || !email}
