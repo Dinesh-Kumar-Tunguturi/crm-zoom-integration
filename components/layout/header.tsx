@@ -1,6 +1,7 @@
 "use client"
 
-import { Bell, Search, Settings, LogOut, User } from "lucide-react"
+import React, { useState } from "react"
+import { Bell, Search, Settings, LogOut, User, UnlockKeyholeIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -14,11 +15,16 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { useAuth } from "@/components/providers/auth-provider"
+import { ForgotPasswordDialog } from "../auth/ForgotPasswordDialog" // update path if different
+
 
 export function Header() {
   const { user, logout } = useAuth()
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
 
+  
   return (
+    <>
     <header className="flex h-16 items-center justify-between border-b border-gray-200 bg-white px-6">
       <div className="flex items-center gap-4">
         <SidebarTrigger />
@@ -65,6 +71,11 @@ export function Header() {
               <Settings className="mr-2 h-4 w-4" />
               Settings
             </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setShowForgotPassword(true)}>
+              <UnlockKeyholeIcon className="mr-2 h-4 w-4" />
+              Forget Password
+            </DropdownMenuItem>
+
             <DropdownMenuSeparator />
             <DropdownMenuItem className="text-red-600" onClick={logout}>
               <LogOut className="mr-2 h-4 w-4" />
@@ -74,5 +85,11 @@ export function Header() {
         </DropdownMenu>
       </div>
     </header>
+    <ForgotPasswordDialog
+  open={showForgotPassword}
+  onOpenChange={setShowForgotPassword}
+/>
+
+    </>
   )
 }
