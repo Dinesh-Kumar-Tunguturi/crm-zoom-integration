@@ -48,6 +48,7 @@ interface SalesClosure {
   reason_for_close?: string;
 }
 
+
 function generateMonthlyRevenue(sales: SalesClosure[], year: number) {
   const monthlyMap = new Map<
     string,
@@ -136,19 +137,51 @@ function generateMonthlyRevenue(sales: SalesClosure[], year: number) {
   return result;
 }
 
+type SalesClosureData = {
+  lead_id: string;
+  email: string;
+  lead_name:string,
+  payment_mode: string;
+  subscription_cycle: number;
+  sale_value: number;
+  closed_at: string;
+  finance_status: string;
+  next_payment_due: string;
+  resume_service?: number;
+  linkedin_service?: number;
+  github_service?: number;
+  portfolio_service?: number;
+  created_at?: string;
+};
+
+
+
+
 export default function FinancePage() {
   const [sales, setSales] = useState<SalesClosure[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [followUpFilter, setFollowUpFilter] = useState<"All dates" | "Today">("All dates");
   const [showCloseDialog, setShowCloseDialog] = useState(false);
   const [closingNote, setClosingNote] = useState("");
+  const [subscriptionMultiplier, setSubscriptionMultiplier] = useState(1);
+const [subscriptionSource, setSubscriptionSource] = useState(""); // For Referral/NEW
+
   const [selectedSaleId, setSelectedSaleId] = useState<string | null>(null);
   const [selectedFinanceStatus, setSelectedFinanceStatus] = useState<FinanceStatus | null>(null);
   const [statusFilter, setStatusFilter] = useState<FinanceStatus | "All">("All");
   const [showRevenueDialog, setShowRevenueDialog] = useState(false);
   const [activeTab, setActiveTab] = useState<"table" | "chart">("table");
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [showOnboardDialog, setShowOnboardDialog] = useState(false);
   const [tableYearFilter, setTableYearFilter] = useState<number | "all">("all");
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+// const [selectedSaleId, setSelectedSaleId] = useState<string | null>(null);
+const [paymentAmount, setPaymentAmount] = useState("");
+
+const [paymentDate, setPaymentDate] = useState(new Date());
+
+  const [salesData, setSalesData] = useState<SalesClosureData[]>([]);
+
 
   const monthlyRevenues: { month: string; amount: number }[] = [];
 
@@ -166,6 +199,8 @@ export default function FinancePage() {
       setMonthlyBreakdown(breakdown);
     }
   }, [sales, selectedYear]);
+  
+  
 
   async function fetchSalesData() {
     const { data: salesData, error: salesError } = await supabase
@@ -181,25 +216,82 @@ export default function FinancePage() {
     const leadIds = [...new Set(salesData.map((s) => s.lead_id))];
 
     const { data: leadsData, error: leadsError } = await supabase
-      .from("leads")
-      .select("business_id, name")
-      .in("business_id", leadIds);
+  .from("leads")
+  .select("business_id, name")
+  .in("business_id", leadIds);
 
-    if (leadsError) {
-      console.error("Error fetching leads:", leadsError);
-      return;
-    }
+if (leadsError) {
+  console.error("Error fetching leads:", leadsError);
+  return;
+}
 
-    const leadMap = new Map(leadsData.map((l) => [l.business_id, l.name]));
+const { data: salesClosureData, error: closureError } = await supabase
+  .from("sales_closure")
+  .select("lead_id, lead_name");
 
-    const salesWithName = salesData.map((s) => ({
-      ...s,
-      leads: { name: leadMap.get(s.lead_id) ?? "-" },
-    }));
+if (closureError) {
+  console.error("Error fetching sales_closure fallback names:", closureError);
+  return;
+}
 
-    setSales(salesWithName as SalesClosure[]);
+// 🧠 Create two maps
+const leadNameMap = new Map(leadsData.map((l) => [l.business_id, l.name]));
+const closureNameMap = new Map(salesClosureData.map((s) => [s.lead_id, s.lead_name]));
+
+// ✅ Final mapping with fallback logic
+const salesWithName = salesData.map((s) => {
+  const nameFromLeads = leadNameMap.get(s.lead_id);
+  const fallbackName = closureNameMap.get(s.lead_id);
+  return {
+    ...s,
+    leads: {
+      name: nameFromLeads || fallbackName || "-",
+    },
+  };
+});
+
+setSales(salesWithName as SalesClosure[]);
   }
 
+  
+// 🧾 Client Fields
+const [clientName, setClientName] = useState("");
+const [clientEmail, setClientEmail] = useState("");
+const [contactNumber, setContactNumber] = useState("");
+const [startDate, setStartDate] = useState("");
+const [city, setCity] = useState("");
+
+
+// 💳 Subscription Fields
+const [paymentMode, setPaymentMode] = useState("");
+const [subscriptionCycle, setSubscriptionCycle] = useState("30");
+const [subscriptionSaleValue, setSubscriptionSaleValue] = useState("");
+
+
+const [totalSale, setTotalSale] = useState(0);
+const [dueDate, setDueDate] = useState("");
+
+// 🧩 Optional Add-ons
+const [resumeValue, setResumeValue] = useState("");
+const [portfolioValue, setPortfolioValue] = useState("");
+const [linkedinValue, setLinkedinValue] = useState("");
+const [githubValue, setGithubValue] = useState("");
+
+// 🧮 Auto Calculated
+// const totalSale = Number(subscriptionSaleValue || 0) +
+//   Number(resumeValue || 0) +
+//   Number(portfolioValue || 0) +
+//   Number(linkedinValue || 0) +
+//   Number(githubValue || 0);
+
+function calculateDueDate(start: string, durationInDays: number): string {
+  if (!start) return "";
+  const date = new Date(start);
+  date.setDate(date.getDate() + durationInDays);
+  return date.toISOString().split("T")[0]; // yyyy-mm-dd
+}
+
+// const dueDate = calculateDueDate(startDate, Number(subscriptionCycle));
   const handleFinanceStatusUpdate = async (saleId: string, newStatus: FinanceStatus) => {
     const { error } = await supabase
       .from("sales_closure")
@@ -214,6 +306,41 @@ export default function FinancePage() {
       );
     }
   };
+
+  
+useEffect(() => {
+  const base = parseFloat(subscriptionSaleValue || "0");
+  const resume = parseFloat(resumeValue || "0");
+  const portfolio = parseFloat(portfolioValue || "0");
+  const linkedin = parseFloat(linkedinValue || "0");
+  const github = parseFloat(githubValue || "0");
+
+  const multipliedBase = base * subscriptionMultiplier;
+  const total = multipliedBase + resume + portfolio + linkedin + github;
+  setTotalSale(total);
+}, [
+  subscriptionSaleValue,
+  resumeValue,
+  portfolioValue,
+  linkedinValue,
+  githubValue,
+  subscriptionMultiplier, // <-- Important
+]);
+
+
+useEffect(() => {
+  if (!startDate || !subscriptionCycle) {
+    setDueDate("");
+    return;
+  }
+
+  const start = new Date(startDate);
+  const nextDue = new Date(start);
+  nextDue.setDate(start.getDate() + parseInt(subscriptionCycle));
+
+  setDueDate(nextDue.toLocaleDateString("en-GB")); // or "en-US" as needed
+}, [startDate, subscriptionCycle]);
+
 
   const filteredSales = sales.filter((sale) => {
     const matchesSearch =
@@ -330,6 +457,315 @@ export default function FinancePage() {
     document.body.removeChild(link);
   };
 
+
+// async function handleOnboardClientSubmit() {
+//   try {
+//     // 1. Generate new lead_id like AWL-1, AWL-2, ...
+//     const { data: existing, error: countError } = await supabase
+//       .from("sales_closure")
+//       .select("lead_id");
+
+//     if (countError) throw countError;
+
+//     const newLeadId = `AWL-${(existing?.length ?? 0) + 1}`;
+
+//     // 2. Parse sale values (treat empty as 0)
+//     const baseValue = parseInt(subscriptionSaleValue || "0");
+//     const resume = parseInt(resumeValue || "0");
+//     const linkedin = parseInt(linkedinValue || "0");
+//     const github = parseInt(githubValue || "0");
+//     const portfolio = parseInt(portfolioValue || "0");
+
+//     // 3. Calculate total value
+//     const totalSaleValue = baseValue + resume + linkedin + github + portfolio;
+
+//     // 4. Compute next payment due date
+//     const start = new Date(startDate);
+//     const nextDueDate = new Date(start);
+//     const durationInDays = parseInt(subscriptionCycle || "0"); // Expected: 30, 60, 90, etc.
+//     nextDueDate.setDate(start.getDate() + durationInDays);
+
+//     // 5. Submit to Supabase
+//     const { error: insertError } = await supabase.from("sales_closure").insert({
+//       lead_id: newLeadId,
+//       email: clientEmail,
+//       payment_mode: paymentMode,
+//       subscription_cycle: durationInDays,
+//       sale_value: totalSaleValue,
+//       closed_at: startDate,
+//       finance_status: "Paid", // default value, change if needed
+//       next_payment_due: nextDueDate.toISOString(),
+
+//       // Optional add-ons
+//       resume_service: resume,
+//       linkedin_service: linkedin,
+//       github_service: github,
+//       portfolio_service: portfolio,
+
+//       created_at: new Date().toISOString(), // optional
+//     });
+
+//     if (insertError) throw insertError;
+
+//     alert("Client onboarded successfully!");
+//     setShowAddClientDialog(false); // Close the form/dialog
+
+//   } catch (err) {
+//     console.error("❌ Error onboarding client:", err);
+//     alert("Failed to onboard client.");
+//   }
+// }
+
+// async function handleOnboardClientSubmit() {
+//   try {
+//     // 1. Generate new lead_id like AWL-1, AWL-2, ...
+//     const { data: existing, error: countError } = await supabase
+//       .from("sales_closure")
+//       .select("lead_id");
+
+//     if (countError) throw countError;
+
+//     const newLeadId = `AWL-${(existing?.length ?? 0) + 1}`;
+    
+//     // 2. Parse sale values (treat empty as 0)
+//     const baseValue = parseInt(subscriptionSaleValue || "0");
+//     const resume = parseInt(resumeValue || "0");
+//     const linkedin = parseInt(linkedinValue || "0");
+//     const github = parseInt(githubValue || "0");
+//     const portfolio = parseInt(portfolioValue || "0");
+
+//     // 3. Calculate total value
+//     const totalSaleValue = baseValue + resume + linkedin + github + portfolio;
+
+//     // 4. Compute next payment due date
+//     const start = new Date(startDate);
+//     const nextDueDate = new Date(start);
+//     const durationInDays = parseInt(subscriptionCycle || "0"); // 30, 60, 90, etc.
+//     nextDueDate.setDate(start.getDate() + durationInDays);
+
+//     // 5. Submit to Supabase
+//     const { error: insertError } = await supabase.from("sales_closure").insert({
+//       lead_id: newLeadId,
+//       email: clientEmail,
+//       lead_name: clientName,
+//       payment_mode: paymentMode,
+//       subscription_cycle: durationInDays,
+//       sale_value: totalSaleValue,
+//       closed_at: startDate,
+//       finance_status: "Paid",
+//       // next_payment_due: nextDueDate.toISOString(),
+
+//       // Optional add-ons
+//       resume_sale_value: resume,
+//       linkedin_sale_value: linkedin,
+//       github_sale_value: github,
+//       portfolio_sale_value: portfolio,
+
+//       // created_at: new Date().toISOString(),
+//     });
+
+//     if (insertError) throw insertError;
+
+//     // 6. Append to table view
+//     const newEntry = {
+//       lead_id: newLeadId,
+//       sale_value: totalSaleValue,
+//       subscription_cycle: durationInDays,
+//       payment_mode: paymentMode,
+//       closed_at: startDate,
+//       email: clientEmail,
+//       lead_name: clientName,
+//       finance_status: "Paid",
+//       resume_sale_value: resume,
+//       linkedin_sale_value: linkedin,
+//       github_sale_value: github,
+//       portfolio_sale_value: portfolio,
+//       next_payment_due: nextDueDate.toISOString(),
+//       // created_at: new Date().toISOString(),
+//     };
+
+//     setSalesData((prevData) => [...prevData, newEntry]);
+
+//     // 7. Reset all fields
+//     setClientName("");
+//     setClientEmail("");
+//     setContactNumber("");
+//     setStartDate("");
+//     setSubscriptionCycle("");
+//     setSubscriptionSaleValue("");
+//     setPaymentMode("");
+//     setResumeValue("");
+//     setPortfolioValue("");
+//     setLinkedinValue("");
+//     setGithubValue("");
+
+//     // 8. Close the dialog
+//     setShowOnboardDialog(false);
+
+//     // 9. Optional: Success alert
+//     setTimeout(() => {
+//       alert("✅ Client onboarded successfully!");
+//     }, 100);
+
+//   }  catch (err: any) {
+//   console.error("❌ Error onboarding client:", err?.message || err);
+//   alert(`Failed to onboard client: ${err?.message || "Unknown error"}`);
+// }
+// }
+
+async function handleOnboardClientSubmit() {
+  try {
+    // 1. Generate new lead_id like AWL-1, AWL-2, ...
+    const { data: existingLeads, error: leadsCountError } = await supabase
+  .from("leads")
+  .select("business_id");
+
+if (leadsCountError) throw leadsCountError;
+
+const maxId = existingLeads
+  ?.map((lead) => parseInt((lead.business_id || "").split("-")[1]))
+  .filter((num) => !isNaN(num))
+  .sort((a, b) => b - a)[0] || 0;
+
+const newLeadId = `AWL-${maxId + 1}`;
+
+    
+    // 2. Parse sale values (treat empty as 0)
+    const baseValue = parseInt(subscriptionSaleValue || "0");
+    const resume = parseInt(resumeValue || "0");
+    const linkedin = parseInt(linkedinValue || "0");
+    const github = parseInt(githubValue || "0");
+    const portfolio = parseInt(portfolioValue || "0");
+
+    // 3. Calculate total value
+    const totalSaleValue = baseValue + resume + linkedin + github + portfolio;
+
+    // 4. Compute next payment due date
+    const start = new Date(startDate);
+    const nextDueDate = new Date(start);
+    const durationInDays = parseInt(subscriptionCycle || "0");
+    nextDueDate.setDate(start.getDate() + durationInDays);
+
+    const now = new Date().toISOString();
+
+    // 5. Insert into leads table
+    const { error: leadsInsertError } = await supabase.from("leads").insert({
+      business_id: newLeadId,
+      name: clientName,
+      email: clientEmail,
+      phone: contactNumber,
+      city: city,
+      created_at: now,
+      // source:"Onboarded Client",
+      source: subscriptionSource || "Onboarded Client",
+      status:"Assigned",
+    });
+
+    if (leadsInsertError) throw leadsInsertError;
+
+    // 6. Insert into sales_closure table
+    const { error: salesInsertError } = await supabase.from("sales_closure").insert({
+      lead_id: newLeadId,
+      email: clientEmail,
+      lead_name: clientName,
+      payment_mode: paymentMode,
+      subscription_cycle: durationInDays,
+      sale_value: totalSale,
+      closed_at: startDate,
+      finance_status: "Paid",
+      resume_sale_value: resume,
+      linkedin_sale_value: linkedin,
+      github_sale_value: github,
+      portfolio_sale_value: portfolio,
+      // next_payment_due: nextDueDate.toISOString(),
+    });
+
+    if (salesInsertError) throw salesInsertError;
+
+    // 7. Append new data to table
+    const newEntry = {
+      lead_id: newLeadId,
+      email: clientEmail,
+      lead_name: clientName,
+      sale_value: totalSaleValue,
+      subscription_cycle: durationInDays,
+      payment_mode: paymentMode,
+      closed_at: startDate,
+      finance_status: "Paid",
+      resume_sale_value: resume,
+      linkedin_sale_value: linkedin,
+      github_sale_value: github,
+      portfolio_sale_value: portfolio,
+      next_payment_due: nextDueDate.toISOString(),
+    };
+
+    setSalesData((prev) => [...prev, newEntry]);
+
+    // 8. Reset fields
+    setClientName("");
+    setClientEmail("");
+    setContactNumber("");
+    setCity("");
+    setStartDate("");
+    setSubscriptionCycle("");
+    setSubscriptionSaleValue("");
+    setPaymentMode("");
+    setResumeValue("");
+    setPortfolioValue("");
+    setLinkedinValue("");
+    setGithubValue("");
+
+    // 9. Close dialog
+    setShowOnboardDialog(false);
+
+    // 10. Success alert
+    setTimeout(() => {
+      alert("✅ Client onboarded successfully!");
+    }, 100);
+  } catch (err: any) {
+    console.error("❌ Error onboarding client:", err?.message || err);
+    alert(`Failed to onboard client: ${err?.message || "Unknown error"}`);
+  }
+}
+
+async function handlePaymentClose() {
+  if (!selectedSaleId || !paymentAmount) return;
+
+  try {
+    // Update the original sale row with Paid
+    await supabase
+      .from("sales_closure")
+      .update({
+        finance_status: "Paid",
+        sale_value: parseFloat(paymentAmount),
+        closed_at: paymentDate.toISOString(),
+      })
+      .eq("id", selectedSaleId);
+
+    // Optional: Re-fetch or mutate local state to reflect
+    alert("✅ Payment marked as Paid!");
+    setShowPaymentDialog(false);
+    setPaymentAmount("");
+    setSelectedSaleId(null);
+  } catch (err) {
+    console.error("Payment update failed", err);
+    alert("Failed to update payment.");
+  }
+}
+
+async function insertZeroSaleRow(sale: SalesClosure, status: FinanceStatus) {
+  await supabase.from("sales_closure").insert({
+    ...sale,
+    id: undefined,
+    sale_value: 0,
+    finance_status: status,
+    closed_at: new Date().toISOString(),
+  });
+
+  alert(`Status marked as ${status} with 0 sale value.`);
+}
+
+
   return (
     <ProtectedRoute allowedRoles={["Finance", "Super Admin"]}>
       <DashboardLayout>
@@ -339,7 +775,13 @@ export default function FinancePage() {
               <h1 className="text-3xl font-bold text-gray-900">Finance CRM</h1>
               <p className="text-gray-600 mt-2">Track revenue and manage payments</p>
             </div>
-            <Button onClick={() => setShowRevenueDialog(true)}>Revenue</Button>
+            {/* <Button onClick={() => setShowRevenueDialog(true)}>Revenue</Button> */}
+          <div className="flex gap-2">
+  <Button onClick={() => setShowRevenueDialog(true)}>Revenue</Button>
+  <Button onClick={() => setShowOnboardDialog(true)} className="bg-green-600 hover:bg-green-500 text-white">
+    Onboard New Client
+  </Button>
+</div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -451,9 +893,25 @@ export default function FinancePage() {
                       <TableCell>{sale.subscription_cycle} days</TableCell>
                       <TableCell>Finance Team A</TableCell>
                       <TableCell>
-                        <Badge className={getStageColor(sale.finance_status)}>
+                        {/* <Badge className={getStageColor(sale.finance_status)}>
                           {sale.finance_status}
-                        </Badge>
+                        </Badge> */}
+                        {(() => {
+  const createdAt = new Date(sale.closed_at);
+  const today = new Date();
+  const diffInDays = Math.floor((today.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24));
+
+  if (diffInDays >= 25) {
+    return <span className="text-gray-400 text-sm italic">-</span>;
+  }
+
+  return (
+    <Badge className={getStageColor(sale.finance_status)}>
+      {sale.finance_status}
+    </Badge>
+  );
+})()}
+
                       </TableCell>
                       <TableCell>{new Date(sale.closed_at).toLocaleDateString("en-GB")}</TableCell>
                       <TableCell>{getRenewWithinBadge(sale.closed_at)}</TableCell>
@@ -478,22 +936,47 @@ export default function FinancePage() {
                           };
 
                           return (
-                            <Select
-                              value={sale.finance_status}
-                              onValueChange={handleStatusChange}
-                              disabled={followUpFilter === "All dates" && !isOlderThan25Days}
-                            >
-                              <SelectTrigger className="w-32">
-                                <SelectValue placeholder="Select Status" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="Paid">Paid</SelectItem>
-                                <SelectItem value="Unpaid">Unpaid</SelectItem>
-                                <SelectItem value="Paused">Paused</SelectItem>
-                                <SelectItem value="Closed">Closed</SelectItem>
+                            // <Select
+                            //   value={sale.finance_status}
+                            //   onValueChange={handleStatusChange}
+                            //   disabled={followUpFilter === "All dates" && !isOlderThan25Days}
+                            // >
+                            //   <SelectTrigger className="w-32">
+                            //     <SelectValue placeholder="Select Status" />
+                            //   </SelectTrigger>
+                            
+                            //   <SelectContent>
+                            //     <SelectItem value="Paid">Paid</SelectItem>
+                            //     <SelectItem value="Unpaid">Unpaid</SelectItem>
+                            //     <SelectItem value="Paused">Paused</SelectItem>
+                            //     <SelectItem value="Closed">Closed</SelectItem>
 
-                              </SelectContent>
-                            </Select>
+                            //   </SelectContent>
+                            // </Select>
+
+                            <Select
+  defaultValue=""
+  onValueChange={(value) => {
+    if (value === "Paid") {
+      setSelectedSaleId(sale.id);
+      setShowPaymentDialog(true);
+    } else {
+      insertZeroSaleRow(sale, value as FinanceStatus); // handle unpaid/paused/closed
+    }
+  }}
+  disabled={followUpFilter === "All dates" && !isOlderThan25Days}
+>
+  <SelectTrigger className="w-36">
+    <SelectValue placeholder="Select Status" />
+  </SelectTrigger>
+  <SelectContent>
+    <SelectItem value="Paid">Paid</SelectItem>
+    <SelectItem value="Unpaid">Unpaid</SelectItem>
+    <SelectItem value="Paused">Paused</SelectItem>
+    <SelectItem value="Closed">Closed</SelectItem>
+  </SelectContent>
+</Select>
+
                           );
                         })()}
 
@@ -576,6 +1059,30 @@ export default function FinancePage() {
               </div>
             </DialogContent>
           </Dialog>
+
+          <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
+  <DialogContent className="w-[400px]">
+    <DialogHeader>
+      <DialogTitle>💰 Payment Details</DialogTitle>
+    </DialogHeader>
+    <div className="space-y-4">
+      <Input
+        type="number"
+        placeholder="Enter payment amount"
+        value={paymentAmount}
+        onChange={(e) => setPaymentAmount(e.target.value)}
+        required
+      />
+      <Input
+        type="date"
+        value={paymentDate.toISOString().split("T")[0]}
+        onChange={(e) => setPaymentDate(new Date(e.target.value))}
+      />
+      <Button onClick={handlePaymentClose}>Payment Close</Button>
+    </div>
+  </DialogContent>
+</Dialog>
+
 
           <Dialog open={showRevenueDialog} onOpenChange={setShowRevenueDialog}>
             <DialogContent className="max-w-2xl sm:max-w-5xl">
@@ -693,6 +1200,212 @@ export default function FinancePage() {
               )}
             </DialogContent>
           </Dialog>
+
+          {/* <Dialog open={showOnboardDialog} onOpenChange={setShowOnboardDialog}>
+  <DialogContent className="max-w-5xl h-[90vh] overflow-hidden">
+    <DialogHeader>
+      <DialogTitle className="text-xl font-bold text-gray-800">🧾 Onboard New Client</DialogTitle>
+    </DialogHeader>
+
+    <div className="overflow-auto h-[75vh]"> 
+      <div className="grid grid-cols-2 gap-4">
+  <div className="col-span-2 text-lg font-semibold">🔹 Client Details</div>
+  <Input placeholder="Client Full Name" value={clientName} onChange={(e) => setClientName(e.target.value)} required />
+  <Input placeholder="Client Email" type="email" value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} required />
+  <Input placeholder="Contact Number" value={contactNumber} onChange={(e) => setContactNumber(e.target.value)} required />
+  <Input placeholder="City" value={city} onChange={(e) => setCity(e.target.value)} required/>
+
+  <Input placeholder="Start Date (MM/DD/YYYY)" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} required />
+
+  <div className="col-span-2 text-lg font-semibold mt-4">💳 Subscription & Payment Info</div>
+  <Select value={paymentMode} onValueChange={setPaymentMode} required>
+    <SelectTrigger className="w-full"><SelectValue placeholder="Select Payment Mode" /></SelectTrigger>
+    <SelectContent>
+      <SelectItem value="UPI">UPI</SelectItem>
+      <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
+      <SelectItem value="PayPal">PayPal</SelectItem>
+      <SelectItem value="Stripe">Stripe</SelectItem>
+      <SelectItem value="Credit/Debit Card">Credit/Debit Card</SelectItem>
+      <SelectItem value="Other">Other</SelectItem>
+    </SelectContent>
+  </Select>
+
+  <Select value={subscriptionCycle} onValueChange={setSubscriptionCycle}>
+    <SelectTrigger className="w-full"><SelectValue placeholder="Subscription Duration" /></SelectTrigger>
+    <SelectContent>
+      <SelectItem value="30">1 Month</SelectItem>
+      <SelectItem value="60">2 Months</SelectItem>
+      <SelectItem value="90">3 Months</SelectItem>
+    </SelectContent>
+  </Select>
+
+  <Input
+    placeholder="Subscription Sale Value ($)"
+    type="number"
+    value={subscriptionSaleValue}
+    onChange={(e) => setSubscriptionSaleValue(e.target.value)}
+    required
+  />
+
+  <div className="col-span-2 text-lg font-semibold mt-4">🧩 Optional Add-On Services</div>
+  <Input placeholder="Resume Sale Value ($)" type="number" value={resumeValue} onChange={(e) => setResumeValue(e.target.value)} />
+  <Input placeholder="Portfolio Creation Value ($)" type="number" value={portfolioValue} onChange={(e) => setPortfolioValue(e.target.value)} />
+  <Input placeholder="LinkedIn Optimization Value ($)" type="number" value={linkedinValue} onChange={(e) => setLinkedinValue(e.target.value)} />
+  <Input placeholder="GitHub Optimization Value ($)" type="number" value={githubValue} onChange={(e) => setGithubValue(e.target.value)} />
+
+ 
+  <div className="col-span-2 text-lg font-semibold mt-4">🧮 Auto Calculated</div>
+  <div className="col-span-1 font-medium text-gray-700">Total Sale Value: <span className="font-bold text-black">${totalSale}</span></div>
+  <div className="col-span-1 font-medium text-gray-700">Next Payment Due Date: <span className="font-bold text-black">{dueDate || "-"}</span></div>
+</div>
+
+<div className="flex justify-start mt-6">
+  <Button onClick={handleOnboardClientSubmit}>Submit</Button>
+</div>
+
+    </div>
+  </DialogContent>
+</Dialog> */}
+
+
+<Dialog open={showOnboardDialog} onOpenChange={setShowOnboardDialog}>
+  <DialogContent className="max-w-5xl h-[90vh] overflow-hidden">
+    <DialogHeader>
+      <DialogTitle className="text-xl font-bold text-gray-900">
+        🧾 Onboard New Client
+      </DialogTitle>
+    </DialogHeader>
+
+    <div className="overflow-auto h-[75vh] px-1">
+      {/* GRID STRUCTURE */}
+      <div className="grid grid-cols-2 gap-4 ">
+
+        {/* 🔹 Client Details - LEFT BLOCK */}
+        <div className="border rounded p-4 space-y-3 ">
+          <div className="text-lg font-semibold mb-2"> Client Details <span className="text-red-600">*</span></div>
+          <Input placeholder="Client Full Name"   className="placeholder:text-gray-900" value={clientName} onChange={(e) => setClientName(e.target.value)} required />
+          <Input placeholder="Client Email" className="placeholder:text-gray-900" type="email" value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} required />
+          <Input placeholder="Contact Number with country code (Eg: +1 1234567890)" className="placeholder:text-gray-900" value={contactNumber} onChange={(e) => setContactNumber(e.target.value)} required />
+          <Input placeholder="City" className="placeholder:text-gray-900" value={city} onChange={(e) => setCity(e.target.value)} required />
+          <Input placeholder="Start Date" className="placeholder:text-gray-900" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} required />
+        </div>
+
+        {/* 💳 Subscription & Payment Info - RIGHT BLOCK */}
+        <div className="border rounded p-4 space-y-3 ">
+          <div className="text-lg font-semibold mb-2"> Subscription & Payment Info <span className="text-red-600">*</span></div>
+
+          <Select value={paymentMode} onValueChange={setPaymentMode} required>
+            <SelectTrigger className="w-full"><SelectValue placeholder="Select Payment Mode" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="UPI">UPI</SelectItem>
+              <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
+              <SelectItem value="PayPal">PayPal</SelectItem>
+              <SelectItem value="Stripe">Stripe</SelectItem>
+              <SelectItem value="Credit/Debit Card">Credit/Debit Card</SelectItem>
+              <SelectItem value="Other">Other</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* <Select value={subscriptionCycle} onValueChange={setSubscriptionCycle}>
+            <SelectTrigger className="w-full"><SelectValue placeholder="Subscription Duration" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="30">1 Month</SelectItem>
+              <SelectItem value="60">2 Months</SelectItem>
+              <SelectItem value="90">3 Months</SelectItem>
+            </SelectContent>
+          </Select> */}
+
+          {/* Subscription Duration Dropdown */}
+<Select
+  value={subscriptionCycle}
+  onValueChange={(val) => {
+    setSubscriptionCycle(val);
+    const multiplier = val === "60" ? 2 : val === "90" ? 3 : 1;
+    setSubscriptionMultiplier(multiplier);
+  }}
+>
+  <SelectTrigger className="w-full"><SelectValue placeholder="Subscription Duration" /></SelectTrigger>
+  <SelectContent>
+    <SelectItem value="30">1 Month</SelectItem>
+    <SelectItem value="60">2 Months</SelectItem>
+    <SelectItem value="90">3 Months</SelectItem>
+  </SelectContent>
+</Select>
+
+{/* Subscription Sale Value Input */}
+<Input
+  placeholder="Subscription Sale Value ($)"
+  className="placeholder:text-gray-900"
+  type="number"
+  value={subscriptionSaleValue}
+  onChange={(e) => setSubscriptionSaleValue(e.target.value)}
+  required
+/>
+
+{/* 🔄 Auto-Calculated Subscription Total */}
+<Input
+  readOnly
+  value={
+    subscriptionSaleValue
+      ? `$${Number(subscriptionSaleValue) * subscriptionMultiplier}`
+      : ""
+  }
+  placeholder="Auto Total (Subscription Only)"
+  className="bg-gray-50 border font-semibold text-gray-700"
+  title="This is calculated as per-month price × months"
+/>
+
+<Select value={subscriptionSource} onValueChange={setSubscriptionSource}>
+  <SelectTrigger className="w-full"><SelectValue placeholder="Select Client Source" /></SelectTrigger>
+  <SelectContent>
+    <SelectItem value="Referral">Referral</SelectItem>
+    <SelectItem value="NEW">NEW</SelectItem>
+  </SelectContent>
+</Select>
+
+
+          {/* <Input placeholder="Subscription Sale Value ($)" className="placeholder:text-gray-900" type="number" value={subscriptionSaleValue} onChange={(e) => setSubscriptionSaleValue(e.target.value)} required /> */}
+        </div>
+
+        {/* 🧩 Optional Add-On Services - FULL WIDTH */}
+        <div className="col-span-2 border rounded p-4 space-y-3">
+          <div className="text-lg font-semibold mb-2"> Optional Add-On Services</div>
+          <div className="grid grid-cols-2 gap-4">
+            <Input placeholder="Resume Sale Value ($)" className="placeholder:text-gray-900" type="number" value={resumeValue} onChange={(e) => setResumeValue(e.target.value)} />
+            <Input placeholder="Portfolio Creation Value ($)" className="placeholder:text-gray-900" type="number" value={portfolioValue} onChange={(e) => setPortfolioValue(e.target.value)} />
+            <Input placeholder="LinkedIn Optimization Value ($)" className="placeholder:text-gray-900" type="number" value={linkedinValue} onChange={(e) => setLinkedinValue(e.target.value)} />
+            <Input placeholder="GitHub Optimization Value ($)" className="placeholder:text-gray-900" type="number" value={githubValue} onChange={(e) => setGithubValue(e.target.value)} />
+          </div>
+        </div>
+
+        {/* 🧮 Auto Calculated - FULL WIDTH */}
+        <div className="col-span-2 border rounded p-4 ">
+          <div className="text-lg font-semibold mb-2"> Auto Calculated</div>
+          <div className="grid grid-cols-3 gap-4">
+            {/* <div className="font-medium text-gray-700">Total Sale Value: <span className="font-bold text-black">${totalSale}</span></div> */}
+            <div className="font-medium text-gray-700">
+  Total Sale Value: <span className="font-bold text-black">${totalSale}</span>
+</div>
+<div className="font-medium text-gray-700">
+  Next Payment Due Date: <span className="font-bold text-black">{dueDate || "-"}</span>
+</div>
+
+            {/* <div className="font-medium text-gray-700">Next Payment Due Date: <span className="font-bold text-black">{dueDate || "-"}</span></div> */}
+          <div className="flex justify-end">
+          <Button onClick={handleOnboardClientSubmit}>Submit</Button>
+        </div>
+          </div>
+          
+      </div>
+        </div>
+
+        {/* Submit Button - LEFT ALIGNED */}
+        
+    </div>
+  </DialogContent>
+</Dialog>
+
+
         </div>
       </DashboardLayout>
     </ProtectedRoute>

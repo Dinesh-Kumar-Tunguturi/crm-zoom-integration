@@ -941,7 +941,7 @@ setSalesHistoryDialogOpen(true);
 
                   <Dialog open={googleSheetDialogOpen} onOpenChange={setGoogleSheetDialogOpen}>
                     {/* <DialogContent className="max-w-md"> */}
-                    <DialogContent className="w-[95%] sm:max-w-md">
+                    <DialogContent className="max-w-4xl">
 
                       <DialogHeader>
                         <DialogTitle>Add New Google Sheet</DialogTitle>
@@ -952,6 +952,10 @@ setSalesHistoryDialogOpen(true);
 
                       <div className="space-y-4">
                         <div>
+                          <div className="text-gray-700 mb-5">
+                          <h5>Googlesheet must contain column headers like below 👇</h5>
+                          <h6>Column headers : Full name, Phone Number (Country Code), Email, city </h6>
+                           </div>
                           <Label>Sheet Name</Label>
                           <Input
                             placeholder="e.g., Nikhil_reel_3_leads"
