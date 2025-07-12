@@ -1,7 +1,8 @@
-
+//components/auth/login-form.tsx
 "use client"
 
 import type React from "react"
+import Link from "next/link";
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
@@ -130,8 +131,19 @@ export function LoginForm() {
               </Alert>
             )}
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Signing in..." : "Sign In"}
-            </Button>
+  {loading ? "Signing in..." : "Sign In"}
+</Button>
+
+ {/* --- Forgot-password link --- */}
+ <p className="mt-2 text-center text-sm">
+   <Link
+     href="/forgot-password"
+     className="text-blue-600 hover:underline focus:outline-none"
+   >
+     Forgot password ?
+   </Link>
+ </p>
+
           </form>
 
         </CardContent>

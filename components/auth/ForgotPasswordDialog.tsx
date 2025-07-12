@@ -1,4 +1,4 @@
-// components/ForgotPasswordDialog.tsx
+// components/auth/ForgotPasswordDialog.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/utils/supabase/client";
 import { useAuth } from "../providers/auth-provider";
+ import { useRouter } from "next/navigation";
+
 
 interface ForgotPasswordDialogProps {
   open: boolean;
@@ -19,6 +21,8 @@ export function ForgotPasswordDialog({ open, onOpenChange }: ForgotPasswordDialo
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [loading, setLoading] = useState(false);
   const { user, logout } = useAuth()
+  const router = useRouter();
+
 
   useEffect(() => {
     if (user?.email) {
@@ -36,10 +40,16 @@ export function ForgotPasswordDialog({ open, onOpenChange }: ForgotPasswordDialo
       if (error) throw error;
 
       setShowSuccessDialog(true);
-      setTimeout(() => {
-        setShowSuccessDialog(false);
-        onOpenChange(false); // Close parent dialog
-      }, 2000);
+setTimeout(() => {
+  setShowSuccessDialog(false);
+  onOpenChange(false);        // close parent dialog
+
+  // 🔄  Auto-redirect ONLY when the visitor is NOT logged-in
+  if (!user) {
+    router.push("/");
+  }
+}, 3000);
+
     } catch (error: any) {
       setShowSuccessDialog(true);
       setTimeout(() => {
@@ -64,16 +74,21 @@ export function ForgotPasswordDialog({ open, onOpenChange }: ForgotPasswordDialo
 
           <Label htmlFor="email">Email</Label>
           <Input
-            id="email"
-            type="email"
-            value={email}
-            placeholder="Enter your registered email"
-            readOnly
-            className="bg-gray-100 text-red-800 font-semibold cursor-not-allowed"
-            onCopy={(e) => e.preventDefault()}
-            onPaste={(e) => e.preventDefault()}
-            onContextMenu={(e) => e.preventDefault()}
-          />
+  id="email"
+  type="email"
+  value={email}
+  placeholder="Enter your registered email"
+  onChange={(e) => setEmail(e.target.value)}
+  readOnly={!!user?.email}            // ⇒ true when logged-in, false otherwise
+  className={
+    !!user?.email
+      ? "bg-gray-100 text-red-800 font-semibold cursor-not-allowed"
+      : ""
+  }
+  onCopy={(e) => !!user?.email && e.preventDefault()}
+  onPaste={(e) => !!user?.email && e.preventDefault()}
+  onContextMenu={(e) => !!user?.email && e.preventDefault()}
+/>
 
           <Button
             onClick={handleSendResetLink}

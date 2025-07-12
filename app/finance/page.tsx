@@ -161,6 +161,10 @@ type SalesClosureData = {
 export default function FinancePage() {
   const [sales, setSales] = useState<SalesClosure[]>([]);
   const [allSales, setAllSales] = useState<SalesClosure[]>([]); // 🆕 every row – drives totals & charts
+const [actionSelections, setActionSelections] = useState<Record<string, string>>({});
+const [onboardDate, setOnboardDate] = useState<Date | null>(null);
+const [subscriptionMonths, setSubscriptionMonths] = useState("");  // "1" | "2" | "3" | "0.5"
+
 
   const [searchTerm, setSearchTerm] = useState("");
   const [followUpFilter, setFollowUpFilter] = useState<"All dates" | "Today">("All dates");
@@ -893,30 +897,137 @@ const newLeadId = `AWL-${maxId + 1}`;
   }
 }
 
+// async function handlePaymentClose() {
+//   if (!selectedSaleId || !paymentAmount) return;
+
+//   try {
+//     // Update the original sale row with Paid
+//     await supabase
+//       .from("sales_closure")
+//       .update({
+//         finance_status: "Paid",
+//         sale_value: parseFloat(paymentAmount),
+//         closed_at: paymentDate.toISOString(),
+//       })
+//       .eq("id", selectedSaleId);
+
+//     // Optional: Re-fetch or mutate local state to reflect
+//     alert("✅ Payment marked as Paid!");
+//     setShowPaymentDialog(false);
+//     setPaymentAmount("");
+//     setSelectedSaleId(null);
+//   } catch (err) {
+//     console.error("Payment update failed", err);
+//     alert("Failed to update payment.");
+//   }
+// }
+
+
+// async function handlePaymentClose() {
+//   if (!selectedSaleId || !paymentAmount || !onboardDate || !subscriptionMonths) {
+//     alert("Please fill all fields.");
+//     return;
+//   }
+
+//   /* 🔄 Map months → cycle days */
+//   const cycleDays = subscriptionMonths === "0.5"
+//     ? 15
+//     : parseInt(subscriptionMonths) * 30; // 1→30, 2→60, 3→90
+
+//   try {
+//     await supabase
+//       .from("sales_closure")
+//       .update({
+//         finance_status: "Paid",
+//         sale_value: parseFloat(paymentAmount),
+//         // closed_at: paymentDate.toISOString(),                 // timestamp
+//         onboarded_date: onboardDate.toISOString().slice(0,10),// date yyyy-mm-dd
+//         subscription_cycle: cycleDays                         // 15 / 30 / 60 / 90
+//       })
+//       .eq("id", selectedSaleId);
+
+//     /* Optional: update local state so table refreshes instantly */
+//     setSales(prev =>
+//       prev.map(row =>
+//         row.id === selectedSaleId
+//           ? {
+//               ...row,
+//               finance_status: "Paid",
+//               sale_value: parseFloat(paymentAmount),
+//               closed_at: paymentDate.toISOString(),
+//               onboarded_date: onboardDate.toISOString().slice(0,10),
+//               subscription_cycle: cycleDays
+//             }
+//           : row
+//       )
+//     );
+
+//     alert("✅ Payment saved!");
+//     /* reset & close */
+//     setShowPaymentDialog(false);
+//     setPaymentAmount("");
+//     setOnboardDate(null);
+//     setSubscriptionMonths("");
+//     setSelectedSaleId(null);
+
+//   } catch (err) {
+//     console.error("Payment update failed", err);
+//     alert("Failed to update payment.");
+//   }
+// }
+
+
 async function handlePaymentClose() {
-  if (!selectedSaleId || !paymentAmount) return;
+  if (!selectedSaleId || !paymentAmount || !onboardDate || !subscriptionMonths) {
+    alert("Please fill all fields.");
+    return;
+  }
+
+  const cycleDays = subscriptionMonths === "0.5"
+    ? 15
+    : parseInt(subscriptionMonths) * 30;
 
   try {
-    // Update the original sale row with Paid
-    await supabase
-      .from("sales_closure")
-      .update({
-        finance_status: "Paid",
-        sale_value: parseFloat(paymentAmount),
-        closed_at: paymentDate.toISOString(),
-      })
-      .eq("id", selectedSaleId);
+    // Find the original record for that sale ID
+    const original = sales.find(s => s.id === selectedSaleId);
+    if (!original) throw new Error("Original record not found");
 
-    // Optional: Re-fetch or mutate local state to reflect
-    alert("✅ Payment marked as Paid!");
+const { leads, id, ...cleanOriginal } = original; // 🧼 remove frontend-only field and id
+    const newRow = {
+  ...cleanOriginal,
+  sale_value: parseFloat(paymentAmount),
+  closed_at: paymentDate.toISOString(),
+  onboarded_date: onboardDate.toISOString().slice(0, 10),
+  subscription_cycle: cycleDays,
+  finance_status: "Paid",
+};
+
+
+    const { error } = await supabase
+      .from("sales_closure")
+      .insert(newRow);
+
+    if (error) throw error;
+
+    // Optional: push to frontend immediately
+    setSales((prev) => [{ ...newRow, id: "temp-" + Math.random().toString(36).substr(2, 9) } as SalesClosure, ...prev]);
+    setAllSales((prev) => [{ ...newRow, id: "temp-" + Math.random().toString(36).substr(2, 9) } as SalesClosure, ...prev]);
+
+    alert("✅ Payment recorded and new row inserted!");
+
+    // Cleanup
     setShowPaymentDialog(false);
-    setPaymentAmount("");
     setSelectedSaleId(null);
-  } catch (err) {
-    console.error("Payment update failed", err);
-    alert("Failed to update payment.");
+    setPaymentAmount("");
+    setOnboardDate(null);
+    setSubscriptionMonths("");
+
+  } catch (err: any) {
+    console.error("❌ Payment insert failed", err.message || err);
+    alert("Failed to save payment.");
   }
 }
+
 
 async function insertZeroSaleRow(sale: SalesClosure, status: FinanceStatus) {
   await supabase.from("sales_closure").insert({
@@ -968,7 +1079,7 @@ async function insertZeroSaleRow(sale: SalesClosure, status: FinanceStatus) {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-green-600">{formatCurrency(paidRevenue)}</div>
-                <p className="text-xs text-muted-foreground">{paidCount} clients</p>
+                <p className="text-xs text-muted-foreground">{paidCount} transactions</p>
               </CardContent>
             </Card>
 
@@ -1119,18 +1230,50 @@ async function insertZeroSaleRow(sale: SalesClosure, status: FinanceStatus) {
                             //   </SelectContent>
                             // </Select>
 
-                            <Select
-  defaultValue=""
+//                             <Select
+//   defaultValue=""
+//   onValueChange={(value) => {
+//     if (value === "Paid") {
+//       setSelectedSaleId(sale.id);
+//       setShowPaymentDialog(true);
+//     } else {
+//       insertZeroSaleRow(sale, value as FinanceStatus); // handle unpaid/paused/closed
+//     }
+//   }}
+//   disabled={followUpFilter === "All dates" && !isOlderThan25Days}
+// >
+//   <SelectTrigger className="w-36">
+//     <SelectValue placeholder="Select Status" />
+//   </SelectTrigger>
+//   <SelectContent>
+//     <SelectItem value="Paid">Paid</SelectItem>
+//     <SelectItem value="Unpaid">Unpaid</SelectItem>
+//     <SelectItem value="Paused">Paused</SelectItem>
+//     <SelectItem value="Closed">Closed</SelectItem>
+//   </SelectContent>
+// </Select>
+
+<Select
+  value={actionSelections[sale.id] || ""}
   onValueChange={(value) => {
+    setActionSelections((prev) => ({
+      ...prev,
+      [sale.id]: value,
+    }));
+
     if (value === "Paid") {
       setSelectedSaleId(sale.id);
       setShowPaymentDialog(true);
+    } else if (value === "Closed") {
+      setSelectedSaleId(sale.id);
+      setShowCloseDialog(true);
     } else {
-      insertZeroSaleRow(sale, value as FinanceStatus); // handle unpaid/paused/closed
+      insertZeroSaleRow(sale, value as FinanceStatus);
     }
   }}
-  disabled={followUpFilter === "All dates" && !isOlderThan25Days}
+  disabled={followUpFilter === "All dates" && !isOlderThan25Days || !!actionSelections[sale.id]} // freeze after selection
 >
+
   <SelectTrigger className="w-36">
     <SelectValue placeholder="Select Status" />
   </SelectTrigger>
@@ -1141,6 +1284,7 @@ async function insertZeroSaleRow(sale: SalesClosure, status: FinanceStatus) {
     <SelectItem value="Closed">Closed</SelectItem>
   </SelectContent>
 </Select>
+
 
                           );
                         })()}
@@ -1215,6 +1359,11 @@ async function insertZeroSaleRow(sale: SalesClosure, status: FinanceStatus) {
                     );
 
                     setShowCloseDialog(false);
+                    setActionSelections((prev) => ({
+  ...prev,
+  [selectedSaleId]: "", // or sale.id
+}));
+
                     setClosingNote("");
                     setSelectedSaleId(null);
                   }}
@@ -1225,7 +1374,7 @@ async function insertZeroSaleRow(sale: SalesClosure, status: FinanceStatus) {
             </DialogContent>
           </Dialog>
 
-          <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
+          {/* <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
   <DialogContent className="w-[400px]">
     <DialogHeader>
       <DialogTitle>💰 Payment Details</DialogTitle>
@@ -1247,6 +1396,70 @@ async function insertZeroSaleRow(sale: SalesClosure, status: FinanceStatus) {
     </div>
   </DialogContent>
 </Dialog>
+ */}
+
+ <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
+  <DialogContent className="w-[420px]">
+    <DialogHeader>
+      <DialogTitle>💰 Payment Details</DialogTitle>
+    </DialogHeader>
+
+<p id="payment-details-description" className="text-sm text-muted-foreground mb-2">
+    Fill the payment info, onboard date, and subscription details to record this payment.
+  </p>
+
+    <div className="space-y-4">
+
+      {/* Payment amount */}
+      <Input
+        type="number"
+        placeholder="Payment amount ($)"
+        value={paymentAmount}
+        onChange={(e) => setPaymentAmount(e.target.value)}
+        required
+      />
+
+      {/* Closed-at date (already existed)
+      <Input
+        type="date"
+        value={paymentDate.toISOString().slice(0, 10)}
+        onChange={(e) => setPaymentDate(new Date(e.target.value))}
+        required
+      /> */}
+
+      {/* NEW -- Onboarded Date */}
+      <Input
+        type="date"
+        placeholder="Onboarded date"
+        value={onboardDate ? onboardDate.toISOString().slice(0, 10) : ""}
+        onChange={(e) => setOnboardDate(new Date(e.target.value))}
+        required
+      />
+
+      {/* NEW -- Subscription Months */}
+      <Select
+        value={subscriptionMonths}
+        onValueChange={setSubscriptionMonths}
+      >
+        <SelectTrigger className="w-full">
+          <SelectValue placeholder="Subscription duration" />
+        </SelectTrigger>
+        <SelectContent>
+          {/* Uncomment if you also want a 15-day option */}
+          {/* <SelectItem value="0.5">15 days</SelectItem> */}
+          <SelectItem value="1">1 month</SelectItem>
+          <SelectItem value="2">2 months</SelectItem>
+          <SelectItem value="3">3 months</SelectItem>
+        </SelectContent>
+      </Select>
+
+      <Button onClick={handlePaymentClose} className="w-full">
+        Payment Close
+      </Button>
+    </div>
+  </DialogContent>
+</Dialog>
+
 
 
           <Dialog open={showRevenueDialog} onOpenChange={setShowRevenueDialog}>
