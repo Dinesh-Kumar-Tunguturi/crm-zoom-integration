@@ -1,3 +1,4 @@
+//app/account-management/page.tsx
 "use client";
 
 import * as React from "react";
@@ -479,7 +480,7 @@ export default function AccountManagementPage() {
       header: true,
       skipEmptyLines: true,
       complete: function (results) {
-        const requiredFields = ['Name', 'sale_value', 'subscription_cycle', 'payment_mode', 'closed_at'];
+        const requiredFields = ['Name', 'Rate', 'Payment Frequency', 'Onboarded date','Phone number','email'];
         const fields: string[] = Array.isArray(results.meta.fields) ? results.meta.fields as string[] : [];
         const missingFields = requiredFields.filter(field => !fields.includes(field));
 
@@ -498,82 +499,220 @@ export default function AccountManagementPage() {
   };
 
 
-  const handleCSVSubmit = async () => {
-    if (csvData.length === 0) {
-      alert("No CSV data to submit");
-      return;
-    }
-    const uniqueNames = [...new Set(csvData.map((row) => row.Name?.trim()).filter(Boolean))];
-    const { data: leads, error: leadsError } = await supabase
-      .from("leads")
-      .select("name, business_id, email")
-      .in("name", uniqueNames);
+  // const handleCSVSubmit = async () => {
+  //   if (csvData.length === 0) {
+  //     alert("No CSV data to submit");
+  //     return;
+  //   }
+  //   const uniqueNames = [...new Set(csvData.map((row) => row.Name?.trim()).filter(Boolean))];
+  //   const { data: leads, error: leadsError } = await supabase
+  //     .from("leads")
+  //     .select("name, business_id, email")
+  //     .in("name", uniqueNames);
 
-    if (leadsError) {
-      console.error("Error fetching leads:", leadsError);
-      alert("Failed to fetch lead data from database.");
-      return;
-    }
+  //   if (leadsError) {
+  //     console.error("Error fetching leads:", leadsError);
+  //     alert("Failed to fetch lead data from database.");
+  //     return;
+  //   }
 
-    const nameToLeadDetailsMap: Record<string, { lead_id: string; email: string }> = {};
-    leads.forEach((lead) => {
-      if (lead.name && lead.business_id && lead.email) {
-        nameToLeadDetailsMap[lead.name.trim()] = {
-          lead_id: lead.business_id,
-          email: lead.email,
-        };
+  //   const nameToLeadDetailsMap: Record<string, { lead_id: string; email: string }> = {};
+  //   leads.forEach((lead) => {
+  //     if (lead.name && lead.business_id && lead.email) {
+  //       nameToLeadDetailsMap[lead.name.trim()] = {
+  //         lead_id: lead.business_id,
+  //         email: lead.email,
+  //       };
+  //     }
+  //   });
+
+  //   const formattedRows = csvData
+  //     .map((row) => {
+  //       const trimmedName = row.Name?.trim();
+  //       const leadDetails = nameToLeadDetailsMap[trimmedName];
+
+  //       if (!leadDetails) {
+  //         console.warn(`❌ No lead info found for Name: ${trimmedName}`);
+  //         return null;
+  //       }
+  //       const closedAt = row.closed_at;
+
+  //       return {
+  //         lead_id: leadDetails.lead_id,
+  //         sale_value: Number(row.sale_value),
+  //         subscription_cycle: Number(row.subscription_cycle),
+  //         payment_mode: "UPI",
+  //         closed_at: closedAt,
+  //         email: leadDetails.email,
+  //         finance_status: row.finance_status || "Paid",
+  //         onboarded_date: closedAt, // Assuming onboarded_date is same as closed_at
+  //       };
+  //     })
+  //     .filter(Boolean);
+
+  //   if (formattedRows.length === 0) {
+  //     alert("No valid rows to insert (possibly due to unmatched names).");
+  //     return;
+  //   }
+
+  //   try {
+  //     const { error } = await supabase
+  //       .from("sales_closure")
+  //       .insert(formattedRows);
+
+  //     if (error) {
+  //       console.error("Upload failed:", error);
+  //       alert(`Upload failed: ${error.message}`);
+  //       return;
+  //     }
+
+  //     alert(`🎉 Successfully uploaded ${formattedRows.length} records.`);
+  //     setUploadDialogOpen(false);
+  //     setCsvData([]);
+  //     setCsvFile(null);
+  //   } catch (err) {
+  //     console.error("Unexpected error:", err);
+  //     alert("An unexpected error occurred during upload");
+  //   }
+  // };
+
+
+// const handleCSVSubmit = async () => {
+//   if (csvData.length === 0) {
+//     alert("No CSV data to submit");
+//     return;
+//   }
+
+//   try {
+//     // Step 1: Fetch existing AWL IDs
+//     const { data: existingLeads, error: leadsError } = await supabase
+//       .from("leads")
+//       .select("business_id");
+
+//     if (leadsError) throw leadsError;
+
+//     const existingIds = (existingLeads || [])
+//       .map((l) => l.business_id)
+//       .filter(Boolean)
+//       .map((id) => parseInt(id?.replace("AWL-", ""), 10))
+//       .filter((n) => !isNaN(n));
+
+//     let awlCounter = existingIds.length > 0 ? Math.max(...existingIds) + 1 : 1;
+
+//     // Step 2: Prepare batch inserts
+//     const leadsToInsert = [];
+//     const salesToInsert = [];
+
+//     for (const row of csvData) {
+//       const name = row["Name"]?.trim();
+//       const phone = row["Phone number"]?.trim() || null;
+//       const email = row["email"]?.trim();
+//       const sale_value = parseFloat(row["Rate"]);
+//       const subscription_cycle = parseInt(row["Payment Frequency"], 10);
+//       const date = new Date(row["Onboarded date"]);
+
+//       const business_id = `AWL-${awlCounter++}`;
+
+//       leadsToInsert.push({
+//         name,
+//         email,
+//         phone,
+//         created_at: date.toISOString(),
+//         city: "Unknown",
+//         source: "Directly dumped",
+//         status: "Assigned",
+//         business_id,
+//         current_stage: "sale done",
+//       });
+
+//       salesToInsert.push({
+//         lead_id: business_id,
+//         lead_name: name,
+//         email,
+//         sale_value,
+//         subscription_cycle,
+//         payment_mode: "UPI",
+//         finance_status: "Paid",
+//         closed_at: date.toISOString(),
+//         onboarded_date: date.toISOString().split("T")[0],
+//       });
+//     }
+
+//     // Step 3: Insert to Supabase
+//     const { error: leadInsertError } = await supabase.from("leads").insert(leadsToInsert);
+//     if (leadInsertError) throw leadInsertError;
+
+//     const { error: saleInsertError } = await supabase.from("sales_closure").insert(salesToInsert);
+//     if (saleInsertError) throw saleInsertError;
+
+//     alert(`🎉 Inserted ${leadsToInsert.length} records successfully`);
+//     setUploadDialogOpen(false);
+//     setCsvData([]);
+//     setCsvFile(null);
+//   } catch (err) {
+//     console.error("❌ Upload failed:", err);
+//     const errorMsg = err instanceof Error ? err.message : String(err);
+//     alert(`Upload failed: ${errorMsg}`);
+//   }
+// };
+
+
+const handleCSVSubmit = async () => {
+  if (csvData.length === 0) {
+    alert("No CSV data to submit");
+    return;
+  }
+
+  try {
+    const salesToInsert = [];
+
+    for (const row of csvData) {
+      const lead_id = row["lead_id"]?.trim();
+      const name = row["Name"]?.trim();
+      const email = row["email"]?.trim();
+      // const phone = row["Phone number"]?.trim() || null;
+      const sale_value = parseFloat(row["Rate"]);
+      const subscription_cycle = parseInt(row["Payment Frequency"], 10);
+      const date = new Date(row["Onboarded date"]);
+
+      if (!lead_id || !name || !email || !sale_value || !subscription_cycle || isNaN(date.getTime())) {
+        console.warn("❌ Skipping invalid row:", row);
+        continue;
       }
-    });
 
-    const formattedRows = csvData
-      .map((row) => {
-        const trimmedName = row.Name?.trim();
-        const leadDetails = nameToLeadDetailsMap[trimmedName];
+      salesToInsert.push({
+        lead_id,
+        lead_name: name,
+        email,
+        // phone,
+        sale_value,
+        subscription_cycle,
+        payment_mode: "UPI",
+        finance_status: "Paid",
+        closed_at: date.toISOString(),
+        onboarded_date: date.toISOString().split("T")[0],
+      });
+    }
 
-        if (!leadDetails) {
-          console.warn(`❌ No lead info found for Name: ${trimmedName}`);
-          return null;
-        }
-        const closedAt = row.closed_at;
-
-        return {
-          lead_id: leadDetails.lead_id,
-          sale_value: Number(row.sale_value),
-          subscription_cycle: Number(row.subscription_cycle),
-          payment_mode: row.payment_mode,
-          closed_at: closedAt,
-          email: leadDetails.email,
-          finance_status: row.finance_status || "Paid",
-        };
-      })
-      .filter(Boolean);
-
-    if (formattedRows.length === 0) {
-      alert("No valid rows to insert (possibly due to unmatched names).");
+    if (salesToInsert.length === 0) {
+      alert("No valid rows to upload.");
       return;
     }
 
-    try {
-      const { error } = await supabase
-        .from("sales_closure")
-        .insert(formattedRows);
+    const { error } = await supabase.from("sales_closure").insert(salesToInsert);
 
-      if (error) {
-        console.error("Upload failed:", error);
-        alert(`Upload failed: ${error.message}`);
-        return;
-      }
+    if (error) throw error;
 
-      alert(`🎉 Successfully uploaded ${formattedRows.length} records.`);
-      setUploadDialogOpen(false);
-      setCsvData([]);
-      setCsvFile(null);
-    } catch (err) {
-      console.error("Unexpected error:", err);
-      alert("An unexpected error occurred during upload");
-    }
-  };
-
+    alert(`🎉 Successfully inserted ${salesToInsert.length} renewal records into sales_closure`);
+    setUploadDialogOpen(false);
+    setCsvData([]);
+    setCsvFile(null);
+  } catch (err) {
+    console.error("❌ Upload failed:", err);
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    alert(`Upload failed: ${errorMsg}`);
+  }
+};
 
   return (
     <>

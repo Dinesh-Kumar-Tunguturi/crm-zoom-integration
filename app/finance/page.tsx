@@ -46,6 +46,7 @@ interface SalesClosure {
   finance_status: FinanceStatus;
   leads?: { name: string };
   reason_for_close?: string;
+  onboarded_date?: string;
 }
 
 
@@ -159,6 +160,8 @@ type SalesClosureData = {
 
 export default function FinancePage() {
   const [sales, setSales] = useState<SalesClosure[]>([]);
+  const [allSales, setAllSales] = useState<SalesClosure[]>([]); // 🆕 every row – drives totals & charts
+
   const [searchTerm, setSearchTerm] = useState("");
   const [followUpFilter, setFollowUpFilter] = useState<"All dates" | "Today">("All dates");
   const [showCloseDialog, setShowCloseDialog] = useState(false);
@@ -194,64 +197,212 @@ const [paymentDate, setPaymentDate] = useState(new Date());
   }, []);
 
   useEffect(() => {
-    if (sales.length > 0) {
-      const breakdown = generateMonthlyRevenue(sales, selectedYear);
-      setMonthlyBreakdown(breakdown);
-    }
-  }, [sales, selectedYear]);
-  
-  
-
-  async function fetchSalesData() {
-    const { data: salesData, error: salesError } = await supabase
-      .from("sales_closure")
-      .select("*")
-      .order("closed_at", { ascending: false });
-
-    if (salesError) {
-      console.error("Error fetching sales data:", salesError);
-      return;
-    }
-
-    const leadIds = [...new Set(salesData.map((s) => s.lead_id))];
-
-    const { data: leadsData, error: leadsError } = await supabase
-  .from("leads")
-  .select("business_id, name")
-  .in("business_id", leadIds);
-
-if (leadsError) {
-  console.error("Error fetching leads:", leadsError);
-  return;
-}
-
-const { data: salesClosureData, error: closureError } = await supabase
-  .from("sales_closure")
-  .select("lead_id, lead_name");
-
-if (closureError) {
-  console.error("Error fetching sales_closure fallback names:", closureError);
-  return;
-}
-
-// 🧠 Create two maps
-const leadNameMap = new Map(leadsData.map((l) => [l.business_id, l.name]));
-const closureNameMap = new Map(salesClosureData.map((s) => [s.lead_id, s.lead_name]));
-
-// ✅ Final mapping with fallback logic
-const salesWithName = salesData.map((s) => {
-  const nameFromLeads = leadNameMap.get(s.lead_id);
-  const fallbackName = closureNameMap.get(s.lead_id);
-  return {
-    ...s,
-    leads: {
-      name: nameFromLeads || fallbackName || "-",
-    },
-  };
-});
-
-setSales(salesWithName as SalesClosure[]);
+  if (allSales.length > 0) {
+    const breakdown = generateMonthlyRevenue(allSales, selectedYear);
+    setMonthlyBreakdown(breakdown);
   }
+}, [allSales, selectedYear]);
+
+  
+  
+
+//   async function fetchSalesData() {
+//     const { data: salesData, error: salesError } = await supabase
+//       .from("sales_closure")
+//       .select("*")
+//       .order("closed_at", { ascending: false });
+
+//     if (salesError) {
+//       console.error("Error fetching sales data:", salesError);
+//       return;
+//     }
+
+//     const leadIds = [...new Set(salesData.map((s) => s.lead_id))];
+
+//     const { data: leadsData, error: leadsError } = await supabase
+//   .from("leads")
+//   .select("business_id, name")
+//   .in("business_id", leadIds);
+
+// if (leadsError) {
+//   console.error("Error fetching leads:", leadsError);
+//   return;
+// }
+
+// const { data: salesClosureData, error: closureError } = await supabase
+//   .from("sales_closure")
+//   .select("lead_id, lead_name");
+
+// if (closureError) {
+//   console.error("Error fetching sales_closure fallback names:", closureError);
+//   return;
+// }
+
+// // 🧠 Create two maps
+// const leadNameMap = new Map(leadsData.map((l) => [l.business_id, l.name]));
+// const closureNameMap = new Map(salesClosureData.map((s) => [s.lead_id, s.lead_name]));
+
+// // ✅ Final mapping with fallback logic
+// const salesWithName = salesData.map((s) => {
+//   const nameFromLeads = leadNameMap.get(s.lead_id);
+//   const fallbackName = closureNameMap.get(s.lead_id);
+//   return {
+//     ...s,
+//     leads: {
+//       name: nameFromLeads || fallbackName || "-",
+//     },
+//   };
+// });
+
+// setSales(salesWithName as SalesClosure[]);
+//   }
+
+
+// async function fetchSalesData() {
+
+  
+//   const { data: salesData, error: salesError } = await supabase
+//     .from("sales_closure")
+//     .select("*")
+//     .order("onboarded_date", { ascending: false });
+
+//   if (salesError) {
+//     console.error("Error fetching sales data:", salesError);
+//     return;
+//   }
+
+//   // 🧠 Keep only the latest record per lead_id
+//   const latestSalesMap = new Map<string, SalesClosure>();
+//   for (const record of salesData) {
+//     const existing = latestSalesMap.get(record.lead_id);
+//     if (!existing || new Date(record.closed_at) > new Date(existing.closed_at)) {
+//       latestSalesMap.set(record.lead_id, record);
+//     }
+//   }
+//   const filteredSalesData = Array.from(latestSalesMap.values());
+
+//   // 🧠 Fetch leads for name mapping
+//   const leadIds = filteredSalesData.map((s) => s.lead_id);
+//   const { data: leadsData, error: leadsError } = await supabase
+//     .from("leads")
+//     .select("business_id, name")
+//     .in("business_id", leadIds);
+
+//   if (leadsError) {
+//     console.error("Error fetching leads:", leadsError);
+//     return;
+//   }
+
+//   const { data: salesClosureData, error: closureError } = await supabase
+//     .from("sales_closure")
+//     .select("lead_id, lead_name");
+
+//   if (closureError) {
+//     console.error("Error fetching sales_closure fallback names:", closureError);
+//     return;
+//   }
+
+//   // 🧠 Join names
+//   const leadNameMap = new Map(leadsData.map((l) => [l.business_id, l.name]));
+//   const closureNameMap = new Map(salesClosureData.map((s) => [s.lead_id, s.lead_name]));
+
+//   const salesWithName = filteredSalesData.map((s) => {
+//     const nameFromLeads = leadNameMap.get(s.lead_id);
+//     const fallbackName = closureNameMap.get(s.lead_id);
+//     return {
+//       ...s,
+//       leads: {
+//         name: nameFromLeads || fallbackName || "-",
+//       },
+//     };
+//   });
+
+//   setSales(salesWithName as SalesClosure[]);
+// }
+
+
+async function fetchSalesData() {
+  /* ----------------------------------------------------------------
+     1️⃣  Pull EVERYTHING, sorted by onboarded_date (your UX need)
+  ---------------------------------------------------------------- */
+  const { data: rows, error } = await supabase
+    .from("sales_closure")
+    .select("*")
+    .order("onboarded_date", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching sales data:", error);
+    return;
+  }
+
+  /* ---------------------------------------------------------------
+     2️⃣  Stash full history for revenue maths / cards
+  ---------------------------------------------------------------- */
+  setAllSales(rows);   // <-- drives totals & charts
+
+  /* ---------------------------------------------------------------
+     3️⃣  Distil to *latest per lead_id* for the table
+         (we still compare on closed_at because “latest” = most recent closure)
+  ---------------------------------------------------------------- */
+  const latestMap = new Map<string, SalesClosure>();
+
+  for (const rec of rows) {
+    const existing = latestMap.get(rec.lead_id);
+    if (!existing || new Date(rec.closed_at) > new Date(existing.closed_at)) {
+      latestMap.set(rec.lead_id, rec);
+    }
+  }
+
+  // Keep table order identical to your old UX (latest onboarded first)
+  const latestRows = Array.from(latestMap.values()).sort(
+    (a, b) =>
+      new Date(b.onboarded_date ?? "").getTime() -
+      new Date(a.onboarded_date ?? "").getTime()
+  );
+
+  /* ---------------------------------------------------------------
+     4️⃣  Name mapping (unchanged, but we’ll reuse your same fallback)
+  ---------------------------------------------------------------- */
+  const leadIds = latestRows.map((r) => r.lead_id);
+
+  const { data: leads, error: leadsErr } = await supabase
+    .from("leads")
+    .select("business_id, name")
+    .in("business_id", leadIds);
+
+  if (leadsErr) {
+    console.error("Error fetching leads:", leadsErr);
+    return;
+  }
+
+  const { data: fallback, error: fbErr } = await supabase
+    .from("sales_closure")
+    .select("lead_id, lead_name");
+
+  if (fbErr) {
+    console.error("Error fetching fallback names:", fbErr);
+    return;
+  }
+
+  const leadNameMap    = new Map(leads.map((l) => [l.business_id, l.name]));
+  const fallbackNameMap = new Map(
+    fallback.map((f) => [f.lead_id, f.lead_name])
+  );
+
+  const tableReady = latestRows.map((r) => ({
+    ...r,
+    leads: {
+      name:
+        leadNameMap.get(r.lead_id) ||
+        fallbackNameMap.get(r.lead_id) ||
+        "-",
+    },
+  }));
+
+  setSales(tableReady);
+}
+
+
 
   
 // 🧾 Client Fields
@@ -392,14 +543,28 @@ useEffect(() => {
     }
   }
 
-  const totalRevenue = sales.reduce((sum, sale) => sum + sale.sale_value, 0);
-  const paidRevenue = sales.filter(s => s.finance_status === "Paid").reduce((sum, s) => sum + s.sale_value, 0);
-  const unpaidRevenue = sales.filter(s => s.finance_status === "Unpaid").reduce((sum, s) => sum + s.sale_value, 0);
-  const pausedRevenue = sales.filter(s => s.finance_status === "Paused").reduce((sum, s) => sum + s.sale_value, 0);
+  // const totalRevenue = sales.reduce((sum, sale) => sum + sale.sale_value, 0);
+  // const paidRevenue = sales.filter(s => s.finance_status === "Paid").reduce((sum, s) => sum + s.sale_value, 0);
+  // const unpaidRevenue = sales.filter(s => s.finance_status === "Unpaid").reduce((sum, s) => sum + s.sale_value, 0);
+  // const pausedRevenue = sales.filter(s => s.finance_status === "Paused").reduce((sum, s) => sum + s.sale_value, 0);
 
-  const paidCount = sales.filter(s => s.finance_status === "Paid").length;
-  const unpaidCount = sales.filter(s => s.finance_status === "Unpaid").length;
-  const pausedCount = sales.filter(s => s.finance_status === "Paused").length;
+  // const paidCount = sales.filter(s => s.finance_status === "Paid").length;
+  // const unpaidCount = sales.filter(s => s.finance_status === "Unpaid").length;
+  // const pausedCount = sales.filter(s => s.finance_status === "Paused").length;
+
+  const totalRevenue = allSales.reduce((sum, s) => sum + s.sale_value, 0);
+
+const paidRevenue   = allSales.filter(s => s.finance_status === "Paid")
+                              .reduce((sum, s) => sum + s.sale_value, 0);
+const unpaidRevenue = allSales.filter(s => s.finance_status === "Unpaid")
+                              .reduce((sum, s) => sum + s.sale_value, 0);
+const pausedRevenue = allSales.filter(s => s.finance_status === "Paused")
+                              .reduce((sum, s) => sum + s.sale_value, 0);
+
+const paidCount   = allSales.filter(s => s.finance_status === "Paid").length;
+const unpaidCount = allSales.filter(s => s.finance_status === "Unpaid").length;
+const pausedCount = allSales.filter(s => s.finance_status === "Paused").length;
+
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-US", {
