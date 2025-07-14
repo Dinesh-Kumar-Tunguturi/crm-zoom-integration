@@ -35,22 +35,22 @@ interface Lead {
   created_at: string;
 }
 
-// interface SaleClosing {
-//   sale_value: number;
-//   subscription_cycle: 15 | 30 | 60 | 90; // Subscription cycle in days
-//   payment_mode: "UPI" | "PayPal" | "Bank Transfer" | "Stripe" | "Credit/Debit Card" | "Other";
-// }
-
 interface SaleClosing {
-  base_value: number;                 // price for 1-month
-  subscription_cycle: 15 | 30 | 60 | 90;
+  sale_value: number;
+  subscription_cycle: 15 | 30 | 60 | 90; // Subscription cycle in days
   payment_mode: "UPI" | "PayPal" | "Bank Transfer" | "Stripe" | "Credit/Debit Card" | "Other";
-  closed_at: string;                  // YYYY-MM-DD picked from calendar
-  resume_value: number;
-  portfolio_value: number;
-  linkedin_value: number;
-  github_value: number;
 }
+
+// interface SaleClosing {
+//   base_value: number;                 // price for 1-month
+//   subscription_cycle: 15 | 30 | 60 | 90;
+//   payment_mode: "UPI" | "PayPal" | "Bank Transfer" | "Stripe" | "Credit/Debit Card" | "Other";
+//   closed_at: string;                  // YYYY-MM-DD picked from calendar
+//   resume_value: number;
+//   portfolio_value: number;
+//   linkedin_value: number;
+//   github_value: number;
+// }
 
 
 interface FollowUp {
@@ -92,22 +92,22 @@ export default function SalesPage() {
   const [totalAmount, setTotalAmount] = useState(0);
 const [subscriptionEndsOn, setSubscriptionEndsOn] = useState<string>("");
 
-  // const [saleData, setSaleData] = useState<SaleClosing>({
-  //   sale_value: 0,
-  //   subscription_cycle: "" as unknown as 15 | 30 | 60 | 90,  // ← trick to allow placeholder
-  //   payment_mode: "" as unknown as SaleClosing["payment_mode"]
-  // });
-
   const [saleData, setSaleData] = useState<SaleClosing>({
-  base_value: 0,
-  subscription_cycle: "" as unknown as 15 | 30 | 60 | 90,
-  payment_mode: "" as unknown as SaleClosing["payment_mode"],
-  closed_at: "",
-  resume_value: 0,
-  portfolio_value: 0,
-  linkedin_value: 0,
-  github_value: 0,
-});
+    sale_value: 0,
+    subscription_cycle: "" as unknown as 15 | 30 | 60 | 90,  // ← trick to allow placeholder
+    payment_mode: "" as unknown as SaleClosing["payment_mode"]
+  });
+
+//   const [saleData, setSaleData] = useState<SaleClosing>({
+//   base_value: 0,
+//   subscription_cycle: "" as unknown as 15 | 30 | 60 | 90,
+//   payment_mode: "" as unknown as SaleClosing["payment_mode"],
+//   closed_at: "",
+//   resume_value: 0,
+//   portfolio_value: 0,
+//   linkedin_value: 0,
+//   github_value: 0,
+// });
 
   useEffect(() => { fetchLeads() }, []);
 
@@ -134,37 +134,37 @@ const [subscriptionEndsOn, setSubscriptionEndsOn] = useState<string>("");
     }
   };
   /* 🔄 Re-compute total every time a relevant field changes */
-useEffect(() => {
-  const multiplier =
-    saleData.subscription_cycle === 15 ? 0.5 :
-    saleData.subscription_cycle === 30 ? 1   :
-    saleData.subscription_cycle === 60 ? 2   : 3;          // 90 days
+// useEffect(() => {
+//   const multiplier =
+//     saleData.subscription_cycle === 15 ? 0.5 :
+//     saleData.subscription_cycle === 30 ? 1   :
+//     saleData.subscription_cycle === 60 ? 2   : 3;          // 90 days
 
-  const addOns =
-    saleData.resume_value +
-    saleData.portfolio_value +
-    saleData.linkedin_value +
-    saleData.github_value;
+//   const addOns =
+//     saleData.resume_value +
+//     saleData.portfolio_value +
+//     saleData.linkedin_value +
+//     saleData.github_value;
 
-  setTotalAmount(saleData.base_value * multiplier + addOns);
-}, [
-  saleData.base_value,
-  saleData.subscription_cycle,
-  saleData.resume_value,
-  saleData.portfolio_value,
-  saleData.linkedin_value,
-  saleData.github_value,
-]);
+//   setTotalAmount(saleData.base_value * multiplier + addOns);
+// }, [
+//   saleData.base_value,
+//   saleData.subscription_cycle,
+//   saleData.resume_value,
+//   saleData.portfolio_value,
+//   saleData.linkedin_value,
+//   saleData.github_value,
+// ]);
 
 /* 📅  Compute subscription-end date preview */
-useEffect(() => {
-  if (!saleData.closed_at || !saleData.subscription_cycle) {
-    setSubscriptionEndsOn(""); return;
-  }
-  const start = new Date(saleData.closed_at);
-  start.setDate(start.getDate() + saleData.subscription_cycle);
-  setSubscriptionEndsOn(start.toISOString().slice(0, 10));
-}, [saleData.closed_at, saleData.subscription_cycle]);
+// useEffect(() => {
+//   if (!saleData.closed_at || !saleData.subscription_cycle) {
+//     setSubscriptionEndsOn(""); return;
+//   }
+//   const start = new Date(saleData.closed_at);
+//   start.setDate(start.getDate() + saleData.subscription_cycle);
+//   setSubscriptionEndsOn(start.toISOString().slice(0, 10));
+// }, [saleData.closed_at, saleData.subscription_cycle]);
 
 
   const fetchFollowUps = async () => {
@@ -330,120 +330,120 @@ useEffect(() => {
     setPreviousStage(null);
   };
 
-  // const handleSaleClosureSubmit = async () => {
-  //   if (!selectedLead || !pendingStageUpdate) return;
-
-  //   if (!saleData.payment_mode || !saleData.subscription_cycle) {
-  //     alert("Please select payment mode and cycle");
-  //     return;
-  //   }
-  //   setFollowUpsData((prev) =>
-  //     prev.map((l) =>
-  //       l.id === pendingStageUpdate.leadId ? { ...l, current_stage: pendingStageUpdate.stage } : l
-  //     )
-  //   );
-
-  //   const { error: saleError } = await supabase.from("sales_closure").insert([{
-  //     lead_id: selectedLead.business_id,
-  //     sale_value: saleData.sale_value,
-  //     lead_name: selectedLead.client_name,
-  //     subscription_cycle: saleData.subscription_cycle,
-  //     payment_mode: saleData.payment_mode,
-  //     email: selectedLead.email,
-  //   }]);
-
-  //   if (saleError) {
-  //     console.error("Error inserting sale closure:", saleError);
-  //     alert(`Failed to save sale closure: ${saleError.message}`);
-  //     return;
-  //   }
-
-  //   const { error: stageError } = await supabase
-  //     .from("leads")
-  //     .update({ current_stage: "Sale Done" })
-  //     .eq("id", pendingStageUpdate.leadId);
-
-  //   if (stageError) {
-  //     console.error("Error updating stage:", stageError);
-  //     return;
-  //   }
-
-  //   setSaleClosingDialogOpen(false);
-  //   setPendingStageUpdate(null);
-  //   setPreviousStage(null);
-
-  //   setSaleData({
-  //     sale_value: 0,
-  //     subscription_cycle: "" as unknown as 15 | 30 | 60 | 90, // Reset to placeholder
-  //     payment_mode: "" as unknown as SaleClosing["payment_mode"],
-  //   });
-  //   // After updating stage and call_history
-  //   const updatedFollowUps = await fetchFollowUps();
-  //   setFollowUpsData(updatedFollowUps);
-
-  // };
-
   const handleSaleClosureSubmit = async () => {
-  if (!selectedLead || !pendingStageUpdate) return;
+    if (!selectedLead || !pendingStageUpdate) return;
 
-setFollowUpsData(prev =>
-   prev.map(f =>
-     f.id === pendingStageUpdate.leadId ? { ...f, current_stage: "Sale Done" } : f
-   )
- );
+    if (!saleData.payment_mode || !saleData.subscription_cycle) {
+      alert("Please select payment mode and cycle");
+      return;
+    }
+    setFollowUpsData((prev) =>
+      prev.map((l) =>
+        l.id === pendingStageUpdate.leadId ? { ...l, current_stage: pendingStageUpdate.stage } : l
+      )
+    );
 
-  const {
-    base_value, subscription_cycle, payment_mode, closed_at,
-    resume_value, portfolio_value, linkedin_value, github_value,
-  } = saleData;
-
-  if (!payment_mode || !subscription_cycle || !closed_at) {
-    alert("Please fill all required fields."); return;
-  }
-
-  /* 💰 Final total already computed */
-  const saleTotal = totalAmount;
-
-  try {
-    const { error: insertErr } = await supabase.from("sales_closure").insert({
+    const { error: saleError } = await supabase.from("sales_closure").insert([{
       lead_id: selectedLead.business_id,
+      sale_value: saleData.sale_value,
       lead_name: selectedLead.client_name,
+      subscription_cycle: saleData.subscription_cycle,
+      payment_mode: saleData.payment_mode,
       email: selectedLead.email,
-      payment_mode,
-      subscription_cycle,
-      sale_value: saleTotal,
-         closed_at: new Date(closed_at).toISOString(),
-      resume_sale_value: resume_value || null,
-      portfolio_sale_value: portfolio_value || null,
-      linkedin_sale_value: linkedin_value || null,
-      github_sale_value: github_value || null,
-    });
-    if (insertErr) throw insertErr;
+    }]);
 
-    await supabase.from("leads")
+    if (saleError) {
+      console.error("Error inserting sale closure:", saleError);
+      alert(`Failed to save sale closure: ${saleError.message}`);
+      return;
+    }
+
+    const { error: stageError } = await supabase
+      .from("leads")
       .update({ current_stage: "Sale Done" })
       .eq("id", pendingStageUpdate.leadId);
 
-    // ✅ UI clean-up
-    setSaleClosingDialogOpen(false);
-    // setSaleData(prev => ({ ...prev, base_value: 0 }));
-      setSaleData({
-  base_value: 0,
-     subscription_cycle: "" as unknown as 15|30|60|90,
-     payment_mode: "" as unknown as SaleClosing["payment_mode"],
-     closed_at: "",
-     resume_value: 0,
-     portfolio_value: 0,
-     linkedin_value: 0,
-     github_value: 0,
-   });
-    setPendingStageUpdate(null); setPreviousStage(null);
-    const upd = await fetchFollowUps(); setFollowUpsData(upd);
+    if (stageError) {
+      console.error("Error updating stage:", stageError);
+      return;
+    }
 
-  } catch (err: any) {
-    console.error("Sale insert failed:", err.message); alert("Failed to save sale.");
-  }
-};
+    setSaleClosingDialogOpen(false);
+    setPendingStageUpdate(null);
+    setPreviousStage(null);
+
+    setSaleData({
+      sale_value: 0,
+      subscription_cycle: "" as unknown as 15 | 30 | 60 | 90, // Reset to placeholder
+      payment_mode: "" as unknown as SaleClosing["payment_mode"],
+    });
+    // After updating stage and call_history
+    const updatedFollowUps = await fetchFollowUps();
+    setFollowUpsData(updatedFollowUps);
+
+  };
+
+//   const handleSaleClosureSubmit = async () => {
+//   if (!selectedLead || !pendingStageUpdate) return;
+
+// setFollowUpsData(prev =>
+//    prev.map(f =>
+//      f.id === pendingStageUpdate.leadId ? { ...f, current_stage: "Sale Done" } : f
+//    )
+//  );
+
+//   const {
+//     base_value, subscription_cycle, payment_mode, closed_at,
+//     resume_value, portfolio_value, linkedin_value, github_value,
+//   } = saleData;
+
+//   if (!payment_mode || !subscription_cycle || !closed_at) {
+//     alert("Please fill all required fields."); return;
+//   }
+
+//   /* 💰 Final total already computed */
+//   const saleTotal = totalAmount;
+
+//   try {
+//     const { error: insertErr } = await supabase.from("sales_closure").insert({
+//       lead_id: selectedLead.business_id,
+//       lead_name: selectedLead.client_name,
+//       email: selectedLead.email,
+//       payment_mode,
+//       subscription_cycle,
+//       sale_value: saleTotal,
+//          closed_at: new Date(closed_at).toISOString(),
+//       resume_sale_value: resume_value || null,
+//       portfolio_sale_value: portfolio_value || null,
+//       linkedin_sale_value: linkedin_value || null,
+//       github_sale_value: github_value || null,
+//     });
+//     if (insertErr) throw insertErr;
+
+//     await supabase.from("leads")
+//       .update({ current_stage: "Sale Done" })
+//       .eq("id", pendingStageUpdate.leadId);
+
+//     // ✅ UI clean-up
+//     setSaleClosingDialogOpen(false);
+//     // setSaleData(prev => ({ ...prev, base_value: 0 }));
+//       setSaleData({
+//   base_value: 0,
+//      subscription_cycle: "" as unknown as 15|30|60|90,
+//      payment_mode: "" as unknown as SaleClosing["payment_mode"],
+//      closed_at: "",
+//      resume_value: 0,
+//      portfolio_value: 0,
+//      linkedin_value: 0,
+//      github_value: 0,
+//    });
+//     setPendingStageUpdate(null); setPreviousStage(null);
+//     const upd = await fetchFollowUps(); setFollowUpsData(upd);
+
+//   } catch (err: any) {
+//     console.error("Sale insert failed:", err.message); alert("Failed to save sale.");
+//   }
+// };
 
 
   const totalLeadsCount = leads.length;
@@ -817,7 +817,7 @@ setFollowUpsData(prev =>
 
             <DialogContent onPointerDownOutside={(e) => e.preventDefault()}>
               <DialogHeader><DialogTitle>Close Sale</DialogTitle></DialogHeader>
-              {/* <div className="space-y-4">
+              <div className="space-y-4">
                 <div><Label>Sale Value</Label>
                   <Input type="number" value={saleData.sale_value}
                     onChange={(e) => setSaleData(prev => ({ ...prev, sale_value: Number(e.target.value) }))} />
@@ -851,11 +851,10 @@ setFollowUpsData(prev =>
                     </SelectContent>
                   </Select>
                 </div>
-              </div> */}
+              </div>
 
-<div className="space-y-4">
+{/* <div className="space-y-4">
 
-  {/* 📅  Close-sale date */}
   <div>
     <Label>Sale Closed On</Label>
     <Input
@@ -866,7 +865,6 @@ setFollowUpsData(prev =>
     />
   </div>
 
-  {/* 💵  Monthly price */}
   <div>
     <Label>Base Sale Value (1 month)</Label>
     <Input
@@ -877,7 +875,6 @@ setFollowUpsData(prev =>
     />
   </div>
 
-  {/* 🔁  Cycle selector */}
   <div>
     <Label>Subscription Cycle</Label>
     <Select
@@ -894,7 +891,6 @@ setFollowUpsData(prev =>
     </Select>
   </div>
 
-  {/* ➕  Add-on prices */}
   <div className="grid grid-cols-2 gap-4">
     <div>
       <Label>Resume Enhancement ($)</Label>
@@ -918,7 +914,6 @@ setFollowUpsData(prev =>
     </div>
   </div>
 
-  {/* 🧮  Auto-calculated preview */}
   <div className="p-3 bg-gray-50 rounded-md text-sm">
     <p><strong>Total Amount →</strong> ${totalAmount.toLocaleString()}</p>
     {subscriptionEndsOn && (
@@ -929,7 +924,6 @@ setFollowUpsData(prev =>
     )}
   </div>
 
-  {/* 💳 Payment mode */}
   <div>
     <Label>Payment Mode</Label>
     <Select value={saleData.payment_mode}
@@ -945,7 +939,7 @@ setFollowUpsData(prev =>
       </SelectContent>
     </Select>
   </div>
-</div>
+</div> */}
 
               <DialogFooter><Button onClick={handleSaleClosureSubmit}>Save</Button></DialogFooter>
             </DialogContent>

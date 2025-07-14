@@ -1225,7 +1225,7 @@ setTimeout(() => setFeedbackMsg(null), 2000);
 ) : (
   <Button
     className="bg-orange-500 hover:bg-orange-400 text-white"
-    onClick={() => setActiveTabView("notOnboarded")}
+    // onClick={() => setActiveTabView("notOnboarded")}
   >
     Not Onboarded Clients
   </Button>
