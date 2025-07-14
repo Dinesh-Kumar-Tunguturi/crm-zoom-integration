@@ -123,8 +123,7 @@ export default function AccountManagementPage() {
         const { data: rawSalesData, error: salesError } = await supabase
           .from("sales_closure")
           .select("lead_id, email, onboarded_date")
-              .not("onboarded_date", "is", null)
-
+          .not("onboarded_date", "is", null)
           .order("onboarded_date", { ascending: false });
 
         if (salesError || !rawSalesData) {
