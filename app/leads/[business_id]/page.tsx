@@ -28,6 +28,7 @@ export default function LeadProfilePage() {
   const [loading, setLoading] = useState(true);
   const [saleHistory, setSaleHistory] = useState<any[]>([]);
   const [callHistory, setCallHistory] = useState<any[]>([]);
+  const [feedbackList, setFeedbackList] = useState<any[]>([]);
 
 
 
@@ -78,6 +79,28 @@ const fetchCallHistory = async () => {
 
   setCallHistory(data);
 };
+const fetchClientFeedback = async () => {
+  const { data, error } = await supabase
+    .from("client_feedback")
+    .select("*")
+    .eq("lead_id", business_id)
+    .order("id", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching client feedback:", error.message);
+    return;
+  }
+
+  setFeedbackList(data);
+};
+
+if (business_id) {
+  fetchLead();
+  fetchSalesHistory();
+  fetchCallHistory();
+  fetchClientFeedback(); // ✅ New
+}
+
 
 if (business_id) {
   fetchLead();
@@ -176,7 +199,7 @@ if (business_id) {
       <div className="overflow-x-auto">
         <table className="min-w-full text-sm border border-gray-300">
           <thead>
-            <tr className="bg-gray-100 text-left">
+            <tr className="bg-green-100 text-left">
               <th className="p-2 border">Follow-up Date</th>
               <th className="p-2 border">Stage</th>
               <th className="p-2 border">Notes</th>
@@ -210,13 +233,41 @@ if (business_id) {
 
   {/* 3️⃣ Client Feedback (Left, Bottom) */}
   <Card className="h-full col-span-1 row-span-1">
-    <CardHeader>
-      <CardTitle className="text-2xl font-bold">Client Feedback</CardTitle>
-    </CardHeader>
-    <CardContent className="text-gray-500 italic">
-      Feedback section will appear here.
-    </CardContent>
-  </Card>
+  <CardHeader>
+    <CardTitle className="text-2xl font-bold">Client Feedback</CardTitle>
+  </CardHeader>
+  <CardContent>
+    {feedbackList.length === 0 ? (
+      <div className="text-gray-500 italic">No feedback from this client yet.</div>
+    ) : (
+      <div className="overflow-x-auto">
+        <table className="min-w-full text-sm border border-gray-300">
+          <thead>
+            <tr className="bg-blue-100 text-left">
+              <th className="p-2 border">Email</th>
+              <th className="p-2 border">Emotion</th>
+              <th className="p-2 border">Rating</th>
+              <th className="p-2 border">Renew?</th>
+              <th className="p-2 border">Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            {feedbackList.map((fb, index) => (
+              <tr key={index} className="border-t hover:bg-gray-50">
+                <td className="p-2 border">{fb.email || "-"}</td>
+                <td className="p-2 border capitalize">{fb.client_emotion || "-"}</td>
+                <td className="p-2 border">{fb.rating || "-"}</td>
+                <td className="p-2 border capitalize">{fb.renew_status || "-"}</td>
+                <td className="p-2 border">{fb.notes || "-"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )}
+  </CardContent>
+</Card>
+
 
   {/* 4️⃣ Sale Done History (Right, Bottom) */}
   <Card className="h-full col-span-2 row-span-1">
@@ -230,7 +281,7 @@ if (business_id) {
       <div className="overflow-x-auto">
         <table className="min-w-full text-sm border border-gray-300">
           <thead>
-            <tr className="bg-gray-100 text-left">
+            <tr className="bg-yellow-100 text-left">
               <th className="p-2 border">Name</th>
               <th className="p-2 border">Sale Value</th>
               <th className="p-2 border">Payment mode</th>
@@ -245,7 +296,7 @@ if (business_id) {
             {saleHistory.map((sale, index) => (
               <tr key={index} className="border-t hover:bg-gray-50">
                 <td className="p-2 border">{sale.lead_name || "-"}</td>
-                <td className="p-2 border">₹{sale.sale_value}</td>
+                <td className="p-2 border">${sale.sale_value}</td>
                 <td className="p-2 border">{sale.payment_mode}</td>
                 <td className="p-2 border">{sale.subscription_cycle} days</td>
                 <td className="p-2 border">{sale.assigned_to || "Not Assigned"}</td>

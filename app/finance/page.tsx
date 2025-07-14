@@ -357,12 +357,17 @@ async function fetchSalesData() {
   /* ----------------------------------------------------------------
      1️⃣  Pull EVERYTHING, sorted by onboarded_date (your UX need)
   ---------------------------------------------------------------- */
-  const { data: rows, error } = await supabase
-    .from("sales_closure")
-    .select("*")
-    .not("onboarded_date", "is", null)
+  // const { data: rows, error } = await supabase
+  //   .from("sales_closure")
+  //   .select("*")
+  //   .not("onboarded_date", "is", null)
+  //   .order("onboarded_date", { ascending: false });
 
-    .order("onboarded_date", { ascending: false });
+  const { data: rows, error } = await supabase
+  .from("sales_closure")
+  .select("*")
+  .order("closed_at", { ascending: false }); // fetch ALL records
+
 
   if (error) {
     console.error("Error fetching sales data:", error);
@@ -373,6 +378,7 @@ async function fetchSalesData() {
      2️⃣  Stash full history for revenue maths / cards
   ---------------------------------------------------------------- */
   setAllSales(rows);   // <-- drives totals & charts
+const onboardedRows = rows.filter((r) => r.onboarded_date);
 
   /* ---------------------------------------------------------------
      3️⃣  Distil to *latest per lead_id* for the table
@@ -380,7 +386,7 @@ async function fetchSalesData() {
   ---------------------------------------------------------------- */
   const latestMap = new Map<string, SalesClosure>();
 
-  for (const rec of rows) {
+  for (const rec of onboardedRows) {
     const existing = latestMap.get(rec.lead_id);
     if (!existing || new Date(rec.closed_at) > new Date(existing.closed_at)) {
       latestMap.set(rec.lead_id, rec);
@@ -1219,7 +1225,7 @@ setTimeout(() => setFeedbackMsg(null), 2000);
 ) : (
   <Button
     className="bg-orange-500 hover:bg-orange-400 text-white"
-    // onClick={() => setActiveTabView("notOnboarded")}
+    onClick={() => setActiveTabView("notOnboarded")}
   >
     Not Onboarded Clients
   </Button>

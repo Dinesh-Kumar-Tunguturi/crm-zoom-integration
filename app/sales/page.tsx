@@ -288,6 +288,7 @@ export default function SalesPage() {
     const { error: saleError } = await supabase.from("sales_closure").insert([{
       lead_id: selectedLead.business_id,
       sale_value: saleData.sale_value,
+      lead_name: selectedLead.client_name,
       subscription_cycle: saleData.subscription_cycle,
       payment_mode: saleData.payment_mode,
       email: selectedLead.email,
