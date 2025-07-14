@@ -38,8 +38,9 @@ interface Lead {
 interface SaleClosing {
   sale_value: number;
   subscription_cycle: 15 | 30 | 60 | 90; // Subscription cycle in days
-  payment_mode: "UPI" | "Card" | "Bank Transfer" | "Cash";
+  payment_mode: "UPI" | "PayPal" | "Bank Transfer" | "Stripe" | "Credit/Debit Card" | "Other";
 }
+
 
 interface FollowUp {
   follow_up_date: string;
@@ -719,9 +720,12 @@ export default function SalesPage() {
                     <SelectTrigger><SelectValue placeholder="Select payment mode" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="UPI">UPI</SelectItem>
-                      <SelectItem value="Card">Card</SelectItem>
+                      <SelectItem value="PayPal">PayPal</SelectItem>
                       <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
-                      <SelectItem value="Cash">Cash</SelectItem>
+                      <SelectItem value="Stripe">Stripe</SelectItem>
+                      <SelectItem value="Credit/Debit Card">Credit/Debit Card</SelectItem>
+                      <SelectItem value="Other">Other</SelectItem>
+
                     </SelectContent>
                   </Select>
                 </div>

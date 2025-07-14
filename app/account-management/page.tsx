@@ -122,15 +122,15 @@ export default function AccountManagementPage() {
 
         const { data: rawSalesData, error: salesError } = await supabase
           .from("sales_closure")
-          .select("lead_id, email, closed_at")
-          .order("closed_at", { ascending: false });
+          .select("lead_id, email, onboarded_date")
+          .order("onboarded_date", { ascending: false });
 
         if (salesError || !rawSalesData) {
           console.error("❌ sales_closure fetch failed", salesError);
           return;
         }
 
-        const salesDataMap = new Map<string, { lead_id: string; email: string; closed_at: string }>();
+        const salesDataMap = new Map<string, { lead_id: string; email: string; onboarded_date: string }>();
 
         for (const row of rawSalesData) {
           if (!salesDataMap.has(row.lead_id)) {
@@ -177,7 +177,7 @@ export default function AccountManagementPage() {
             email: sale.email || lead.email || "unknown@example.com",
             phone: lead.phone || "N/A",
             assigned_to: lead.assigned_to || "Unassigned",
-            created_at: sale.closed_at,
+            created_at: sale.onboarded_date,
             stage: (call?.current_stage as AccountStage) || "DNP",
             follow_ups: [],
             feedback: undefined,

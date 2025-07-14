@@ -14,6 +14,8 @@ import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner"; // or wherever your toast system comes from
+
 
 import {
   BarChart,
@@ -164,6 +166,11 @@ export default function FinancePage() {
 const [actionSelections, setActionSelections] = useState<Record<string, string>>({});
 const [onboardDate, setOnboardDate] = useState<Date | null>(null);
 const [subscriptionMonths, setSubscriptionMonths] = useState("");  // "1" | "2" | "3" | "0.5"
+const [activeTabView, setActiveTabView] = useState<"main" | "notOnboarded">("main");
+const [notOnboardedClients, setNotOnboardedClients] = useState<any[]>([]);
+const [loadingNotOnboarded, setLoadingNotOnboarded] = useState(false);
+const [feedbackMsg, setFeedbackMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
 
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -207,7 +214,28 @@ const [paymentDate, setPaymentDate] = useState(new Date());
   }
 }, [allSales, selectedYear]);
 
-  
+  useEffect(() => {
+  if (activeTabView === "notOnboarded") {
+    fetchNotOnboardedClients();
+  }
+}, [activeTabView]);
+
+const fetchNotOnboardedClients = async () => {
+  setLoadingNotOnboarded(true);
+  const { data, error } = await supabase
+    .from("sales_closure")
+    .select(`id, lead_id, lead_name, email, sale_value, subscription_cycle,  closed_at`)
+    .is("onboarded_date", null);
+
+  if (error) {
+    console.error("Error fetching not onboarded clients:", error);
+  } else {
+    setNotOnboardedClients(data || []);
+  }
+
+  setLoadingNotOnboarded(false);
+};
+
   
 
 //   async function fetchSalesData() {
@@ -332,6 +360,8 @@ async function fetchSalesData() {
   const { data: rows, error } = await supabase
     .from("sales_closure")
     .select("*")
+    .not("onboarded_date", "is", null)
+
     .order("onboarded_date", { ascending: false });
 
   if (error) {
@@ -791,12 +821,22 @@ async function handleOnboardClientSubmit() {
 
 if (leadsCountError) throw leadsCountError;
 
-const maxId = existingLeads
-  ?.map((lead) => parseInt((lead.business_id || "").split("-")[1]))
-  .filter((num) => !isNaN(num))
-  .sort((a, b) => b - a)[0] || 0;
+// const maxId = existingLeads
+//   ?.map((lead) => parseInt((lead.business_id || "").split("-")[1]))
+//   .filter((num) => !isNaN(num))
+//   .sort((a, b) => b - a)[0] || 0;
 
-const newLeadId = `AWL-${maxId + 1}`;
+// const newLeadId = `AWL-${maxId + 1}`;
+
+// 👇 Call your DB-side function to generate the next ID
+const { data: idResult, error: idError } = await supabase.rpc('generate_custom_lead_id');
+
+if (idError || !idResult) {
+  console.error("❌ Failed to generate lead ID:", idError);
+  return toast.error("Could not generate Lead ID. Try again.");
+}
+
+const newLeadId = idResult; // Will be something like "AWL-187"
 
     
     // 2. Parse sale values (treat empty as 0)
@@ -1041,6 +1081,29 @@ async function insertZeroSaleRow(sale: SalesClosure, status: FinanceStatus) {
   alert(`Status marked as ${status} with 0 sale value.`);
 }
 
+const handleOnboardClient = async (clientId: string) => {
+  const today = new Date().toISOString();
+
+  const { error } = await supabase
+    .from("sales_closure")
+    .update({ onboarded_date: today })
+    .eq("id", clientId);
+
+  if (error) {
+  console.error("Failed to onboard client:", error);
+  setFeedbackMsg({ type: "error", text: "❌ Failed to onboard client. Try again." });
+} else {
+  setFeedbackMsg({ type: "success", text: "✅ Client onboarded successfully." });
+  setNotOnboardedClients((prev) => prev.filter((c) => c.id !== clientId));
+  await fetchSalesData();
+}
+
+// Clear message after 3 seconds
+setTimeout(() => setFeedbackMsg(null), 2000);
+
+    
+};
+
 
   return (
     <ProtectedRoute allowedRoles={["Finance", "Super Admin"]}>
@@ -1106,6 +1169,16 @@ async function insertZeroSaleRow(sale: SalesClosure, status: FinanceStatus) {
             </Card>
           </div>
 
+{/* {feedbackMsg && (
+  <div
+    className={`p-3 rounded-md text-white mb-4 ${
+      feedbackMsg.type === "success" ? "bg-green-600" : "bg-red-600"
+    }`}
+  >
+    {feedbackMsg.text}
+  </div>
+)} */}
+
           <div className="flex items-center justify-between mt-4">
             <Input
               placeholder="Search by email or lead_id"
@@ -1135,8 +1208,97 @@ async function insertZeroSaleRow(sale: SalesClosure, status: FinanceStatus) {
                   <SelectItem value="Today">Today</SelectItem>
                 </SelectContent>
               </Select>
+
+              {activeTabView === "notOnboarded" ? (
+  <Button
+    className="bg-gray-700 hover:bg-gray-600 text-white"
+    onClick={() => setActiveTabView("main")}
+  >
+    ← Back to All Clients
+  </Button>
+) : (
+  <Button
+    className="bg-orange-500 hover:bg-orange-400 text-white"
+    // onClick={() => setActiveTabView("notOnboarded")}
+  >
+    Not Onboarded Clients
+  </Button>
+)}
+
             </div>
           </div>
+
+{activeTabView === "notOnboarded" ? (
+  // 🔁 NEW TAB: Not Onboarded Clients Table
+  <div className="rounded-md border mt-4">
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>S.No</TableHead>
+          <TableHead>Client Id</TableHead>
+          <TableHead>Name</TableHead>
+          <TableHead>Email</TableHead>
+          <TableHead>Sale Value</TableHead>
+          <TableHead>Subscription Cycle</TableHead>
+          <TableHead>Assigned To</TableHead>
+          <TableHead>Stage</TableHead>
+          <TableHead>Created At</TableHead>
+          <TableHead>Action</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {loadingNotOnboarded ? (
+          <TableRow>
+            <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+              Loading...
+            </TableCell>
+          </TableRow>
+        ) : notOnboardedClients.length === 0 ? (
+          <TableRow>
+            <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+              All clients are onboarded 🎉
+            </TableCell>
+          </TableRow>
+        ) : (
+          notOnboardedClients.map((client, index) => (
+            <TableRow key={client.id}>
+              <TableCell>{index + 1}</TableCell>
+              <TableCell>{client.lead_id}</TableCell>
+              <TableCell>{client.lead_name || "-"}</TableCell>
+              <TableCell>{client.email || "-"}</TableCell>
+              <TableCell>${client.sale_value}</TableCell>
+              <TableCell>{client.subscription_cycle} days</TableCell>
+              <TableCell>Finance Team A</TableCell>
+              <TableCell>Not Onboarded</TableCell>
+              <TableCell>{new Date(client.closed_at).toLocaleDateString()}</TableCell>
+              <TableCell>
+                <Button
+                  size="sm"
+                  className="bg-green-600 text-white"
+                  onClick={() => handleOnboardClient(client.id)}
+                >
+                  Onboard
+                </Button>
+              </TableCell>
+            </TableRow>
+          ))
+        )}
+      </TableBody>
+    </Table>
+    {feedbackMsg && (
+  <div
+    className={`p-3 rounded-md text-white mb-4 ${
+      feedbackMsg.type === "success" ? "bg-green-600" : "bg-red-600"
+    }`}
+  >
+    {feedbackMsg.text}
+  </div>
+)}
+  </div>
+) : (
+  // 🔁 EXISTING MAIN TABLE STAYS HERE
+ 
+
 
           <div className="rounded-md border mt-4">
             <Table>
@@ -1150,7 +1312,9 @@ async function insertZeroSaleRow(sale: SalesClosure, status: FinanceStatus) {
                   <TableHead>Subscription Cycle</TableHead>
                   <TableHead>Assigned To</TableHead>
                   <TableHead>Stage</TableHead>
-                  <TableHead>Created At</TableHead>
+                  <TableHead>saleDone At</TableHead>
+                  <TableHead>Onboarded At</TableHead>
+
                   <TableHead>Deadline</TableHead>
                   <TableHead>Actions</TableHead>
                   <TableHead>Reason for closed</TableHead>
@@ -1169,11 +1333,9 @@ async function insertZeroSaleRow(sale: SalesClosure, status: FinanceStatus) {
                       <TableCell>{sale.subscription_cycle} days</TableCell>
                       <TableCell>Finance Team A</TableCell>
                       <TableCell>
-                        {/* <Badge className={getStageColor(sale.finance_status)}>
-                          {sale.finance_status}
-                        </Badge> */}
+                        
                         {(() => {
-  const createdAt = new Date(sale.closed_at);
+  const createdAt = new Date(sale.onboarded_date || "");
   const today = new Date();
   const diffInDays = Math.floor((today.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24));
 
@@ -1190,10 +1352,11 @@ async function insertZeroSaleRow(sale: SalesClosure, status: FinanceStatus) {
 
                       </TableCell>
                       <TableCell>{new Date(sale.closed_at).toLocaleDateString("en-GB")}</TableCell>
-                      <TableCell>{getRenewWithinBadge(sale.closed_at)}</TableCell>
+                      <TableCell>{sale.onboarded_date ? new Date(sale.onboarded_date).toLocaleDateString("en-GB") : "-"}</TableCell>
+                      <TableCell>{getRenewWithinBadge(sale.onboarded_date || "")}</TableCell>
                       <TableCell>
                         {(() => {
-                          const closedDate = new Date(sale.closed_at);
+                          const closedDate = new Date(sale.onboarded_date ?? "");
                           const today = new Date();
                           closedDate.setHours(0, 0, 0, 0);
                           today.setHours(0, 0, 0, 0);
@@ -1212,46 +1375,7 @@ async function insertZeroSaleRow(sale: SalesClosure, status: FinanceStatus) {
                           };
 
                           return (
-                            // <Select
-                            //   value={sale.finance_status}
-                            //   onValueChange={handleStatusChange}
-                            //   disabled={followUpFilter === "All dates" && !isOlderThan25Days}
-                            // >
-                            //   <SelectTrigger className="w-32">
-                            //     <SelectValue placeholder="Select Status" />
-                            //   </SelectTrigger>
-                            
-                            //   <SelectContent>
-                            //     <SelectItem value="Paid">Paid</SelectItem>
-                            //     <SelectItem value="Unpaid">Unpaid</SelectItem>
-                            //     <SelectItem value="Paused">Paused</SelectItem>
-                            //     <SelectItem value="Closed">Closed</SelectItem>
 
-                            //   </SelectContent>
-                            // </Select>
-
-//                             <Select
-//   defaultValue=""
-//   onValueChange={(value) => {
-//     if (value === "Paid") {
-//       setSelectedSaleId(sale.id);
-//       setShowPaymentDialog(true);
-//     } else {
-//       insertZeroSaleRow(sale, value as FinanceStatus); // handle unpaid/paused/closed
-//     }
-//   }}
-//   disabled={followUpFilter === "All dates" && !isOlderThan25Days}
-// >
-//   <SelectTrigger className="w-36">
-//     <SelectValue placeholder="Select Status" />
-//   </SelectTrigger>
-//   <SelectContent>
-//     <SelectItem value="Paid">Paid</SelectItem>
-//     <SelectItem value="Unpaid">Unpaid</SelectItem>
-//     <SelectItem value="Paused">Paused</SelectItem>
-//     <SelectItem value="Closed">Closed</SelectItem>
-//   </SelectContent>
-// </Select>
 
 <Select
   value={actionSelections[sale.id] || ""}
@@ -1318,6 +1442,8 @@ async function insertZeroSaleRow(sale: SalesClosure, status: FinanceStatus) {
               </TableBody>
             </Table>
           </div>
+
+)}
 
           <Dialog open={showCloseDialog} onOpenChange={(val) => setShowCloseDialog(val)}>
             <DialogContent

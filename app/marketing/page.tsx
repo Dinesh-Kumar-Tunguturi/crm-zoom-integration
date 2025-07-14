@@ -556,13 +556,26 @@ const downloadSalesCSV = (data: any[]) => {
           };
         });
 
+        // const { error } = await supabase.from("leads").insert(parsedData);
+        // if (!error) {
+        //   const { data: updated, error: fetchError } = await supabase
+        //     .from("leads")
+        //     .select("*");
+        //   if (!fetchError) setLeads(updated || []);
+        // }
+
         const { error } = await supabase.from("leads").insert(parsedData);
-        if (!error) {
-          const { data: updated, error: fetchError } = await supabase
-            .from("leads")
-            .select("*");
-          if (!fetchError) setLeads(updated || []);
-        }
+
+if (error) {
+  console.error("❌ Supabase Insert Error:", error); // 👈 ADD THIS
+  alert("Failed to insert CSV data into Supabase. Check console.");
+} else {
+  const { data: updated, error: fetchError } = await supabase
+    .from("leads")
+    .select("*");
+  if (!fetchError) setLeads(updated || []);
+}
+
 
         setTimeout(async () => {
           setUploadProgress(100);
