@@ -1459,7 +1459,7 @@ setSalesHistoryDialogOpen(true);
                             <TableCell className="max-w-[80px] break-words whitespace-normal">
                               <Badge className={getStatusBadgeColor(lead.status)}>{lead.status}</Badge>
                             </TableCell>
-                            <TableCell className="max-w-[100px] break-words whitespace-normal">{new Date(lead.created_at).toLocaleString('en-IN', {
+                            {/* <TableCell className="max-w-[100px] break-words whitespace-normal">{new Date(lead.created_at).toLocaleString('en-IN', {
                               timeZone: 'Asia/Kolkata',
                               year: 'numeric',
                               month: '2-digit',
@@ -1468,7 +1468,19 @@ setSalesHistoryDialogOpen(true);
                               minute: '2-digit',
                               hour12: true
                             })
-                            }</TableCell>
+                            }</TableCell> */}
+                            <TableCell className="max-w-[100px] break-words whitespace-normal">
+  {new Date(new Date(lead.created_at).getTime() + (5 * 60 + 30) * 60 * 1000).toLocaleString('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  })}
+</TableCell>
+
                             <TableCell className="max-w-[100px] break-words whitespace-normal">
                               {lead.status === "New" ? (
                                 <Select onValueChange={(value) => handleIndividualAssign(lead.id, value)}>
