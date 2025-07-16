@@ -15,6 +15,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner"; // or wherever your toast system comes from
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { MoreVertical } from "lucide-react"; // or use any icon you like
 
 
 import {
@@ -46,7 +48,7 @@ interface SalesClosure {
   closed_at: string;
   email: string;
   finance_status: FinanceStatus;
-  leads?: { name: string };
+  leads?: { name: string, phone: string }; // 🆕 include phone
   reason_for_close?: string;
   onboarded_date?: string;
 }
@@ -353,94 +355,72 @@ export default function FinancePage() {
   // }
 
 
-  async function fetchSalesData() {
-    /* ----------------------------------------------------------------
-       1️⃣  Pull EVERYTHING, sorted by onboarded_date (your UX need)
-    ---------------------------------------------------------------- */
-    // const { data: rows, error } = await supabase
-    //   .from("sales_closure")
-    //   .select("*")
-    //   .not("onboarded_date", "is", null)
-    //   .order("onboarded_date", { ascending: false });
+async function fetchSalesData() {
+  const { data: rows, error } = await supabase
+    .from("sales_closure")
+    .select("*")
+    .order("closed_at", { ascending: false });
 
-    const { data: rows, error } = await supabase
-      .from("sales_closure")
-      .select("*")
-      .order("closed_at", { ascending: false }); // fetch ALL records
-
-
-    if (error) {
-      console.error("Error fetching sales data:", error);
-      return;
-    }
-
-    /* ---------------------------------------------------------------
-       2️⃣  Stash full history for revenue maths / cards
-    ---------------------------------------------------------------- */
-    setAllSales(rows);   // <-- drives totals & charts
-    const onboardedRows = rows.filter((r) => r.onboarded_date);
-
-    /* ---------------------------------------------------------------
-       3️⃣  Distil to *latest per lead_id* for the table
-           (we still compare on closed_at because “latest” = most recent closure)
-    ---------------------------------------------------------------- */
-    const latestMap = new Map<string, SalesClosure>();
-
-    for (const rec of onboardedRows) {
-      const existing = latestMap.get(rec.lead_id);
-      if (!existing || new Date(rec.closed_at) > new Date(existing.closed_at)) {
-        latestMap.set(rec.lead_id, rec);
-      }
-    }
-
-    // Keep table order identical to your old UX (latest onboarded first)
-    const latestRows = Array.from(latestMap.values()).sort(
-      (a, b) =>
-        new Date(b.onboarded_date ?? "").getTime() -
-        new Date(a.onboarded_date ?? "").getTime()
-    );
-
-    /* ---------------------------------------------------------------
-       4️⃣  Name mapping (unchanged, but we’ll reuse your same fallback)
-    ---------------------------------------------------------------- */
-    const leadIds = latestRows.map((r) => r.lead_id);
-
-    const { data: leads, error: leadsErr } = await supabase
-      .from("leads")
-      .select("business_id, name")
-      .in("business_id", leadIds);
-
-    if (leadsErr) {
-      console.error("Error fetching leads:", leadsErr);
-      return;
-    }
-
-    const { data: fallback, error: fbErr } = await supabase
-      .from("sales_closure")
-      .select("lead_id, lead_name");
-
-    if (fbErr) {
-      console.error("Error fetching fallback names:", fbErr);
-      return;
-    }
-
-    const leadNameMap = new Map(leads.map((l) => [l.business_id, l.name]));
-    const fallbackNameMap = new Map(
-      fallback.map((f) => [f.lead_id, f.lead_name])
-    );
-
-    const tableReady = latestRows.map((r) => ({
-      ...r,
-      leads: {
-        name:
-          leadNameMap.get(r.lead_id) ||
-          fallbackNameMap.get(r.lead_id) ||
-          "-",
-      },
-    }));
-
-    setSales(tableReady);
+  if (error) {
+    console.error("Error fetching sales data:", error);
+    return;
   }
+
+  setAllSales(rows);
+  const onboardedRows = rows.filter((r) => r.onboarded_date);
+
+  const latestMap = new Map<string, SalesClosure>();
+  for (const rec of onboardedRows) {
+    const existing = latestMap.get(rec.lead_id);
+    if (!existing || new Date(rec.closed_at) > new Date(existing.closed_at)) {
+      latestMap.set(rec.lead_id, rec);
+    }
+  }
+
+  const latestRows = Array.from(latestMap.values()).sort(
+    (a, b) =>
+      new Date(b.onboarded_date ?? "").getTime() -
+      new Date(a.onboarded_date ?? "").getTime()
+  );
+
+  const leadIds = latestRows.map((r) => r.lead_id);
+
+  // 🆕 Fetch both name and phone from leads
+  const { data: leads, error: leadsErr } = await supabase
+    .from("leads")
+    .select("business_id, name, phone") // 👈 add phone here
+    .in("business_id", leadIds);
+
+  if (leadsErr) {
+    console.error("Error fetching leads:", leadsErr);
+    return;
+  }
+
+  const { data: fallback, error: fbErr } = await supabase
+    .from("sales_closure")
+    .select("lead_id, lead_name");
+
+  if (fbErr) {
+    console.error("Error fetching fallback names:", fbErr);
+    return;
+  }
+
+  const leadNameMap = new Map(leads.map((l) => [l.business_id, l.name]));
+  const leadPhoneMap = new Map(leads.map((l) => [l.business_id, l.phone])); // 🆕 map phone
+  const fallbackNameMap = new Map(
+    fallback.map((f) => [f.lead_id, f.lead_name])
+  );
+
+  const tableReady = latestRows.map((r) => ({
+    ...r,
+    leads: {
+      name: leadNameMap.get(r.lead_id) || fallbackNameMap.get(r.lead_id) || "-",
+      phone: leadPhoneMap.get(r.lead_id) || "-", // 🆕 include phone
+    },
+  }));
+
+  setSales(tableReady);
+}
 
 
 
@@ -1122,10 +1102,25 @@ export default function FinancePage() {
             </div>
             {/* <Button onClick={() => setShowRevenueDialog(true)}>Revenue</Button> */}
             <div className="flex gap-2">
-              <Button onClick={() => setShowRevenueDialog(true)}>Revenue</Button>
+              {/* <Button onClick={() => setShowRevenueDialog(true)}>Revenue</Button> */}
               <Button onClick={() => setShowOnboardDialog(true)} className="bg-green-600 hover:bg-green-500 text-white">
                 Onboard New Client
               </Button>
+              <DropdownMenu>
+  <DropdownMenuTrigger asChild>
+    <Button variant="outline" className="flex gap-1">
+      Revenue <MoreVertical size={16} />
+    </Button>
+  </DropdownMenuTrigger>
+  <DropdownMenuContent align="end">
+    <DropdownMenuItem onClick={() => setShowRevenueDialog(true)}>
+      Quick Revenue Analysis
+    </DropdownMenuItem>
+    <DropdownMenuItem onClick={() => window.open("/finance/full-analysis", "_blank")}>
+      Complete Revenue Analysis
+    </DropdownMenuItem>
+  </DropdownMenuContent>
+</DropdownMenu>
             </div>
           </div>
 
@@ -1313,6 +1308,7 @@ export default function FinancePage() {
                     <TableHead>Client Id</TableHead>
                     <TableHead>Name</TableHead>
                     <TableHead>Email</TableHead>
+                    <TableHead>Phone</TableHead>
                     <TableHead>Sale Value</TableHead>
                     <TableHead>Subscription Cycle</TableHead>
                     <TableHead>Assigned To</TableHead>
@@ -1334,12 +1330,15 @@ export default function FinancePage() {
                         <TableCell className="font-medium">{sale.lead_id}</TableCell>
                         <TableCell className="max-w-[150px] break-words whitespace-normal">{sale.leads?.name ?? "-"}</TableCell>
                         <TableCell className="max-w-[160px] break-words whitespace-normal">{sale.email}</TableCell>
+                        <TableCell className="max-w-[160px] break-words whitespace-normal">
+  {sale.leads?.phone ?? "-"}
+</TableCell>
                         <TableCell>{formatCurrency(sale.sale_value)}</TableCell>
                         <TableCell>{sale.subscription_cycle} days</TableCell>
                         <TableCell>Finance Team A</TableCell>
                         <TableCell>
 
-                          {(() => {
+                          {/* {(() => {
                             const createdAt = new Date(sale.onboarded_date || "");
                             const today = new Date();
                             const diffInDays = Math.floor((today.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24));
@@ -1353,7 +1352,11 @@ export default function FinancePage() {
                                 {sale.finance_status}
                               </Badge>
                             );
-                          })()}
+                          })()} */}
+                          <Badge className={getStageColor(sale.finance_status)}>
+  {sale.finance_status}
+</Badge>
+
 
                         </TableCell>
                         <TableCell>{new Date(sale.closed_at).toLocaleDateString("en-GB")}</TableCell>
@@ -1383,25 +1386,26 @@ export default function FinancePage() {
 
 
                               <Select
-                                value={actionSelections[sale.id] || ""}
-                                onValueChange={(value) => {
-                                  setActionSelections((prev) => ({
-                                    ...prev,
-                                    [sale.id]: value,
-                                  }));
+  value={actionSelections[sale.id] || ""}
+  onValueChange={(value) => {
+    setActionSelections((prev) => ({
+      ...prev,
+      [sale.id]: value,
+    }));
 
-                                  if (value === "Paid") {
-                                    setSelectedSaleId(sale.id);
-                                    setShowPaymentDialog(true);
-                                  } else if (value === "Closed") {
-                                    setSelectedSaleId(sale.id);
-                                    setShowCloseDialog(true);
-                                  } else {
-                                    insertZeroSaleRow(sale, value as FinanceStatus);
-                                  }
-                                }}
-                                disabled={followUpFilter === "All dates" && !isOlderThan25Days || !!actionSelections[sale.id]} // freeze after selection
-                              >
+    if (value === "Paid") {
+      setSelectedSaleId(sale.id);
+      setShowPaymentDialog(true);
+    } else if (value === "Closed") {
+      setSelectedSaleId(sale.id);
+      setShowCloseDialog(true);
+    } else {
+      handleFinanceStatusUpdate(sale.id, value as FinanceStatus); // 🆕 direct update
+    }
+  }}
+  disabled={followUpFilter === "All dates" && !isOlderThan25Days || !!actionSelections[sale.id]}
+>
+
 
                                 <SelectTrigger className="w-36">
                                   <SelectValue placeholder="Select Status" />
