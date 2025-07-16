@@ -1422,6 +1422,7 @@ setSalesHistoryDialogOpen(true);
                           <TableHead className="sticky top-0 bg-white z-10 text-center">Source</TableHead>
                           <TableHead className="sticky top-0 bg-white z-10 text-center">Status</TableHead>
                           <TableHead className="sticky top-0 bg-white z-10 text-center">Created At</TableHead>
+                          <TableHead className="sticky top-0 bg-white z-10 text-center">Lead age</TableHead>
                           <TableHead className="sticky top-0 bg-white z-10 text-center">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -1480,6 +1481,17 @@ setSalesHistoryDialogOpen(true);
     hour12: true,
   })}
 </TableCell>
+                           <TableCell className="max-w-[100px] break-words whitespace-normal">
+  {(() => {
+    const createdAt = new Date(lead.created_at);
+    const today = new Date();
+    const diffTime = today.getTime() - createdAt.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    return `${diffDays} days`;
+  })()}
+</TableCell>
+
+
 
                             <TableCell className="max-w-[100px] break-words whitespace-normal">
                               {lead.status === "New" ? (
