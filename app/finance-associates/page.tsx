@@ -36,152 +36,27 @@ interface SalesClosure {
     phone: string;
   };
 }
-
 export default function FinanceAssociatesPage() {
+  const [loading, setLoading] = useState(true);
   const [sales, setSales] = useState<SalesClosure[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<FinanceStatus | "All">("All");
   const [actionSelections, setActionSelections] = useState<Record<string, string>>({});
-  const [followUpFilter, setFollowUpFilter] = useState<"All" | "Today">("All");
+  const [followUpFilter, setFollowUpFilter] = useState<"All" | "Today">("Today");
   const [showCloseDialog, setShowCloseDialog] = useState(false);
-const [selectedSaleId, setSelectedSaleId] = useState<string | null>(null);
-const [closingNote, setClosingNote] = useState("");
-const [csvFile, setCsvFile] = useState<File | null>(null);
-const [csvRowCount, setCsvRowCount] = useState<number>(0);
-const [parsedCSVData, setParsedCSVData] = useState<any[]>([]);
-const [showCSVDialog, setShowCSVDialog] = useState(false);
+  const [selectedSaleId, setSelectedSaleId] = useState<string | null>(null);
+  const [closingNote, setClosingNote] = useState("");
+  const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [csvRowCount, setCsvRowCount] = useState<number>(0);
+  const [parsedCSVData, setParsedCSVData] = useState<any[]>([]);
+  const [showCSVDialog, setShowCSVDialog] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [pendingAction, setPendingAction] = useState<{ saleId: string; newStatus: FinanceStatus | null } | null>(null);
 
-const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-const [pendingAction, setPendingAction] = useState<{
-  saleId: string;
-  newStatus: FinanceStatus | null;
-} | null>(null);
-
-
-const { user, hasAccess } = useAuth();
+  const { user, hasAccess } = useAuth();
   const router = useRouter();
 
-  // useEffect(() => {
-  //   fetchSales();
-  // }, []);
-
-
-  useEffect(() => {
-    if (!hasAccess("finance-associates")) {
-      router.push("/unauthorized"); // or redirect somewhere else
-    }
-  }, [user]);
-
-  useEffect(() => {
-  if (user && hasAccess("finance-associates")) {
-    fetchSales();
-  }
-}, [user]);
-
-
-//   const fetchSales = async () => {
-//     const { data, error } = await supabase
-//       .from("sales_closure")
-//       .select("*, leads(name, phone)")
-//       .not("onboarded_date", "is", null)
-//       .order("onboarded_date", { ascending: false });
-
-//     if (error) {
-//       console.error("Failed to fetch sales data:", error);
-//     } else {
-//       setSales(data as SalesClosure[]);
-//     }
-//   };
-
-
-// const fetchSales = async () => {
-//   const { data: salesData, error: salesError } = await supabase
-//     .from("sales_closure")
-//     .select("*")
-//     .not("onboarded_date", "is", null)
-//     .order("onboarded_date", { ascending: false });
-
-//   if (salesError) {
-//     console.error("Failed to fetch sales data:", salesError);
-//     return;
-//   }
-
-//   const leadIds = [...new Set((salesData ?? []).map((s) => s.lead_id))];
-
-//   const { data: leadsData, error: leadsError } = await supabase
-//     .from("leads")
-//     .select("business_id, name, phone")
-//     .in("business_id", leadIds);
-
-//   if (leadsError) {
-//     console.error("Failed to fetch leads data:", leadsError);
-//     return;
-//   }
-
-//   const leadMap = new Map(
-//     leadsData?.map((l) => [l.business_id, { name: l.name, phone: l.phone }])
-//   );
-
-//   const enrichedSales = salesData?.map((sale) => ({
-//     ...sale,
-//     leads: leadMap.get(sale.lead_id) || { name: "-", phone: "-" }
-//   })) ?? [];
-
-//   setSales(enrichedSales);
-// };
-
-
-// const fetchSales = async () => {
-//   const { data: salesData, error: salesError } = await supabase
-//     .from("sales_closure")
-//     .select("*")
-//     .not("onboarded_date", "is", null);
-
-//   if (salesError) {
-//     console.error("Failed to fetch sales data:", salesError);
-//     return;
-//   }
-
-//   // 🧠 Get the most recent record per lead_id
-//   const latestSalesMap = new Map<string, SalesClosure>();
-//   for (const record of salesData ?? []) {
-//     const existing = latestSalesMap.get(record.lead_id);
-
-//     const existingDate = existing?.onboarded_date || existing?.closed_at || "";
-//     const currentDate = record?.onboarded_date || record?.closed_at || "";
-
-//     if (!existing || new Date(currentDate) > new Date(existingDate)) {
-//       latestSalesMap.set(record.lead_id, record);
-//     }
-//   }
-
-//   const latestSales = Array.from(latestSalesMap.values());
-
-//   // 🔁 Enrich with lead name & phone
-//   const leadIds = latestSales.map((s) => s.lead_id);
-
-//   const { data: leadsData, error: leadsError } = await supabase
-//     .from("leads")
-//     .select("business_id, name, phone")
-//     .in("business_id", leadIds);
-
-//   if (leadsError) {
-//     console.error("Failed to fetch leads data:", leadsError);
-//     return;
-//   }
-
-//   const leadMap = new Map(
-//     leadsData?.map((l) => [l.business_id, { name: l.name, phone: l.phone }])
-//   );
-
-//   const enrichedSales = latestSales.map((sale) => ({
-//     ...sale,
-//     leads: leadMap.get(sale.lead_id) || { name: "-", phone: "-" },
-//   }));
-
-//   setSales(enrichedSales);
-// };
-
+  
 const fetchSales = async () => {
   if (!user) return;
 
@@ -240,6 +115,27 @@ const fetchSales = async () => {
   setSales(enrichedSales);
 };
 
+  useEffect(() => {
+    if (user === null) return;
+    setLoading(false);
+    if (!hasAccess("finance-associates")) {
+      router.push("/unauthorized");
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (user && hasAccess("finance-associates")) {
+      fetchSales();
+    }
+  }, [user]);
+
+  // ✅ After all hooks declared, do the early return
+  if (loading) return <p className="p-6 text-gray-600">Loading...</p>;
+
+  // ⬇️ Continue with the rest of your logic and JSX...
+
+
+
 
 
   const getStageColor = (status: FinanceStatus) => {
@@ -295,16 +191,6 @@ const fetchSales = async () => {
       );
     }
   };
-
-//   const filteredSales = sales.filter((sale) => {
-//     const matchesSearch =
-//       sale.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-//       sale.lead_id.toLowerCase().includes(searchTerm.toLowerCase());
-
-//     const matchesStatus = statusFilter === "All" || sale.finance_status === statusFilter;
-
-//     return matchesSearch && matchesStatus;
-//   });
 
 const filteredSales = sales
   .filter((sale) => {
@@ -435,7 +321,7 @@ const handleCSVSubmit = async () => {
               className="max-w-md"
             />
             <div className="flex space-x-4 justify-end">
-            <Select value={followUpFilter} onValueChange={(value) => setFollowUpFilter(value as "All" | "Today")}>
+            <Select value={followUpFilter} onValueChange={(value) => setFollowUpFilter(value as "Today" | "All")}>
   <SelectTrigger className="w-40">
     <SelectValue placeholder="Follow Up" />
   </SelectTrigger>
@@ -459,23 +345,7 @@ const handleCSVSubmit = async () => {
             </Select>
             <Button onClick={() => setShowCSVDialog(true)}>Upload CSV</Button>
           </div>
-          {/* <div className="flex items-center gap-4 mt-4">
-  <input
-    type="file"
-    accept=".csv"
-    onChange={(e) => {
-      const file = e.target.files?.[0];
-      if (file) handleCSVUpload(file);
-    }}
-    className="block text-sm text-gray-500 file:mr-4 file:py-2 file:px-4
-      file:rounded-full file:border-0
-      file:text-sm file:font-semibold
-      file:bg-blue-50 file:text-blue-700
-      hover:file:bg-blue-100
-    "
-  />
-</div> */}
-
+          
 
 <Dialog open={showCSVDialog} onOpenChange={setShowCSVDialog}>
   <DialogContent>
@@ -521,7 +391,7 @@ const handleCSVSubmit = async () => {
                   <TableHead>Name</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Phone</TableHead>
-                  <TableHead>Sale Value</TableHead>
+                  {/* <TableHead>Sale Value</TableHead> */}
                   <TableHead>Subscription</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Sale Date</TableHead>
@@ -540,7 +410,7 @@ const handleCSVSubmit = async () => {
                     <TableCell>{sale.leads?.name || "-"}</TableCell>
                     <TableCell>{sale.email}</TableCell>
                     <TableCell>{sale.leads?.phone || "-"}</TableCell>
-                    <TableCell>${sale.sale_value}</TableCell>
+                    {/* <TableCell>${sale.sale_value}</TableCell> */}
                     <TableCell>{sale.subscription_cycle} days</TableCell>
                     <TableCell>
                       <Badge className={getStageColor(sale.finance_status)}>{sale.finance_status}</Badge>
