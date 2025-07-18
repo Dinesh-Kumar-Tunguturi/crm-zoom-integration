@@ -11,7 +11,8 @@ import { Button } from "@/components/ui/button";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { useEmail } from "../context/EmailProvider";
 
-const roles = ["Admin", "Finance", "Sales", "Marketing", "Accounts"];
+const roles = ["Admin", "Finance", "Sales", "Marketing", "Accounts","Marketing Associate", 
+              "Sales Associate", "Finance Associate", "Accounts Associate"];
 
 export default function AddUserPage() {
   const [email, setEmail] = useState("");

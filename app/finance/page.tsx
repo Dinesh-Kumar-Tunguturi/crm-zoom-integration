@@ -1,4 +1,4 @@
-
+//app/finance/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -632,7 +632,7 @@ async function fetchSalesData() {
       .map((row) => row.map((col) => `"${col}"`).join(","))
       .join("\n");
 
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
@@ -1090,6 +1090,143 @@ async function fetchSalesData() {
 
   };
 
+//   async function handleDownloadFullSalesCSV() {
+//   try {
+//     // 1. Fetch all sales_closure data
+//     const { data: salesData, error: salesError } = await supabase
+//       .from("sales_closure")
+//       .select("*");
+
+//     if (salesError) throw salesError;
+//     if (!salesData || salesData.length === 0) {
+//       alert("No sales data found.");
+//       return;
+//     }
+
+//     // 2. Get unique lead_ids
+//     const leadIds = [...new Set(salesData.map((s) => s.lead_id))];
+
+//     // 3. Fetch phone numbers from leads
+//     const { data: leadsData, error: leadsError } = await supabase
+//       .from("leads")
+//       .select("business_id, phone, source, created_at, assigned_to")
+//       .in("business_id", leadIds);
+
+//     if (leadsError) throw leadsError;
+
+//     const phoneMap = new Map(leadsData.map((lead) => [lead.business_id, lead.phone]));
+
+//     // 4. Merge phone numbers into each sales row
+//     const enrichedRows = salesData.map((row) => ({
+//       ...row,
+//       phone: phoneMap.get(row.lead_id) || "",
+//     }));
+
+//     // 5. Format CSV
+//     const headers = Object.keys(enrichedRows[0]);
+//     const rows = enrichedRows.map((row) =>
+//       headers
+//         .map((header) => {
+//           const val = row[header];
+//           return typeof val === "string"
+//             ? `"${val.replace(/"/g, '""')}"`
+//             : `"${val ?? ""}"`;
+//         })
+//         .join(",")
+//     );
+
+//     const csvContent = [headers.join(","), ...rows].join("\n");
+
+//     // 6. Trigger download
+//     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+//     const url = URL.createObjectURL(blob);
+//     const link = document.createElement("a");
+//     link.href = url;
+//     link.setAttribute("download", `sales_closure_full_export_${Date.now()}.csv`);
+//     document.body.appendChild(link);
+//     link.click();
+//     document.body.removeChild(link);
+//   } catch (err: any) {
+//     console.error("❌ Error exporting revenue CSV:", err?.message || err);
+//     alert("Failed to download CSV. Try again.");
+//   }
+// }
+
+async function handleDownloadFullSalesCSV() {
+  try {
+    // 1. Fetch all sales_closure records
+    const { data: salesData, error: salesError } = await supabase
+      .from("sales_closure")
+      .select("*");
+
+    if (salesError) throw salesError;
+    if (!salesData || salesData.length === 0) {
+      alert("No sales data found.");
+      return;
+    }
+
+    // 2. Get unique lead_ids to fetch from leads
+    const leadIds = [...new Set(salesData.map((s) => s.lead_id))];
+
+    // 3. Fetch leads: phone, source, created_at, assigned_to
+    const { data: leadsData, error: leadsError } = await supabase
+      .from("leads")
+      .select("business_id, phone, source, created_at, assigned_to")
+      .in("business_id", leadIds);
+
+    if (leadsError) throw leadsError;
+
+    // 4. Build a map for fast lookup
+    const leadsMap = new Map(
+      leadsData.map((lead) => [lead.business_id, lead])
+    );
+
+    // 5. Enrich sales data with lead fields
+    const enrichedRows = salesData.map((row) => {
+      const lead = leadsMap.get(row.lead_id);
+      return {
+        ...row,
+        phone: lead?.phone || "",
+        source: lead?.source || "",
+        lead_created_at: lead?.created_at || "",
+        assigned_to: lead?.assigned_to || "",
+      };
+    });
+
+    // 6. Format for CSV
+    const headers = Object.keys(enrichedRows[0]);
+    const rows = enrichedRows.map((row) =>
+      headers
+        .map((header) => {
+          const val = row[header];
+          return typeof val === "string"
+            ? `"${val.replace(/"/g, '""')}"`
+            : `"${val ?? ""}"`;
+        })
+        .join(",")
+    );
+
+    const csvContent = [headers.join(","), ...rows].join("\n");
+
+    // 7. Trigger download
+
+    const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
+    // const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `sales_closure_full_export_${Date.now()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  } catch (err: any) {
+    console.error("❌ Error exporting CSV:", err?.message || err);
+    alert("Failed to download CSV. Try again.");
+  }
+}
+
+
+
 
   return (
     <ProtectedRoute allowedRoles={["Finance", "Super Admin"]}>
@@ -1119,6 +1256,9 @@ async function fetchSalesData() {
     <DropdownMenuItem onClick={() => window.open("/finance/full-analysis", "_blank")}>
       Complete Revenue Analysis
     </DropdownMenuItem>
+    <DropdownMenuItem onClick={handleDownloadFullSalesCSV}>
+  Download Revenue Information
+</DropdownMenuItem>
   </DropdownMenuContent>
 </DropdownMenu>
             </div>

@@ -5,12 +5,24 @@ import { createContext, useContext, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
 
+// export type UserRole =
+//   | "Super Admin"
+//   | "Marketing"
+//   | "Sales"
+//   | "Account Management"
+//   | "Finance";
+
 export type UserRole =
   | "Super Admin"
   | "Marketing"
   | "Sales"
   | "Account Management"
-  | "Finance";
+  | "Finance"
+  | "Marketing Associate"
+  | "Sales Associate"
+  | "Finance Associate"
+  | "Accounts Associate";
+
 
 interface User {
   id: string;
@@ -99,26 +111,54 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(userData);
 
     // 🚀 Redirect based on role
+    // switch (userData.role) {
+    //   case "Super Admin":
+    //     router.push("/");
+    //     break;
+    //   case "Marketing":
+    //     router.push("/marketing");
+    //     break;
+    //   case "Sales":
+    //     router.push("/sales");
+    //     break;
+    //   case "Account Management":
+    //     router.push("/account-management");
+    //     break;
+    //   case "Finance":
+    //     router.push("/finance");
+    //     break;
+    //   default:
+    //     router.push("/unauthorized");
+    //     break;
+    // }
+
     switch (userData.role) {
-      case "Super Admin":
-        router.push("/");
-        break;
-      case "Marketing":
-        router.push("/marketing");
-        break;
-      case "Sales":
-        router.push("/sales");
-        break;
-      case "Account Management":
-        router.push("/account-management");
-        break;
-      case "Finance":
-        router.push("/finance");
-        break;
-      default:
-        router.push("/unauthorized");
-        break;
-    }
+  case "Super Admin":
+    router.push("/");
+    break;
+  case "Marketing":
+  case "Marketing Associate":
+    router.push("/marketing");
+    break;
+  case "Sales":
+  case "Sales Associate":
+    router.push("/sales");
+    break;
+  case "Account Management":
+  case "Accounts Associate":
+    router.push("/account-management");
+    break;
+  case "Finance":
+    router.push("/finance");
+    break;
+  case "Finance Associate":
+    router.push("/finance-associates");
+    break;
+  default:
+    router.push("/unauthorized");
+    break;
+}
+
 
     return true;
   };
@@ -129,20 +169,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     router.push("/");
   };
 
+  // const hasAccess = (module: string): boolean => {
+  //   if (!user) return false;
+  //   if (user.role === "Super Admin") return true;
+
+  //   const accessMap: Record<UserRole, string[]> = {
+  //     "Super Admin": ["admin", "marketing", "sales", "account-management", "finance"],
+  //     Marketing: ["marketing"],
+  //     Sales: ["sales"],
+  //     "Account Management": ["account-management"],
+  //     Finance: ["finance"],
+  //   };
+
+  //   return accessMap[user.role]?.includes(module) || false;
+  // };
+
   const hasAccess = (module: string): boolean => {
-    if (!user) return false;
-    if (user.role === "Super Admin") return true;
+  if (!user) return false;
+  if (user.role === "Super Admin") return true;
 
-    const accessMap: Record<UserRole, string[]> = {
-      "Super Admin": ["admin", "marketing", "sales", "account-management", "finance"],
-      Marketing: ["marketing"],
-      Sales: ["sales"],
-      "Account Management": ["account-management"],
-      Finance: ["finance"],
-    };
-
-    return accessMap[user.role]?.includes(module) || false;
+  const accessMap: Record<UserRole, string[]> = {
+    "Super Admin": ["admin", "marketing", "sales", "account-management", "finance", "finance-associates"],
+    Marketing: ["marketing"],
+    Sales: ["sales"],
+    "Account Management": ["account-management"],
+    Finance: ["finance"],
+    "Marketing Associate": ["marketing"],
+    "Sales Associate": ["sales"],
+    "Finance Associate": ["finance-associates"],
+    "Accounts Associate": ["account-management"],
   };
+
+  return accessMap[user.role]?.includes(module) || false;
+};
+
 
   return (
     <AuthContext.Provider value={{ user, login, logout, hasAccess }}>
@@ -159,14 +219,35 @@ export function useAuth() {
   return context;
 }
 
+// function convertRole(role: string): UserRole {
+//   const map: Record<string, UserRole> = {
+//     Admin: "Super Admin",
+//     Marketing: "Marketing",
+//     Sales: "Sales",
+//     Account: "Account Management",
+//     Accounts: "Account Management",
+//     Finance: "Finance",
+//     "Finance Team": "Finance",
+//     "Sales Team": "Sales",
+//     "Marketing Team": "Marketing",
+//     "Account Management Team": "Account Management",
+//   };
+
+//   return map[role] || "Super Admin";
+// }
+
+
 function convertRole(role: string): UserRole {
   const map: Record<string, UserRole> = {
     Admin: "Super Admin",
     Marketing: "Marketing",
     Sales: "Sales",
-    Account: "Account Management",
-    Accounts: "Account Management",
     Finance: "Finance",
+    Accounts: "Account Management", // You can rename to "Accounts" if you prefer
+    "Marketing Associate": "Marketing Associate",
+    "Sales Associate": "Sales Associate",
+    "Finance Associate": "Finance Associate",
+    "Accounts Associate": "Accounts Associate",
     "Finance Team": "Finance",
     "Sales Team": "Sales",
     "Marketing Team": "Marketing",
@@ -175,3 +256,4 @@ function convertRole(role: string): UserRole {
 
   return map[role] || "Super Admin";
 }
+

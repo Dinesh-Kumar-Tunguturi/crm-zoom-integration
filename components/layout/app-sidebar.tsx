@@ -1,3 +1,4 @@
+// components/layout/app-sidebar.tsx
 "use client"
 
 import {
@@ -48,6 +49,7 @@ const navigationItems = [
     module: "finance",
     description: "Revenue Management",
   },
+  
   {
     title: "Add User",
     url: "/add-user",
@@ -55,6 +57,24 @@ const navigationItems = [
     module: "admin",  // <-- Make sure "admin" role can access it via your hasAccess function
     description: "User Management"
   },
+
+//   {
+//   title: "Finance Associates",
+//   url: "/finance-associates",
+//   icon: DollarSign,  // Reuse or change icon (e.g., `UserCheck`)
+//   module: "finance", // Use the same role/module access as Finance CRM
+//   description: "Client-wise View",
+// },
+
+{
+  title: "Finance Associates",
+  url: "/finance-associates",
+  icon: DollarSign, // You can change this to a different icon if desired
+  module: "finance-associates",
+  description: "Associate Management",
+}
+
+
 ]
 
 
