@@ -19,7 +19,7 @@ import Papa from "papaparse";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useRouter } from "next/navigation";
 
-type FinanceStatus = "Paid" | "Unpaid" | "Paused" | "Closed";
+type FinanceStatus = "Paid" | "Unpaid" | "Paused" | "Closed" | "Got Placed";
 
 interface SalesClosure {
   id: string;
@@ -52,23 +52,95 @@ export default function FinanceAssociatesPage() {
   const [showCSVDialog, setShowCSVDialog] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [pendingAction, setPendingAction] = useState<{ saleId: string; newStatus: FinanceStatus | null } | null>(null);
+  const [showReasonDialog, setShowReasonDialog] = useState(false);
+  const [selectedReasonType, setSelectedReasonType] = useState<FinanceStatus | null>(null);
+  const [reasonNote, setReasonNote] = useState("");
+
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+const [paymentAmount, setPaymentAmount] = useState("");
+const [onboardDate, setOnboardDate] = useState<Date | null>(null);
+const [subscriptionMonths, setSubscriptionMonths] = useState("1");
 
   const { user, hasAccess } = useAuth();
   const router = useRouter();
 
   
+// const fetchSales = async () => {
+//   if (!user) return;
+
+//   // 1. Fetch TL's profile (name & email are already in `user`)
+//   const { name, email } = user;
+
+//   const { data: salesData, error: salesError } = await supabase
+//     .from("sales_closure")
+//     .select("*")
+//     .eq("associates_tl_email", email)
+//     .eq("associates_tl_name", name)
+//     .not("onboarded_date", "is", null);
+
+//   if (salesError) {
+//     console.error("Failed to fetch sales data:", salesError);
+//     return;
+//   }
+
+//   // 2. Get the latest record per lead_id
+//   const latestSalesMap = new Map<string, SalesClosure>();
+//   for (const record of salesData ?? []) {
+//     const existing = latestSalesMap.get(record.lead_id);
+
+//     const existingDate = existing?.onboarded_date || existing?.closed_at || "";
+//     const currentDate = record?.onboarded_date || record?.closed_at || "";
+
+//     if (!existing || new Date(currentDate) > new Date(existingDate)) {
+//       latestSalesMap.set(record.lead_id, record);
+//     }
+//   }
+
+//   const latestSales = Array.from(latestSalesMap.values());
+
+//   // 3. Enrich with name & phone
+//   const leadIds = latestSales.map((s) => s.lead_id);
+
+//   const { data: leadsData, error: leadsError } = await supabase
+//     .from("leads")
+//     .select("business_id, name, phone")
+//     .in("business_id", leadIds);
+
+//   if (leadsError) {
+//     console.error("Failed to fetch leads data:", leadsError);
+//     return;
+//   }
+
+//   const leadMap = new Map(
+//     leadsData?.map((l) => [l.business_id, { name: l.name, phone: l.phone }])
+//   );
+
+//   const enrichedSales = latestSales.map((sale) => ({
+//     ...sale,
+//     leads: leadMap.get(sale.lead_id) || { name: "-", phone: "-" },
+//   }));
+
+//   setSales(enrichedSales);
+// };
+
+
 const fetchSales = async () => {
   if (!user) return;
 
-  // 1. Fetch TL's profile (name & email are already in `user`)
-  const { name, email } = user;
-
-  const { data: salesData, error: salesError } = await supabase
+  let salesQuery = supabase
     .from("sales_closure")
     .select("*")
-    .eq("associates_tl_email", email)
-    .eq("associates_tl_name", name)
     .not("onboarded_date", "is", null);
+
+  // Only apply TL filters if not Super Admin
+  if (user.role !== "Super Admin" && user.role !== "Finance") {
+    const { name, email } = user;
+    salesQuery = salesQuery
+      .eq("associates_tl_email", email)
+      .eq("associates_tl_name", name);
+  }
+
+  const { data: salesData, error: salesError } = await salesQuery;
 
   if (salesError) {
     console.error("Failed to fetch sales data:", salesError);
@@ -115,6 +187,7 @@ const fetchSales = async () => {
   setSales(enrichedSales);
 };
 
+
   useEffect(() => {
     if (user === null) return;
     setLoading(false);
@@ -146,6 +219,8 @@ const fetchSales = async () => {
         return "bg-red-100 text-red-800";
       case "Paused":
         return "bg-yellow-100 text-yellow-800";
+      case "Got Placed":
+        return "bg-blue-100 text-blue-800";
       default:
         return "bg-gray-100 text-gray-800";
     }
@@ -341,6 +416,8 @@ const handleCSVSubmit = async () => {
                 <SelectItem value="Unpaid">Unpaid</SelectItem>
                 <SelectItem value="Paused">Paused</SelectItem>
                 <SelectItem value="Closed">Closed</SelectItem>
+                <SelectItem value="Got Placed">Got Placed</SelectItem>
+
               </SelectContent>
             </Select>
             <Button onClick={() => setShowCSVDialog(true)}>Upload CSV</Button>
@@ -434,22 +511,55 @@ const handleCSVSubmit = async () => {
     return (
 <Select
   value={actionSelections[sale.id] || ""}
-  onValueChange={(value) => {
+//   onValueChange={(value) => {
+//   setActionSelections((prev) => ({
+//     ...prev,
+//     [sale.id]: value,
+//   }));
+
+//   if (value === "Closed") {
+//     setSelectedSaleId(sale.id);
+//     setShowCloseDialog(true);
+//   } else if (value === "Paused") {
+//     setPendingAction({ saleId: sale.id, newStatus: value as FinanceStatus });
+//     setShowConfirmDialog(true);
+//   } else {
+//     updateFinanceStatus(sale.id, value as FinanceStatus);
+//   }
+// }}
+
+onValueChange={(value) => {
   setActionSelections((prev) => ({
     ...prev,
     [sale.id]: value,
   }));
 
-  if (value === "Closed") {
+  if (value === "Paid") {
+  setSelectedSaleId(sale.id);
+  setShowPaymentDialog(true);
+  return;
+}
+  else if (value === "Closed") {
     setSelectedSaleId(sale.id);
-    setShowCloseDialog(true);
-  } else if (value === "Paused" || value === "Unpaid") {
-    setPendingAction({ saleId: sale.id, newStatus: value as FinanceStatus });
-    setShowConfirmDialog(true);
+    setSelectedReasonType("Closed");
+    setShowReasonDialog(true);
+  } else if (value === "Paused") {
+    setSelectedSaleId(sale.id);
+    setSelectedReasonType("Paused");
+    setShowReasonDialog(true);
+  } else if (value === "Unpaid") {
+    setSelectedSaleId(sale.id);
+    setSelectedReasonType("Unpaid");
+    setShowReasonDialog(true);
+  } else if (value === "Got Placed") {
+    setSelectedSaleId(sale.id);
+    setSelectedReasonType("Got Placed");
+    setShowReasonDialog(true);
   } else {
     updateFinanceStatus(sale.id, value as FinanceStatus);
   }
 }}
+
 
   disabled={disableDropdown}
 >
@@ -457,10 +567,12 @@ const handleCSVSubmit = async () => {
     <SelectValue placeholder={disableDropdown ? "Not allowed" : "Select Status"} />
   </SelectTrigger>
   <SelectContent>
-    {/* <SelectItem value="Paid">Paid</SelectItem> */}
+    <SelectItem value="Paid">Paid</SelectItem>
     <SelectItem value="Unpaid">Unpaid</SelectItem>
     <SelectItem value="Paused">Paused</SelectItem>
     <SelectItem value="Closed">Closed</SelectItem>
+    <SelectItem value="Got Placed">Got Placed</SelectItem>
+
   </SelectContent>
 </Select>
 
@@ -469,7 +581,7 @@ const handleCSVSubmit = async () => {
 </TableCell>
 
 
-                    <TableCell>
+                    {/* <TableCell>
                       {sale.finance_status === "Closed" && sale.reason_for_close ? (
                         <Popover>
                           <PopoverTrigger asChild>
@@ -484,14 +596,33 @@ const handleCSVSubmit = async () => {
                       ) : (
                         <span className="text-gray-400 text-xs italic">—</span>
                       )}
-                    </TableCell>
+                    </TableCell> */}
+
+
+<TableCell>
+  {sale.reason_for_close ? (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button className="hover:text-blue-600">
+          <MessageSquare className="w-5 h-5" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[300px] bg-white shadow-lg border p-4 text-sm text-gray-700">
+        Reason: '{sale.reason_for_close}'
+      </PopoverContent>
+    </Popover>
+  ) : (
+    <span className="text-gray-400 text-xs italic">—</span>
+  )}
+</TableCell>
+
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
           </div>
           
-                <Dialog open={showCloseDialog} onOpenChange={setShowCloseDialog}>
+                {/* <Dialog open={showCloseDialog} onOpenChange={setShowCloseDialog}>
   <DialogContent className="sm:max-w-md">
     <DialogHeader>
       <DialogTitle>Reason for Closing</DialogTitle>
@@ -547,7 +678,68 @@ const handleCSVSubmit = async () => {
       </Button>
     </div>
   </DialogContent>
+</Dialog> */}
+
+
+<Dialog open={showReasonDialog} onOpenChange={setShowReasonDialog}>
+  <DialogContent className="sm:max-w-md">
+    <DialogHeader>
+      <DialogTitle>Reason for {selectedReasonType}</DialogTitle>
+    </DialogHeader>
+
+    <Textarea
+      placeholder={`Enter reason for marking as ${selectedReasonType}...`}
+      value={reasonNote}
+      onChange={(e) => setReasonNote(e.target.value)}
+      className="min-h-[100px]"
+    />
+
+    <div className="flex justify-end mt-4">
+      <Button
+        onClick={async () => {
+          if (!selectedSaleId || reasonNote.trim() === "" || !selectedReasonType) {
+            alert("Please enter a reason.");
+            return;
+          }
+
+          const { error } = await supabase
+            .from("sales_closure")
+            .update({
+              finance_status: selectedReasonType,
+              reason_for_close: `${selectedReasonType}: ${reasonNote.trim()}`, // ✅ use only this column
+            })
+            .eq("id", selectedSaleId);
+
+          if (error) {
+            console.error("Error saving reason:", error);
+            alert("❌ Failed to update record.");
+            return;
+          }
+
+          setSales((prev) =>
+            prev.map((sale) =>
+              sale.id === selectedSaleId
+                ? {
+                    ...sale,
+                    finance_status: selectedReasonType,
+                    reason_for_close: `${selectedReasonType}: ${reasonNote.trim()}`,
+                  }
+                : sale
+            )
+          );
+
+          setShowReasonDialog(false);
+          setSelectedSaleId(null);
+          setSelectedReasonType(null);
+          setReasonNote("");
+        }}
+      >
+        Submit
+      </Button>
+    </div>
+  </DialogContent>
 </Dialog>
+
 
 <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
   <DialogContent className="sm:max-w-md">
@@ -585,6 +777,101 @@ const handleCSVSubmit = async () => {
     </div>
   </DialogContent>
 </Dialog>
+
+<Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
+  <DialogContent className="w-[420px]">
+    <DialogHeader>
+      <DialogTitle>💰 Payment Details</DialogTitle>
+    </DialogHeader>
+
+    <p className="text-sm text-muted-foreground mb-2">
+      Fill the payment info, onboard date, and subscription details to record this payment.
+    </p>
+
+    <div className="space-y-4">
+      {/* Payment Amount */}
+      <Input
+        type="number"
+        placeholder="Payment amount ($)"
+        value={paymentAmount}
+        onChange={(e) => setPaymentAmount(e.target.value)}
+        required
+      />
+
+      {/* Onboarded Date */}
+      <Input
+        type="date"
+        placeholder="Onboarded date"
+        value={onboardDate ? onboardDate.toISOString().slice(0, 10) : ""}
+        onChange={(e) => setOnboardDate(new Date(e.target.value))}
+        required
+      />
+
+      {/* Subscription Duration */}
+      <Select value={subscriptionMonths} onValueChange={setSubscriptionMonths}>
+        <SelectTrigger className="w-full">
+          <SelectValue placeholder="Subscription duration" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="1">1 month</SelectItem>
+          <SelectItem value="2">2 months</SelectItem>
+          <SelectItem value="3">3 months</SelectItem>
+        </SelectContent>
+      </Select>
+
+      <Button
+        className="w-full"
+        onClick={async () => {
+          if (!selectedSaleId || !paymentAmount || !onboardDate || !subscriptionMonths) {
+            alert("Please fill all fields");
+            return;
+          }
+
+          const { error } = await supabase
+            .from("sales_closure")
+            .update({
+              finance_status: "Paid",
+              sale_value: parseFloat(paymentAmount),
+              onboarded_date: onboardDate.toISOString(),
+              subscription_cycle: Number(subscriptionMonths) * 30,
+            })
+            .eq("id", selectedSaleId);
+
+          if (error) {
+            console.error("Error updating payment:", error);
+            alert("❌ Failed to record payment");
+            return;
+          }
+
+          // Refresh state
+          setSales((prev) =>
+            prev.map((s) =>
+              s.id === selectedSaleId
+                ? {
+                    ...s,
+                    finance_status: "Paid",
+                    sale_value: parseFloat(paymentAmount),
+                    onboarded_date: onboardDate.toISOString(),
+                    subscription_cycle: Number(subscriptionMonths) * 30,
+                  }
+                : s
+            )
+          );
+
+          // Reset dialog
+          setShowPaymentDialog(false);
+          setPaymentAmount("");
+          setOnboardDate(null);
+          setSubscriptionMonths("1");
+          setSelectedSaleId(null);
+        }}
+      >
+        Payment Close
+      </Button>
+    </div>
+  </DialogContent>
+</Dialog>
+
 
 
         </div>

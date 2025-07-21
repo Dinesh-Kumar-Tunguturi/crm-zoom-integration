@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { DollarSign, TrendingUp, TrendingDown, Pause } from "lucide-react";
+import { User, DollarSign, TrendingUp, TrendingDown, Pause } from "lucide-react";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
@@ -37,7 +37,7 @@ import {
   PopoverContent,
 } from "@/components/ui/popover";
 
-type FinanceStatus = "Paid" | "Unpaid" | "Paused" | "Closed";
+type FinanceStatus = "Paid" | "Unpaid" | "Paused" | "Closed" | "Got Placed"; // 🆕 added "Got Placed"
 
 interface SalesClosure {
   id: string;
@@ -176,11 +176,17 @@ export default function FinancePage() {
 
 
   const [searchTerm, setSearchTerm] = useState("");
-  const [followUpFilter, setFollowUpFilter] = useState<"All dates" | "Today">("All dates");
+  const [followUpFilter, setFollowUpFilter] = useState<"All dates" | "Today">("Today");
   const [showCloseDialog, setShowCloseDialog] = useState(false);
   const [closingNote, setClosingNote] = useState("");
   const [subscriptionMultiplier, setSubscriptionMultiplier] = useState(1);
   const [subscriptionSource, setSubscriptionSource] = useState(""); // For Referral/NEW
+
+const [showReasonDialog, setShowReasonDialog] = useState(false);
+// const [selectedFinanceStatus, setSelectedFinanceStatus] = useState<FinanceStatus | null>(null);
+const [reasonText, setReasonText] = useState("");
+
+
 
   const [selectedSaleId, setSelectedSaleId] = useState<string | null>(null);
   const [selectedFinanceStatus, setSelectedFinanceStatus] = useState<FinanceStatus | null>(null);
@@ -584,7 +590,7 @@ async function fetchSalesData() {
   const paidCount = allSales.filter(s => s.finance_status === "Paid").length;
   const unpaidCount = allSales.filter(s => s.finance_status === "Unpaid").length;
   const pausedCount = allSales.filter(s => s.finance_status === "Paused").length;
-
+  const gotPlacedCount = allSales.filter(s => s.finance_status === "Got Placed").length;
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-US", {
@@ -603,6 +609,8 @@ async function fetchSalesData() {
         return "bg-red-100 text-red-800";
       case "Paused":
         return "bg-yellow-100 text-yellow-800";
+      case "Got Placed":
+        return "bg-blue-100 text-blue-800";
       default:
         return "bg-gray-100 text-gray-800";
     }
@@ -1264,7 +1272,7 @@ async function handleDownloadFullSalesCSV() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
@@ -1308,6 +1316,17 @@ async function handleDownloadFullSalesCSV() {
                 <p className="text-xs text-muted-foreground">{pausedCount} clients</p>
               </CardContent>
             </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Got Placed</CardTitle>
+                <User className="h-4 w-4 text-blue-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl text-blue-600 font-bold">{gotPlacedCount} Clients placed</div>
+                {/* <p className="text-xs text-muted-foreground">{sales.length} total clients</p> */}
+              </CardContent>
+            </Card>
           </div>
 
           {/* {feedbackMsg && (
@@ -1338,6 +1357,7 @@ async function handleDownloadFullSalesCSV() {
                   <SelectItem value="Unpaid">Unpaid</SelectItem>
                   <SelectItem value="Paused">Paused</SelectItem>
                   <SelectItem value="Closed">Closed</SelectItem>
+                  <SelectItem value="Got Placed">Got Placed</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={followUpFilter} onValueChange={(value) => setFollowUpFilter(value as "All dates" | "Today")}>
@@ -1458,7 +1478,7 @@ async function handleDownloadFullSalesCSV() {
 
                     <TableHead>Deadline</TableHead>
                     <TableHead>Actions</TableHead>
-                    <TableHead>Reason for closed</TableHead>
+                    <TableHead>Reason</TableHead>
                   </TableRow>
                 </TableHeader>
 
@@ -1534,15 +1554,18 @@ async function handleDownloadFullSalesCSV() {
     }));
 
     if (value === "Paid") {
-      setSelectedSaleId(sale.id);
-      setShowPaymentDialog(true);
-    } else if (value === "Closed") {
-      setSelectedSaleId(sale.id);
-      setShowCloseDialog(true);
-    } else {
-      handleFinanceStatusUpdate(sale.id, value as FinanceStatus); // 🆕 direct update
-    }
-  }}
+  setSelectedSaleId(sale.id);
+  setShowPaymentDialog(true);
+} else if (["Closed", "Paused", "Unpaid", "Got Placed"].includes(value)) {
+  setSelectedSaleId(sale.id);
+  setSelectedFinanceStatus(value as FinanceStatus); // This must be declared as a state variable
+  setShowReasonDialog(true); // New shared dialog
+} else {
+  handleFinanceStatusUpdate(sale.id, value as FinanceStatus); // For anything else (if ever)
+}
+
+  }
+}
   disabled={followUpFilter === "All dates" && !isOlderThan25Days || !!actionSelections[sale.id]}
 >
 
@@ -1554,7 +1577,10 @@ async function handleDownloadFullSalesCSV() {
                                   <SelectItem value="Paid">Paid</SelectItem>
                                   <SelectItem value="Unpaid">Unpaid</SelectItem>
                                   <SelectItem value="Paused">Paused</SelectItem>
-                                  <SelectItem value="Closed">Closed</SelectItem>
+                                  <SelectItem value="Closed">Closed</SelectItem>           
+                                  <SelectItem value="Got Placed">Got Placed</SelectItem>
+
+                                  
                                 </SelectContent>
                               </Select>
 
@@ -1564,7 +1590,7 @@ async function handleDownloadFullSalesCSV() {
 
                         </TableCell>
                         <TableCell className="text-center">
-                          {sale.finance_status === "Closed" && sale.reason_for_close ? (
+                          {/* {sale.finance_status === "Closed" && sale.reason_for_close ? (
                             <Popover>
                               <PopoverTrigger asChild>
                                 <button className="hover:text-blue-600">
@@ -1577,7 +1603,23 @@ async function handleDownloadFullSalesCSV() {
                             </Popover>
                           ) : (
                             <span className="text-gray-400 text-xs italic">—</span>
-                          )}
+                          )} */}
+
+                          {sale.reason_for_close ? (
+  <Popover>
+    <PopoverTrigger asChild>
+      <button className="hover:text-blue-600">
+        <MessageSquare className="w-5 h-5" />
+      </button>
+    </PopoverTrigger>
+    <PopoverContent className="w-[300px] bg-white shadow-lg border p-4 text-sm text-gray-700">
+      Reason: '{sale.reason_for_close}'
+    </PopoverContent>
+  </Popover>
+) : (
+  <span className="text-gray-400 text-xs italic">—</span>
+)}
+
                         </TableCell>
                       </TableRow>
                     ))
@@ -1593,6 +1635,67 @@ async function handleDownloadFullSalesCSV() {
             </div>
 
           )}
+
+          <Dialog open={showReasonDialog} onOpenChange={setShowReasonDialog}>
+  <DialogContent className="sm:max-w-md">
+    <DialogHeader>
+      <DialogTitle>Reason for {selectedFinanceStatus}</DialogTitle>
+    </DialogHeader>
+
+    <Textarea
+      placeholder={`Enter reason for ${selectedFinanceStatus}`}
+      value={reasonText}
+      onChange={(e) => setReasonText(e.target.value)}
+      className="min-h-[100px]"
+    />
+
+    <div className="flex justify-end mt-4">
+      <Button
+        onClick={async () => {
+          if (!selectedSaleId || !selectedFinanceStatus || !reasonText.trim()) {
+            alert("Please provide a reason.");
+            return;
+          }
+
+          const { error } = await supabase
+            .from("sales_closure")
+            .update({
+              finance_status: selectedFinanceStatus,
+              reason_for_close: reasonText.trim(),
+            })
+            .eq("id", selectedSaleId);
+
+          if (error) {
+            console.error("Failed to update:", error);
+            alert("❌ Failed to save status.");
+            return;
+          }
+
+          setSales((prev) =>
+            prev.map((s) =>
+              s.id === selectedSaleId
+                ? {
+                    ...s,
+                    finance_status: selectedFinanceStatus,
+                    reason_for_close: reasonText.trim(),
+                  }
+                : s
+            )
+          );
+
+          // Reset
+          setShowReasonDialog(false);
+          setSelectedSaleId(null);
+          setSelectedFinanceStatus(null);
+          setReasonText("");
+        }}
+      >
+        Submit
+      </Button>
+    </div>
+  </DialogContent>
+</Dialog>
+
 
           <Dialog open={showCloseDialog} onOpenChange={(val) => setShowCloseDialog(val)}>
             <DialogContent
