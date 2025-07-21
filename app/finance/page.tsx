@@ -808,6 +808,9 @@ async function fetchSalesData() {
 
   async function handleOnboardClientSubmit() {
     try {
+      const confirmed = window.confirm("Are you sure you want to Onboard this client?");
+if (!confirmed) return;
+
       // 1. Generate new lead_id like AWL-1, AWL-2, ...
       const { data: existingLeads, error: leadsCountError } = await supabase
         .from("leads")
@@ -1076,6 +1079,9 @@ async function fetchSalesData() {
   }
 
   const handleOnboardClient = async (clientId: string) => {
+    const confirmed = window.confirm("Are you sure you want to onboard this client?");
+if (!confirmed) return;
+
     const today = new Date().toISOString();
 
     const { error } = await supabase
@@ -1436,7 +1442,9 @@ async function handleDownloadFullSalesCSV() {
                           <Button
                             size="sm"
                             className="bg-green-600 text-white"
-                            onClick={() => handleOnboardClient(client.id)}
+                            onClick={() => 
+                              
+                              handleOnboardClient(client.id)}
                           >
                             Onboard
                           </Button>
@@ -1554,9 +1562,15 @@ async function handleDownloadFullSalesCSV() {
     }));
 
     if (value === "Paid") {
+      const confirmed = window.confirm("Are you sure you want to update status as PAID ?");
+if (!confirmed) return;
+
   setSelectedSaleId(sale.id);
   setShowPaymentDialog(true);
 } else if (["Closed", "Paused", "Unpaid", "Got Placed"].includes(value)) {
+  const confirmed = window.confirm(`Are you sure you want to update status as ${value} ?`);
+if (!confirmed) return;
+
   setSelectedSaleId(sale.id);
   setSelectedFinanceStatus(value as FinanceStatus); // This must be declared as a state variable
   setShowReasonDialog(true); // New shared dialog

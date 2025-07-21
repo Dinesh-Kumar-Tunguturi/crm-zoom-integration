@@ -535,23 +535,40 @@ onValueChange={(value) => {
   }));
 
   if (value === "Paid") {
+    const confirmed = window.confirm("Are you sure you want to update status as PAID ?");
+if (!confirmed) return;
+
   setSelectedSaleId(sale.id);
   setShowPaymentDialog(true);
   return;
 }
   else if (value === "Closed") {
+    const confirmed = window.confirm("Are you sure you want to update status as CLOSED ?");
+if (!confirmed) return;
+
     setSelectedSaleId(sale.id);
     setSelectedReasonType("Closed");
     setShowReasonDialog(true);
   } else if (value === "Paused") {
+    const confirmed = window.confirm("Are you sure you want to update status as PAUSED ?");
+if (!confirmed) return;
+
+    
     setSelectedSaleId(sale.id);
     setSelectedReasonType("Paused");
     setShowReasonDialog(true);
+    
   } else if (value === "Unpaid") {
+    const confirmed = window.confirm("Are you sure you want to update status as UNPAID ?");
+if (!confirmed) return;
+
     setSelectedSaleId(sale.id);
     setSelectedReasonType("Unpaid");
     setShowReasonDialog(true);
   } else if (value === "Got Placed") {
+    const confirmed = window.confirm("Are you sure you want to update status as GOT PLACED ?");
+if (!confirmed) return;
+
     setSelectedSaleId(sale.id);
     setSelectedReasonType("Got Placed");
     setShowReasonDialog(true);
