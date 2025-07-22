@@ -242,30 +242,37 @@ const fetchSales = async () => {
 };
 
 
-  const getRenewWithinBadge = (date: string): React.ReactNode => {
-    const closedDate = new Date(date);
-    const today = new Date();
-    const diffInDays = Math.floor((today.getTime() - closedDate.getTime()) / (1000 * 60 * 60 * 24));
-    const renewalWindow = 25;
+ const getRenewWithinBadge = (createdAt: string, subscriptionCycle: number): React.ReactNode => {
+  if (!createdAt || !subscriptionCycle) return null;
 
-    if (diffInDays < renewalWindow) {
-      const daysLeft = renewalWindow - diffInDays;
-      return (
-        <Badge className="bg-green-100 text-green-800">
-          Within {daysLeft} day{daysLeft !== 1 ? "s" : ""}
-        </Badge>
-      );
-    } else if (diffInDays === renewalWindow) {
-      return <Badge className="bg-yellow-100 text-gray-800">Today last date</Badge>;
-    } else {
-      const overdue = diffInDays - renewalWindow;
-      return (
-        <Badge className="bg-red-100 text-red-800">
-          Overdue by {overdue} day{overdue !== 1 ? "s" : ""}
-        </Badge>
-      );
-    }
-  };
+  const startDate = new Date(createdAt);
+  const today = new Date();
+
+  // Strip time from both dates for clean date comparison
+  startDate.setHours(0, 0, 0, 0);
+  today.setHours(0, 0, 0, 0);
+
+  const diffInDays = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+
+  if (diffInDays < subscriptionCycle) {
+    const daysLeft = subscriptionCycle - diffInDays;
+    return (
+      <Badge className="bg-green-100 text-green-800">
+        Within {daysLeft} day{daysLeft !== 1 ? "s" : ""}
+      </Badge>
+    );
+  } else if (diffInDays === subscriptionCycle) {
+    return <Badge className="bg-yellow-100 text-gray-800">Today last date</Badge>;
+  } else {
+    const overdue = diffInDays - subscriptionCycle;
+    return (
+      <Badge className="bg-red-100 text-red-800">
+        Overdue by {overdue} day{overdue !== 1 ? "s" : ""}
+      </Badge>
+    );
+  }
+};
+
 
 const filteredSales = sales
   .filter((sale) => {
@@ -278,12 +285,13 @@ const filteredSales = sales
 
     const onboardedDate = sale.onboarded_date ? new Date(sale.onboarded_date) : null;
     const today = new Date();
+    const subscriptionCycle = sale.subscription_cycle || 0; // Default to 0 if not set
     const diffInDays = onboardedDate
       ? Math.floor((today.getTime() - onboardedDate.getTime()) / (1000 * 60 * 60 * 24))
       : null;
 
     const matchesFollowUp =
-      followUpFilter === "All" || (diffInDays !== null && diffInDays >= 25);
+      followUpFilter === "All" || (diffInDays !== null && diffInDays >= subscriptionCycle);
 
     return matchesSearch && matchesStatus && matchesFollowUp;
   })
@@ -494,7 +502,11 @@ const handleCSVSubmit = async () => {
                     </TableCell>
                     <TableCell>{new Date(sale.closed_at).toLocaleDateString("en-GB")}</TableCell>
                     <TableCell>{sale.onboarded_date ? new Date(sale.onboarded_date).toLocaleDateString("en-GB") : "-"}</TableCell>
-                    <TableCell>{getRenewWithinBadge(sale.onboarded_date || "")}</TableCell>
+                    {/* <TableCell>{getRenewWithinBadge(sale.onboarded_date || "")}</TableCell> */}
+                    <TableCell>
+  {getRenewWithinBadge(sale.onboarded_date || "", sale.subscription_cycle)}
+</TableCell>
+
                     <TableCell>
   {(() => {
     const onboarded = sale.onboarded_date ? new Date(sale.onboarded_date) : null;

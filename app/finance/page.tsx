@@ -532,9 +532,9 @@ async function fetchSalesData() {
 
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-
+      const subscriptionCycle = sale.subscription_cycle;
       const targetDate = new Date(today);
-      targetDate.setDate(today.getDate() - 25); // 25 days ago
+      targetDate.setDate(today.getDate() - subscriptionCycle); // 25 days ago
 
       return closedDate <= targetDate && matchesSearch && matchesStatus;
     }
@@ -542,32 +542,67 @@ async function fetchSalesData() {
     return matchesSearch && matchesStatus;
   });
 
-  function getRenewWithinBadge(createdAt: string): React.ReactNode {
-    const closedDate = new Date(createdAt);
-    const today = new Date();
-    const diffInDays = Math.floor((today.getTime() - closedDate.getTime()) / (1000 * 60 * 60 * 24));
-    const renewalWindow = 25;
+  // function getRenewWithinBadge(createdAt: string): React.ReactNode {
+  //   const closedDate = new Date(createdAt);
+  //   const today = new Date();
+  //   const diffInDays = Math.floor((today.getTime() - closedDate.getTime()) / (1000 * 60 * 60 * 24));
+  //   const renewalWindow = 25;
 
-    if (diffInDays < renewalWindow) {
-      const daysLeft = renewalWindow - diffInDays;
-      return (
-        <Badge className="bg-green-100 text-green-800">
-          Within {daysLeft} day{daysLeft === 1 ? "" : "s"}
-        </Badge>
-      );
-    } else if (diffInDays === renewalWindow) {
-      return (
-        <Badge className="bg-yellow-100 text-gray-800">Today lastdate</Badge>
-      );
-    } else {
-      const overdue = diffInDays - renewalWindow;
-      return (
-        <Badge className="bg-red-100 text-red-800">
-          Overdue by {overdue} day{overdue === 1 ? "" : "s"}
-        </Badge>
-      );
-    }
+  //   if (diffInDays < renewalWindow) {
+  //     const daysLeft = renewalWindow - diffInDays;
+  //     return (
+  //       <Badge className="bg-green-100 text-green-800">
+  //         Within {daysLeft} day{daysLeft === 1 ? "" : "s"}
+  //       </Badge>
+  //     );
+  //   } else if (diffInDays === renewalWindow) {
+  //     return (
+  //       <Badge className="bg-yellow-100 text-gray-800">Today lastdate</Badge>
+  //     );
+  //   } else {
+  //     const overdue = diffInDays - renewalWindow;
+  //     return (
+  //       <Badge className="bg-red-100 text-red-800">
+  //         Overdue by {overdue} day{overdue === 1 ? "" : "s"}
+  //       </Badge>
+  //     );
+  //   }
+  // }
+
+  function getRenewWithinBadge(createdAt: string, subscriptionCycle: number): React.ReactNode {
+  if (!createdAt || !subscriptionCycle) return null;
+
+  const startDate = new Date(createdAt);
+  const today = new Date();
+
+  // Normalize time to 00:00:00 to compare only dates
+  startDate.setHours(0, 0, 0, 0);
+  today.setHours(0, 0, 0, 0);
+
+  const diffInDays = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+
+  if (diffInDays < subscriptionCycle) {
+    const daysLeft = subscriptionCycle - diffInDays;
+    return (
+      <Badge className="bg-green-100 text-green-800">
+        Within {daysLeft} day{daysLeft === 1 ? "" : "s"}
+      </Badge>
+    );
+  } else if (diffInDays === subscriptionCycle) {
+    return (
+      <Badge className="bg-yellow-100 text-gray-800">
+        Today last date
+      </Badge>
+    );
+  } else {
+    const overdue = diffInDays - subscriptionCycle;
+    return (
+      <Badge className="bg-red-100 text-red-800">
+        Overdue by {overdue} day{overdue === 1 ? "" : "s"}
+      </Badge>
+    );
   }
+}
 
   // const totalRevenue = sales.reduce((sum, sale) => sum + sale.sale_value, 0);
   // const paidRevenue = sales.filter(s => s.finance_status === "Paid").reduce((sum, s) => sum + s.sale_value, 0);
@@ -1529,7 +1564,11 @@ async function handleDownloadFullSalesCSV() {
                         </TableCell>
                         <TableCell>{new Date(sale.closed_at).toLocaleDateString("en-GB")}</TableCell>
                         <TableCell>{sale.onboarded_date ? new Date(sale.onboarded_date).toLocaleDateString("en-GB") : "-"}</TableCell>
-                        <TableCell>{getRenewWithinBadge(sale.onboarded_date || "")}</TableCell>
+                        {/* <TableCell>{getRenewWithinBadge(sale.onboarded_date || "")}</TableCell> */}
+                        <TableCell>
+  {getRenewWithinBadge(sale.onboarded_date || "", sale.subscription_cycle)}
+</TableCell>
+
                         <TableCell>
                           {(() => {
                             const closedDate = new Date(sale.onboarded_date ?? "");
@@ -1537,8 +1576,9 @@ async function handleDownloadFullSalesCSV() {
                             closedDate.setHours(0, 0, 0, 0);
                             today.setHours(0, 0, 0, 0);
 
+                            const subscription_cycle = sale.subscription_cycle; // Default to 30 days if not set
                             const diffInDays = Math.floor((today.getTime() - closedDate.getTime()) / (1000 * 60 * 60 * 24));
-                            const isOlderThan25Days = diffInDays >= 25;
+                            const isOlderThan25Days = diffInDays >= subscription_cycle;
 
                             const handleStatusChange = (value: FinanceStatus | "Closed") => {
                               if (value === "Closed") {
