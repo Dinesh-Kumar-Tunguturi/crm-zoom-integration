@@ -481,7 +481,7 @@ export default function AccountManagementPage() {
       header: true,
       skipEmptyLines: true,
       complete: function (results) {
-        const requiredFields = ['Name', 'Rate', 'Payment Frequency', 'Onboarded date','Phone number','email'];
+        const requiredFields = ['Name', 'Rate', 'Payment Frequency','sale_done', 'Onboarded date','Phone number','email'];
         const fields: string[] = Array.isArray(results.meta.fields) ? results.meta.fields as string[] : [];
         const missingFields = requiredFields.filter(field => !fields.includes(field));
 
@@ -667,33 +667,72 @@ const handleCSVSubmit = async () => {
   try {
     const salesToInsert = [];
 
+    // for (const row of csvData) {
+    //   const lead_id = row["lead_id"]?.trim();
+    //   const name = row["Name"]?.trim();
+    //   const email = row["email"]?.trim();
+    //   // const phone = row["Phone number"]?.trim() || null;
+    //   const sale_value = parseFloat(row["Rate"]);
+    //   const subscription_cycle = parseInt(row["Payment Frequency"], 10);
+    //   const date = new Date(row["Onboarded date"]);
+    //   const sale_done = new Date(row["sale_done"]);
+
+    //   if (!lead_id || !name || !email || !sale_value || !subscription_cycle || isNaN(date.getTime())) {
+    //     console.warn("❌ Skipping invalid row:", row);
+    //     continue;
+    //   }
+
+    //   salesToInsert.push({
+    //     lead_id,
+    //     lead_name: name,
+    //     email,
+    //     // phone,
+    //     sale_value,
+    //     subscription_cycle,
+    //     payment_mode: "UPI",
+    //     finance_status: "Paid",
+    //     closed_at: sale_done.toISOString(),
+    //     onboarded_date: date.toISOString().split("T")[0],
+    //   });
+    // }
+
     for (const row of csvData) {
-      const lead_id = row["lead_id"]?.trim();
-      const name = row["Name"]?.trim();
-      const email = row["email"]?.trim();
-      // const phone = row["Phone number"]?.trim() || null;
-      const sale_value = parseFloat(row["Rate"]);
-      const subscription_cycle = parseInt(row["Payment Frequency"], 10);
-      const date = new Date(row["Onboarded date"]);
+  const lead_id = row["lead_id"]?.trim();
+  const name = row["Name"]?.trim();
+  const email = row["email"]?.trim();
+  const sale_value = parseFloat(row["Rate"]);
+  const subscription_cycle = parseInt(row["Payment Frequency"], 10);
+  const date = new Date(row["Onboarded date"]);
+  const sale_done = new Date(row["sale_done"]);
 
-      if (!lead_id || !name || !email || !sale_value || !subscription_cycle || isNaN(date.getTime())) {
-        console.warn("❌ Skipping invalid row:", row);
-        continue;
-      }
+  if (
+    !lead_id ||
+    !name ||
+    !email ||
+    !sale_value ||
+    !subscription_cycle ||
+    isNaN(date.getTime()) ||
+    isNaN(sale_done.getTime())
+  ) {
+    console.warn("❌ Skipping invalid row:", row);
+    if (isNaN(date.getTime())) console.warn("⛔ Invalid Onboarded date:", row["Onboarded date"]);
+    if (isNaN(sale_done.getTime())) console.warn("⛔ Invalid sale_done date:", row["sale_done"]);
+    continue;
+  }
 
-      salesToInsert.push({
-        lead_id,
-        lead_name: name,
-        email,
-        // phone,
-        sale_value,
-        subscription_cycle,
-        payment_mode: "UPI",
-        finance_status: "Paid",
-        closed_at: date.toISOString(),
-        onboarded_date: date.toISOString().split("T")[0],
-      });
-    }
+  salesToInsert.push({
+    lead_id,
+    lead_name: name,
+    email,
+    sale_value,
+    subscription_cycle,
+    payment_mode: "UPI",
+    finance_status: "Paid",
+    closed_at: sale_done.toISOString(),
+    onboarded_date: date.toISOString().split("T")[0],
+  });
+}
+
 
     if (salesToInsert.length === 0) {
       alert("No valid rows to upload.");
@@ -726,7 +765,7 @@ const handleCSVSubmit = async () => {
               <div>
                 <h1 className="text-3xl font-bold text-gray-900">Account Management CRM</h1>
                 <p className="text-gray-600 mt-2">Manage client relationships and feedback</p>
-              </div>
+                </div>
               <div className="flex justify-end mb-4">
                 <Button onClick={() => setUploadDialogOpen(true)}>Upload Sale Done CSV</Button>
               </div>
@@ -1043,8 +1082,8 @@ const handleCSVSubmit = async () => {
               </DialogContent>
             </Dialog>
 
-            <Dialog open={followUpDialogOpen} onOpenChange={setFollowUpDialogOpen}>
-              <DialogContent>
+            <Dialog open={followUpDialogOpen} onOpenChange={setFollowUpDialogOpen} >
+              <DialogContent >
                 <DialogHeader>
                   <DialogTitle>Schedule Follow-up</DialogTitle>
                 </DialogHeader>
@@ -1081,11 +1120,15 @@ const handleCSVSubmit = async () => {
             </Dialog>
 
             <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
-              <DialogContent>
+              <DialogContent className="max-w-5xl">
                 <DialogHeader>
                   <DialogTitle>Upload Sale Done CSV</DialogTitle>
                   <DialogDescription>
-                    Upload your sales CSV. We'll parse and show the number of entries.
+                    Upload your sales CSV. We'll parse and show the number of entries.<br></br>
+                    The csv file must contain columns like below:<br></br>
+                "lead_id, Name, Rate, Payment Frequency, sale_done, Onboarded date, Phone number, email"<br></br>
+                sale_done and Onboarded date date format like 👉 (yyyy-mm-dd)
+              
                   </DialogDescription>
                 </DialogHeader>
 

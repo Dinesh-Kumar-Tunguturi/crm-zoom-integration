@@ -39,6 +39,20 @@ import {
 
 type FinanceStatus = "Paid" | "Unpaid" | "Paused" | "Closed" | "Got Placed"; // 🆕 added "Got Placed"
 
+// interface SalesClosure {
+//   id: string;
+//   lead_id: string;
+//   sale_value: number;
+//   subscription_cycle: number;
+//   payment_mode: string;
+//   closed_at: string;
+//   email: string;
+//   finance_status: FinanceStatus;
+//   leads?: { name: string, phone: string }; // 🆕 include phone
+//   reason_for_close?: string;
+//   onboarded_date?: string;
+// }
+
 interface SalesClosure {
   id: string;
   lead_id: string;
@@ -48,10 +62,12 @@ interface SalesClosure {
   closed_at: string;
   email: string;
   finance_status: FinanceStatus;
-  leads?: { name: string, phone: string }; // 🆕 include phone
-  reason_for_close?: string;
   onboarded_date?: string;
+  reason_for_close?: string;
+  leads?: { name: string, phone: string };
+  oldest_sale_done_at?: string; // 🆕
 }
+
 
 
 function generateMonthlyRevenue(sales: SalesClosure[], year: number) {
@@ -215,6 +231,7 @@ const [reasonText, setReasonText] = useState("");
     fetchSalesData();
   }, []);
 
+  
   useEffect(() => {
     if (allSales.length > 0) {
       const breakdown = generateMonthlyRevenue(allSales, selectedYear);
@@ -389,6 +406,18 @@ async function fetchSalesData() {
       new Date(a.onboarded_date ?? "").getTime()
   );
 
+  // Step 1: Build oldest sale_done map
+const oldestSaleDateMap = new Map<string, string>();
+
+for (const record of rows) {
+  const existing = oldestSaleDateMap.get(record.lead_id);
+  const currentClosedAt = new Date(record.closed_at);
+  if (!existing || currentClosedAt < new Date(existing)) {
+    oldestSaleDateMap.set(record.lead_id, record.closed_at);
+  }
+}
+
+
   const leadIds = latestRows.map((r) => r.lead_id);
 
   // 🆕 Fetch both name and phone from leads
@@ -417,13 +446,23 @@ async function fetchSalesData() {
     fallback.map((f) => [f.lead_id, f.lead_name])
   );
 
+  // const tableReady = latestRows.map((r) => ({
+  //   ...r,
+  //   leads: {
+  //     name: leadNameMap.get(r.lead_id) || fallbackNameMap.get(r.lead_id) || "-",
+  //     phone: leadPhoneMap.get(r.lead_id) || "-", // 🆕 include phone
+  //   },
+  // }));
+
   const tableReady = latestRows.map((r) => ({
-    ...r,
-    leads: {
-      name: leadNameMap.get(r.lead_id) || fallbackNameMap.get(r.lead_id) || "-",
-      phone: leadPhoneMap.get(r.lead_id) || "-", // 🆕 include phone
-    },
-  }));
+  ...r,
+  leads: {
+    name: leadNameMap.get(r.lead_id) || fallbackNameMap.get(r.lead_id) || "-",
+    phone: leadPhoneMap.get(r.lead_id) || "-",
+  },
+  oldest_sale_done_at: oldestSaleDateMap.get(r.lead_id) || r.closed_at, // fallback to current
+}));
+
 
   setSales(tableReady);
 }
@@ -569,6 +608,7 @@ async function fetchSalesData() {
   //   }
   // }
 
+  
   function getRenewWithinBadge(createdAt: string, subscriptionCycle: number): React.ReactNode {
   if (!createdAt || !subscriptionCycle) return null;
 
@@ -1274,6 +1314,14 @@ async function handleDownloadFullSalesCSV() {
   }
 }
 
+function calculateNextRenewal(onboarded: string | undefined, cycle: number): string {
+  if (!onboarded || !cycle) return "-";
+
+  const start = new Date(onboarded);
+  start.setDate(start.getDate() + cycle);
+
+  return start.toLocaleDateString("en-GB"); // Format: dd/mm/yyyy
+}
 
 
 
@@ -1517,7 +1565,8 @@ async function handleDownloadFullSalesCSV() {
                     <TableHead>Assigned To</TableHead>
                     <TableHead>Stage</TableHead>
                     <TableHead>saleDone At</TableHead>
-                    <TableHead>Onboarded At</TableHead>
+                    <TableHead>Onboarded / last payment at</TableHead>
+<TableHead>Next Renewal Date</TableHead>
 
                     <TableHead>Deadline</TableHead>
                     <TableHead>Actions</TableHead>
@@ -1562,8 +1611,22 @@ async function handleDownloadFullSalesCSV() {
 
 
                         </TableCell>
-                        <TableCell>{new Date(sale.closed_at).toLocaleDateString("en-GB")}</TableCell>
+                        {/* <TableCell>{new Date(sale.closed_at).toLocaleDateString("en-GB")}</TableCell> */}
+
+                        <TableCell>
+  {sale.oldest_sale_done_at
+    ? new Date(sale.oldest_sale_done_at).toLocaleDateString("en-GB")
+    : "-"}
+</TableCell>
+
+
                         <TableCell>{sale.onboarded_date ? new Date(sale.onboarded_date).toLocaleDateString("en-GB") : "-"}</TableCell>
+
+                        <TableCell>
+  {calculateNextRenewal(sale.onboarded_date, sale.subscription_cycle)}
+</TableCell>
+
+
                         {/* <TableCell>{getRenewWithinBadge(sale.onboarded_date || "")}</TableCell> */}
                         <TableCell>
   {getRenewWithinBadge(sale.onboarded_date || "", sale.subscription_cycle)}

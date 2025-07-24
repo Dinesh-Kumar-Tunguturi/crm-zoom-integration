@@ -384,6 +384,9 @@ function parseGoogleSheetsTimestamp(timestamp: string): Date | null {
       // Construct a Date object in IST and convert to UTC
       const istDate = new Date(`${year}-${month}-${day}T${hour}:${min}:${sec}+05:30`);
       return new Date(istDate.toISOString()); // Ensures it's in UTC
+
+      //  const istDate = new Date(`${year}-${month}-${day}T${hour}:${min}:${sec}+05:30`);
+      // return new Date(istDate.toISOString()); // Ensures it's in UTC
     }
   }
 

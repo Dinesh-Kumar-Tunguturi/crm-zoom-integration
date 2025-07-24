@@ -35,6 +35,8 @@ interface SalesClosure {
     name: string;
     phone: string;
   };
+    oldest_closed_at?: string; // ✅ Add this
+
 }
 export default function FinanceAssociatesPage() {
   const [loading, setLoading] = useState(true);
@@ -162,6 +164,16 @@ const fetchSales = async () => {
 
   const latestSales = Array.from(latestSalesMap.values());
 
+  // 🧠 Step: Build a map of oldest closed_at per lead_id
+const oldestDatesMap = new Map<string, string>();
+for (const record of salesData ?? []) {
+  const prev = oldestDatesMap.get(record.lead_id);
+  if (!prev || new Date(record.closed_at) < new Date(prev)) {
+    oldestDatesMap.set(record.lead_id, record.closed_at);
+  }
+}
+
+
   // 3. Enrich with name & phone
   const leadIds = latestSales.map((s) => s.lead_id);
 
@@ -179,10 +191,17 @@ const fetchSales = async () => {
     leadsData?.map((l) => [l.business_id, { name: l.name, phone: l.phone }])
   );
 
+  // const enrichedSales = latestSales.map((sale) => ({
+  //   ...sale,
+  //   leads: leadMap.get(sale.lead_id) || { name: "-", phone: "-" },
+  // }));
+
   const enrichedSales = latestSales.map((sale) => ({
-    ...sale,
-    leads: leadMap.get(sale.lead_id) || { name: "-", phone: "-" },
-  }));
+  ...sale,
+  leads: leadMap.get(sale.lead_id) || { name: "-", phone: "-" },
+  oldest_closed_at: oldestDatesMap.get(sale.lead_id) || sale.closed_at,
+}));
+
 
   setSales(enrichedSales);
 };
@@ -480,10 +499,10 @@ const handleCSVSubmit = async () => {
                   <TableHead>Subscription</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Sale Date</TableHead>
-                  <TableHead>Onboarded Date</TableHead>
+                  <TableHead>Onboarded / last payment at</TableHead>
                   <TableHead>Deadline</TableHead>
+                  <TableHead>Renewal date</TableHead>
                   <TableHead>Actions</TableHead>
-
                   <TableHead>Reason</TableHead>
                 </TableRow>
               </TableHeader>
@@ -500,12 +519,30 @@ const handleCSVSubmit = async () => {
                     <TableCell>
                       <Badge className={getStageColor(sale.finance_status)}>{sale.finance_status}</Badge>
                     </TableCell>
-                    <TableCell>{new Date(sale.closed_at).toLocaleDateString("en-GB")}</TableCell>
+                    {/* <TableCell>{new Date(sale.closed_at).toLocaleDateString("en-GB")}</TableCell> */}
+                    <TableCell>
+  {sale.oldest_closed_at
+    ? new Date(sale.oldest_closed_at).toLocaleDateString("en-GB")
+    : "-"}
+</TableCell>
+
                     <TableCell>{sale.onboarded_date ? new Date(sale.onboarded_date).toLocaleDateString("en-GB") : "-"}</TableCell>
-                    {/* <TableCell>{getRenewWithinBadge(sale.onboarded_date || "")}</TableCell> */}
                     <TableCell>
   {getRenewWithinBadge(sale.onboarded_date || "", sale.subscription_cycle)}
 </TableCell>
+<TableCell>
+  {(() => {
+    const onboarded = sale.onboarded_date ? new Date(sale.onboarded_date) : null;
+    const cycle = sale.subscription_cycle || 0;
+
+    if (!onboarded || isNaN(cycle)) return "-";
+
+    const renewalDate = new Date(onboarded);
+    renewalDate.setDate(renewalDate.getDate() + cycle);
+    return renewalDate.toLocaleDateString("en-GB");
+  })()}
+</TableCell>
+
 
                     <TableCell>
   {(() => {
@@ -519,6 +556,7 @@ const handleCSVSubmit = async () => {
     }
 
     const disableDropdown = isOlderThan25;
+
 
     return (
 <Select
