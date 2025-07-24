@@ -1580,7 +1580,14 @@ function calculateNextRenewal(onboarded: string | undefined, cycle: number): str
                       <TableRow key={sale.id}>
                         <TableCell>{idx + 1}</TableCell>
                         <TableCell className="font-medium">{sale.lead_id}</TableCell>
-                        <TableCell className="max-w-[150px] break-words whitespace-normal">{sale.leads?.name ?? "-"}</TableCell>
+                        {/* <TableCell
+                                                      className="font-medium max-w-[150px] break-words whitespace-normal cursor-pointer text-blue-600 hover:underline"
+                                                      onClick={() => window.open(`/leads/${sale.lead_id}`, "_blank")}
+                                                    >{sale.lead_id}</TableCell> */}
+                        <TableCell
+                                                      className="font-medium max-w-[150px] break-words whitespace-normal cursor-pointer text-blue-600 hover:underline"
+                                                      onClick={() => window.open(`/leads/${sale.lead_id}`, "_blank")}
+                                                    >{sale.leads?.name ?? "-"}</TableCell>
                         <TableCell className="max-w-[160px] break-words whitespace-normal">{sale.email}</TableCell>
                         <TableCell className="max-w-[160px] break-words whitespace-normal">
   {sale.leads?.phone ?? "-"}
