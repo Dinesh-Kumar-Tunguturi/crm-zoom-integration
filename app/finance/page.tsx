@@ -1104,7 +1104,7 @@ if (!confirmed) return;
       const original = sales.find(s => s.id === selectedSaleId);
       if (!original) throw new Error("Original record not found");
 
-      const { leads, id, ...cleanOriginal } = original; // 🧼 remove frontend-only field and id
+      const { leads, id ,oldest_sale_done_at, ...cleanOriginal } = original; // 🧼 remove frontend-only field and id
       const newRow = {
         ...cleanOriginal,
         sale_value: parseFloat(paymentAmount),
@@ -1760,8 +1760,8 @@ if (!confirmed) return;
 
           )}
 
-          <Dialog open={showReasonDialog} onOpenChange={setShowReasonDialog}>
-  <DialogContent className="sm:max-w-md">
+          {/* <Dialog open={showReasonDialog} onOpenChange={setShowReasonDialog}>
+  <DialogContent aria-describedby="reason-details-dialog-box" className="sm:max-w-md">
     <DialogHeader>
       <DialogTitle>Reason for {selectedFinanceStatus}</DialogTitle>
     </DialogHeader>
@@ -1819,10 +1819,205 @@ if (!confirmed) return;
     </div>
   </DialogContent>
 </Dialog>
+ */}
 
 
+{/* <Dialog
+  open={showReasonDialog}
+  onOpenChange={(open) => {
+    // Do NOT allow closing via outside click
+    if (!open) return;
+  }}
+>
+  <DialogContent
+    hideCloseIcon aria-describedby="reason-details-dialog-box"
+    className="sm:max-w-md"
+    onInteractOutside={(e) => e.preventDefault()} // Prevent outside click close
+  >
+    <DialogHeader>
+      <DialogTitle>Reason for {selectedFinanceStatus}</DialogTitle>
+    </DialogHeader>
+
+    <Textarea
+      placeholder={`Enter reason for ${selectedFinanceStatus}`}
+      value={reasonText}
+      onChange={(e) => setReasonText(e.target.value)}
+      className="min-h-[100px]"
+    />
+
+    <div className="flex justify-end gap-3 mt-4">
+      <Button
+        variant="ghost"
+        onClick={() => {
+          // Cancel: reset everything
+          setShowReasonDialog(false);
+          if (selectedSaleId) {
+            setActionSelections((prev) => ({
+              ...prev,
+              [selectedSaleId]: "", // Reset dropdown to "Select Status"
+            }));
+          }
+          setSelectedSaleId(null);
+          setSelectedFinanceStatus(null);
+          setReasonText("");
+        }}
+      >
+        Cancel
+      </Button>
+
+      <Button
+        onClick={async () => {
+          if (!selectedSaleId || !selectedFinanceStatus || !reasonText.trim()) {
+            alert("Please provide a reason.");
+            return;
+          }
+
+          const { error } = await supabase
+            .from("sales_closure")
+            .update({
+              finance_status: selectedFinanceStatus,
+              reason_for_close: reasonText.trim(),
+            })
+            .eq("id", selectedSaleId);
+
+          if (error) {
+            console.error("Failed to update:", error);
+            alert("❌ Failed to save status.");
+            return;
+          }
+
+          setSales((prev) =>
+            prev.map((s) =>
+              s.id === selectedSaleId
+                ? {
+                    ...s,
+                    finance_status: selectedFinanceStatus,
+                    reason_for_close: reasonText.trim(),
+                  }
+                : s
+            )
+          );
+
+          // Close and clean up
+          setShowReasonDialog(false);
+          setSelectedSaleId(null);
+          setSelectedFinanceStatus(null);
+          setReasonText("");
+        }}
+      >
+        Submit
+      </Button>
+    </div>
+  </DialogContent>
+</Dialog> */}
+<Dialog
+  open={showReasonDialog}
+  onOpenChange={(open) => {
+    // Prevent closing by outside click or ESC
+    if (!open) return;
+  }}
+>
+  <DialogContent
+    hideCloseIcon
+    aria-describedby="reason-details-dialog-box"
+    className="sm:max-w-md"
+    onInteractOutside={(e) => e.preventDefault()} // Disable outside click to close
+  >
+    <DialogHeader>
+      <DialogTitle>Reason for {selectedFinanceStatus}</DialogTitle>
+    </DialogHeader>
+
+    <Textarea
+      placeholder={`Enter reason for ${selectedFinanceStatus}`}
+      value={reasonText}
+      onChange={(e) => setReasonText(e.target.value)}
+      className="min-h-[100px]"
+    />
+
+    <div className="flex justify-between gap-3 mt-4">
+      {/* ❌ Cancel Button */}
+      <Button
+        variant="ghost"
+        className="w-full bg-black text-white hover:bg-gray-800"
+        onClick={() => {
+          // 🔁 Reset dropdown to "Select Status"
+          if (selectedSaleId) {
+            setActionSelections((prev) => ({
+              ...prev,
+              [selectedSaleId]: "", // reset to "Select Status"
+            }));
+          }
+
+          // Reset dialog states
+          setShowReasonDialog(false);
+          setSelectedSaleId(null);
+          setSelectedFinanceStatus(null);
+          setReasonText("");
+        }}
+      >
+        Cancel
+      </Button>
+
+      {/* ✅ Submit Button */}
+      <Button
+        className="w-full bg-green-600 text-white hover:bg-green-700"
+        onClick={async () => {
+          if (!selectedSaleId || !selectedFinanceStatus || !reasonText.trim()) {
+            alert("Please provide a reason.");
+            return;
+          }
+
+          const { error } = await supabase
+            .from("sales_closure")
+            .update({
+              finance_status: selectedFinanceStatus,
+              reason_for_close: reasonText.trim(),
+            })
+            .eq("id", selectedSaleId);
+
+          if (error) {
+            console.error("Failed to update:", error);
+            alert("❌ Failed to save status.");
+            return;
+          }
+
+          // Update local UI state
+          setSales((prev) =>
+            prev.map((s) =>
+              s.id === selectedSaleId
+                ? {
+                    ...s,
+                    finance_status: selectedFinanceStatus,
+                    reason_for_close: reasonText.trim(),
+                  }
+                : s
+            )
+          );
+
+          // ✅ Update dropdown after successful submit
+          setActionSelections((prev) => ({
+            ...prev,
+            [selectedSaleId]: selectedFinanceStatus,
+          }));
+
+          // Reset
+          setShowReasonDialog(false);
+          setSelectedSaleId(null);
+          setSelectedFinanceStatus(null);
+          setReasonText("");
+        }}
+      >
+        Submit
+      </Button>
+    </div>
+  </DialogContent>
+</Dialog>
+
+
+
+{/* 
           <Dialog open={showCloseDialog} onOpenChange={(val) => setShowCloseDialog(val)}>
-            <DialogContent
+            <DialogContent aria-describedby="ReasonForClose" hideCloseIcon
               className="sm:max-w-md"
               onInteractOutside={(e) => e.preventDefault()}
             >
@@ -1874,7 +2069,89 @@ if (!confirmed) return;
                 </Button>
               </div>
             </DialogContent>
-          </Dialog>
+          </Dialog> */}
+
+          <Dialog open={showCloseDialog} onOpenChange={(open) => {
+  if (!open) return;
+}}>
+
+  <DialogContent
+    hideCloseIcon
+    aria-describedby="ReasonForClose"
+    className="sm:max-w-md"
+    onInteractOutside={(e) => e.preventDefault()}
+  >
+    <DialogHeader>
+      <DialogTitle>Reason for Closing</DialogTitle>
+    </DialogHeader>
+
+    <Textarea
+      placeholder="Enter reason for closing this ticket..."
+      value={closingNote}
+      onChange={(e) => setClosingNote(e.target.value)}
+      className="min-h-[100px]"
+    />
+
+    <div className="flex justify-between gap-3 mt-4">
+      <Button
+        variant="ghost"
+        className="w-full bg-black text-white hover:bg-gray-800"
+        onClick={() => {
+          setShowCloseDialog(false);
+          if (selectedSaleId) {
+            setActionSelections((prev) => ({
+              ...prev,
+              [selectedSaleId]: "",
+            }));
+          }
+          setSelectedSaleId(null);
+          setClosingNote("");
+        }}
+      >
+        Cancel
+      </Button>
+
+      <Button
+        className="w-full bg-green-600 text-white hover:bg-green-700"
+        onClick={async () => {
+          if (!selectedSaleId) return;
+
+          const { error } = await supabase
+            .from("sales_closure")
+            .update({
+              finance_status: "Closed",
+              reason_for_close: closingNote.trim(),
+            })
+            .eq("id", selectedSaleId);
+
+          if (error) {
+            console.error("Error saving close reason:", error);
+            return;
+          }
+
+          setSales((prev) =>
+            prev.map((sale) =>
+              sale.id === selectedSaleId
+                ? { ...sale, finance_status: "Closed", reason_for_close: closingNote.trim() }
+                : sale
+            )
+          );
+
+          setShowCloseDialog(false);
+          setActionSelections((prev) => ({
+            ...prev,
+            [selectedSaleId]: "",
+          }));
+          setClosingNote("");
+          setSelectedSaleId(null);
+        }}
+      >
+        Submit
+      </Button>
+    </div>
+  </DialogContent>
+</Dialog>
+
 
           {/* <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
   <DialogContent className="w-[400px]">
@@ -1901,7 +2178,8 @@ if (!confirmed) return;
  */}
 
           <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
-            <DialogContent className="w-[420px]">
+            <DialogContent  hideCloseIcon aria-describedby="payment-details-description" className="w-[420px]"     onInteractOutside={(e) => e.preventDefault()} // Prevent outside click close
+>
               <DialogHeader>
                 <DialogTitle>💰 Payment Details</DialogTitle>
               </DialogHeader>
@@ -1954,10 +2232,42 @@ if (!confirmed) return;
                     <SelectItem value="3">3 months</SelectItem>
                   </SelectContent>
                 </Select>
+<div className="flex gap-3 pt-4">
+  <Button
+  variant="ghost"
+  className="w-1/2 bg-black text-white hover:bg-orange-400"
+  onClick={() => {
+    // Close the dialog
+    setShowPaymentDialog(false);
 
-                <Button onClick={handlePaymentClose} className="w-full">
-                  Payment Close
-                </Button>
+    // Reset form fields
+    setPaymentAmount("");
+    setOnboardDate(null);
+    setSubscriptionMonths("");
+
+    // Reset action dropdown (if applicable)
+    if (selectedSaleId) {
+      setActionSelections((prev) => ({
+        ...prev,
+        [selectedSaleId]: "", // Resets to "Select Status"
+      }));
+    }
+
+    // Clear selected ID (optional cleanup)
+    setSelectedSaleId(null);
+  }}
+>
+    Cancel payment ❌
+  </Button>
+
+  <Button
+    onClick={handlePaymentClose}
+    className="w-1/2 bg-blue-600 text-white hover:bg-blue-700"
+  >
+    Payment Done ✅
+  </Button>
+</div>
+
               </div>
             </DialogContent>
           </Dialog>
@@ -1965,7 +2275,7 @@ if (!confirmed) return;
 
 
           <Dialog open={showRevenueDialog} onOpenChange={setShowRevenueDialog}>
-            <DialogContent className="max-w-2xl sm:max-w-5xl">
+            <DialogContent aria-describedby="Monthly-revenue-breakdown" className="max-w-2xl sm:max-w-5xl">
               <DialogHeader>
                 <DialogTitle>Monthly Revenue Breakdown</DialogTitle>
               </DialogHeader>
@@ -2149,7 +2459,7 @@ if (!confirmed) return;
 
 
           <Dialog open={showOnboardDialog} onOpenChange={setShowOnboardDialog}>
-            <DialogContent className="max-w-5xl h-[90vh] overflow-hidden">
+            <DialogContent aria-describedby="OnboardNewClientBox" className="max-w-5xl h-[90vh] overflow-hidden">
               <DialogHeader>
                 <DialogTitle className="text-xl font-bold text-gray-900">
                   🧾 Onboard New Client

@@ -749,7 +749,7 @@ if (!confirmed) return;
 
 
 <Dialog open={showReasonDialog} onOpenChange={setShowReasonDialog}>
-  <DialogContent className="sm:max-w-md">
+  <DialogContent hideCloseIcon className="sm:max-w-md">
     <DialogHeader>
       <DialogTitle>Reason for {selectedReasonType}</DialogTitle>
     </DialogHeader>
@@ -762,6 +762,17 @@ if (!confirmed) return;
     />
 
     <div className="flex justify-end mt-4">
+      <Button
+        variant="outline"
+        onClick={() => {
+          setShowReasonDialog(false);
+          setSelectedSaleId(null);
+          setSelectedReasonType(null);
+          setReasonNote("");
+        }}
+      >
+        Cancel  
+      </Button>
       <Button
         onClick={async () => {
           if (!selectedSaleId || reasonNote.trim() === "" || !selectedReasonType) {
@@ -886,6 +897,30 @@ if (!confirmed) return;
         </SelectContent>
       </Select>
 
+<div className="flex justify-between gap-3 pt-4">
+  <Button
+    variant="outline"
+    className="w-full bg-black text-white hover:bg-gray-800"
+    onClick={() => {
+      setShowPaymentDialog(false);
+      setPaymentAmount("");
+      setOnboardDate(null);
+      setSubscriptionMonths("1");
+
+      // 🧠 Revert dropdown to default
+      if (selectedSaleId) {
+        setActionSelections((prev) => ({
+          ...prev,
+          [selectedSaleId]: "",
+        }));
+      }
+
+      setSelectedSaleId(null);
+    }}
+  >
+    Cancel
+  </Button>
+
       <Button
         className="w-full"
         onClick={async () => {
@@ -935,6 +970,7 @@ if (!confirmed) return;
       >
         Payment Close
       </Button>
+      </div>
     </div>
   </DialogContent>
 </Dialog>
