@@ -64,6 +64,7 @@ export default function AddUserPage() {
           auth_id: authId,
           roles: role,
           full_name: fullName,
+          user_email:email,
         },
       ]);
 

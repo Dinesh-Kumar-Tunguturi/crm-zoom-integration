@@ -37,6 +37,10 @@ interface Lead {
   created_at: string;
 }
 
+interface Profile {
+  full_name: string;
+  roles: string;
+}
 // interface SaleClosing {
 //   sale_value: number;
 //   subscription_cycle: 15 | 30 | 60 | 90; // Subscription cycle in days
@@ -78,6 +82,8 @@ const getStageColor = (stage: SalesStage) => {
 
 export default function SalesPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
+    const [userProfile, setUserProfile] = useState<Profile | null>(null);
+
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
   const [followUpDialogOpen, setFollowUpDialogOpen] = useState(false);
@@ -111,30 +117,69 @@ const [subscriptionEndsOn, setSubscriptionEndsOn] = useState<string>("");
   github_value: 0,
 });
 
-  useEffect(() => { fetchLeads() }, []);
 
-  const fetchLeads = async () => {
-    const { data, error } = await supabase.from("leads")
-      .select("id, business_id, name, email, phone, assigned_to, current_stage, created_at")
-      .not("assigned_to", "is", null)
-      .neq("assigned_to", "");
 
-    if (error) console.error("Error fetching leads:", error);
-    else {
-      const leadsData: Lead[] = data.map((lead: any) => ({
-        id: lead.id,
-        business_id: lead.business_id,
-        client_name: lead.name,
-        email: lead.email,
-        phone: lead.phone,
-        assigned_to: lead.assigned_to,
-        current_stage: lead.current_stage,
-        call_history: [],
-        created_at: lead.created_at,
-      }));
-      setLeads(leadsData);
+useEffect(() => {
+    fetchUserProfile();
+    
+  }, []);
+
+  const fetchUserProfile = async () => {
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      console.error("Error fetching auth user:", authError);
+      return;
     }
+
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("full_name, roles")
+      .eq("auth_id", user.id)
+      .single();
+
+    if (profileError) {
+      console.error("Error fetching profile:", profileError);
+      return;
+    }
+
+      console.log("Fetched profile:", profile);
+
+    setUserProfile(profile);
+    fetchLeads(profile);   // pass profile here
   };
+
+  const fetchLeads = async (profile: Profile) => {
+    let query = supabase.from("leads").select(
+      "id, business_id, name, email, phone, assigned_to, current_stage, created_at"
+    );
+
+    if (profile.roles === "Sales Associate") {
+      query = query.eq("assigned_to", profile.full_name);
+    } else {
+      query = query.not("assigned_to", "is", null).neq("assigned_to", "");
+    }
+
+    const { data, error } = await query;
+    if (error) {
+      console.error("Error fetching leads:", error);
+      return;
+    }
+
+    const leadsData: Lead[] = data.map((lead: any) => ({
+      id: lead.id,
+      business_id: lead.business_id,
+      client_name: lead.name,
+      email: lead.email,
+      phone: lead.phone,
+      assigned_to: lead.assigned_to,
+      current_stage: lead.current_stage,
+      call_history: [],
+      created_at: lead.created_at,
+    }));
+
+    setLeads(leadsData);
+  };
+
   /* 🔄 Re-compute total every time a relevant field changes */
 useEffect(() => {
   const multiplier =
@@ -484,7 +529,7 @@ setFollowUpsData(prev =>
   };
 
   return (
-    <ProtectedRoute allowedRoles={["Sales", "Super Admin"]}>
+    <ProtectedRoute allowedRoles={["Sales","Sales Associate", "Super Admin"]}>
 
       <DashboardLayout>
         <div className="space-y-6">
