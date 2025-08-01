@@ -15,6 +15,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Eye, Search } from "lucide-react";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { createAndUploadInvoice } from '@/lib/createInvoice';
+import dayjs from 'dayjs';
+import relativeTime from 'dayjs/plugin/relativeTime';
+dayjs.extend(relativeTime);
+import isBetween from "dayjs/plugin/isBetween";
+
+dayjs.extend(isBetween);
 
 
 type SalesStage = "Prospect" | "DNP" | "Out of TG" | "Not Interested" | "Conversation Done" | "Sale Done";
@@ -34,7 +40,8 @@ interface Lead {
   assigned_to: string;
   current_stage: SalesStage;
   call_history: CallHistory[];
-  created_at: string;
+  created_at: string | null;
+  assigned_at: string | null;  
 }
 
 interface Profile {
@@ -99,6 +106,11 @@ export default function SalesPage() {
   const [previousStage, setPreviousStage] = useState<SalesStage | null>(null);
   const [totalAmount, setTotalAmount] = useState(0);
 const [subscriptionEndsOn, setSubscriptionEndsOn] = useState<string>("");
+const [startDate, setStartDate] = useState<string | null>(null);
+const [endDate, setEndDate] = useState<string | null>(null);
+const [isDateDropdownOpen, setIsDateDropdownOpen] = useState(false);
+
+
 
   // const [saleData, setSaleData] = useState<SaleClosing>({
   //   sale_value: 0,
@@ -150,7 +162,10 @@ useEffect(() => {
 
   const fetchLeads = async (profile: Profile) => {
     let query = supabase.from("leads").select(
-      "id, business_id, name, email, phone, assigned_to, current_stage, created_at"
+      // "id, business_id, name, email, phone, assigned_to, current_stage, created_at"
+
+        "id, business_id, name, email, phone, assigned_to, current_stage, created_at, assigned_at"
+
     );
 
     if (profile.roles === "Sales Associate") {
@@ -175,6 +190,8 @@ useEffect(() => {
       current_stage: lead.current_stage,
       call_history: [],
       created_at: lead.created_at,
+        assigned_at: lead.assigned_at,      // ⬅️ add this
+
     }));
 
     setLeads(leadsData);
@@ -256,13 +273,45 @@ useEffect(() => {
     }));
   };
 
+  // const filteredLeads = leads.filter((lead) => {
+  //   const matchesSearch = lead.client_name.toLowerCase().includes(searchTerm.toLowerCase())
+  //     || lead.email.toLowerCase().includes(searchTerm.toLowerCase())
+  //     || lead.phone.includes(searchTerm);
+  //   const matchesStage = stageFilter === "all" || lead.current_stage === stageFilter;
+  //   return matchesSearch && matchesStage;
+  // });
+
+  
+
   const filteredLeads = leads.filter((lead) => {
-    const matchesSearch = lead.client_name.toLowerCase().includes(searchTerm.toLowerCase())
-      || lead.email.toLowerCase().includes(searchTerm.toLowerCase())
-      || lead.phone.includes(searchTerm);
-    const matchesStage = stageFilter === "all" || lead.current_stage === stageFilter;
-    return matchesSearch && matchesStage;
-  });
+  const matchesSearch =
+    lead.client_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    lead.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    lead.phone.includes(searchTerm);
+
+  const matchesStage = stageFilter === "all" || lead.current_stage === stageFilter;
+
+  // const matchesDate =
+  //   !startDate || !endDate ||
+  //   (lead.assigned_at &&
+  //     dayjs(lead.assigned_at).isAfter(dayjs(startDate).subtract(1, 'day')) &&
+  //     dayjs(lead.assigned_at).isBefore(dayjs(endDate).add(1, 'day')));
+
+  const matchesDate =
+  !startDate || !endDate ||
+  (lead.assigned_at &&
+    dayjs(lead.assigned_at).isBetween(
+      dayjs(startDate).startOf("day"),
+      dayjs(endDate).endOf("day"),
+      null,
+      "[]"
+    ));
+
+
+  return matchesSearch && matchesStage && matchesDate;
+});
+
+
 
 
   const handleStageUpdate = async (leadId: string, newStage: SalesStage) => {
@@ -714,6 +763,57 @@ setFollowUpsData(prev =>
                 {salesStages.map(stage => (<SelectItem key={stage} value={stage}>{stage}</SelectItem>))}
               </SelectContent>
             </Select>
+
+<div className="relative w-full sm:w-[300px]">
+  {/* 📅 Button Trigger */}
+  <div
+    onClick={() => setIsDateDropdownOpen(!isDateDropdownOpen)}
+    className="bg-white border rounded-md shadow-sm px-4 py-2 cursor-pointer flex justify-between items-center"
+  >
+    <span>
+      {startDate && endDate
+        ? `📅 ${dayjs(startDate).format('DD MMM')} → ${dayjs(endDate).format('DD MMM')}`
+        : "📅 Date Range"}
+    </span>
+    <span className="text-gray-400">▼</span>
+  </div>
+
+  {/* 📅 Dropdown Content */}
+  {isDateDropdownOpen && (
+    <div className="absolute z-50 mt-2 bg-white rounded-md shadow-lg p-4 w-[300px] border space-y-4">
+      <div>
+        <Label className="text-sm text-gray-600">Start Date</Label>
+        <Input
+          type="date"
+          value={startDate ?? ""}
+          onChange={(e) => setStartDate(e.target.value)}
+        />
+      </div>
+
+      <div>
+        <Label className="text-sm text-gray-600">End Date</Label>
+        <Input
+          type="date"
+          value={endDate ?? ""}
+          onChange={(e) => setEndDate(e.target.value)}
+        />
+      </div>
+
+      <Button
+        variant="ghost"
+        className="text-red-500 text-sm p-0"
+        onClick={() => {
+          setStartDate(null);
+          setEndDate(null);
+          setIsDateDropdownOpen(false); // close on clear
+        }}
+      >
+        ❌ Clear Filter
+      </Button>
+    </div>
+  )}
+</div>
+
           </div>
 
           <Card>
@@ -726,9 +826,14 @@ setFollowUpsData(prev =>
                       <TableHead>S.No</TableHead>
                       <TableHead>Business ID</TableHead>
                       <TableHead>Client Name</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Phone</TableHead>
-                      <TableHead>Assigned To</TableHead>
+                      <TableHead className="w-32">Email</TableHead>
+                     <TableHead>Phone</TableHead>
+<TableHead className="w-40">Created At</TableHead>
+<TableHead className="w-20">Lead age</TableHead>
+
+<TableHead className="w-40">Assigned At</TableHead>
+<TableHead>Assigned To</TableHead>
+
                       <TableHead>Stage</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
@@ -739,9 +844,23 @@ setFollowUpsData(prev =>
                         <TableCell>{idx + 1}</TableCell>
                         <TableCell>{lead.business_id}</TableCell>
                         <TableCell>{lead.client_name}</TableCell>
-                        <TableCell>{lead.email}</TableCell>
-                        <TableCell>{lead.phone}</TableCell>
-                        <TableCell>{lead.assigned_to}</TableCell>
+                        <TableCell className="w-32 truncate">{lead.email}</TableCell>
+                       <TableCell>{lead.phone}</TableCell>
+{/* <TableCell>{lead.created_at ? lead.created_at.slice(0, 10) : "N/A"}</TableCell> */}
+
+<TableCell className="w-40">{lead.created_at ? dayjs(lead.created_at).format('DD MMM YYYY') : "N/A"}</TableCell>
+<TableCell>  {lead.created_at ? `${dayjs().diff(dayjs(lead.created_at), 'day')} days` : "N/A"}
+</TableCell>
+
+{/* <TableCell>{lead.assigned_at ? lead.assigned_at.slice(0, 10) : "N/A"}</TableCell> */}
+{/* <TableCell>{lead.assigned_at ? lead.assigned_at.slice(0, 10) : "N/A"}</TableCell> */}
+
+
+<TableCell className="w-40">{lead.assigned_at ? dayjs(lead.assigned_at).format('DD MMM YYYY') : "N/A"}</TableCell>
+
+
+<TableCell>{lead.assigned_to}</TableCell>
+
                         <TableCell>
                           <Select value={lead.current_stage} onValueChange={(value: SalesStage) => handleStageUpdate(lead.id, value)}
                           >
