@@ -68,6 +68,19 @@ interface Lead {
   assigned_at?: string;
 }
 
+
+// interface SalesDoneLead {
+//   id: string;
+//   business_id: string;
+//   name: string;
+//   phone: string;
+//   email: string;
+//   city: string;
+//   current_stage: string;
+//   created_at: string;
+//   updated_at?: string;
+//   closed_at?: string;
+// }
 export default function MarketingPage() {
   const { loading, setLoading } = useContext(LoadingContext);
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -100,6 +113,14 @@ export default function MarketingPage() {
   const [allLeadsStats, setAllLeadsStats] = useState({ total: 0, assigned: 0, new: 0 });
   // const [showReassignDialog, setShowReassignDialog] = useState(false);
   // const [pendingAssignee, setPendingAssignee] = useState<string | null>(null);
+  const [distinctSalesDialogOpen, setDistinctSalesDialogOpen] = useState(false);
+const [distinctSalesLeads, setDistinctSalesLeads] = useState<Lead[]>([]);
+const [distinctSalesStartDate, setDistinctSalesStartDate] = useState("");
+const [distinctSalesEndDate, setDistinctSalesEndDate] = useState("");
+const [distinctSalesSource, setDistinctSalesSource] = useState("all");
+const [distinctSources, setDistinctSources] = useState<string[]>([]);
+
+
 
   const [startDate, setStartDate] = useState<string>("");
 const [endDate, setEndDate] = useState<string>("");
@@ -135,6 +156,9 @@ const [allLeads, setAllLeads] = useState([]);
   const [newSheetUrl, setNewSheetUrl] = useState("");
   const [leadTab, setLeadTab] = useState<"New" | "Assigned" | "All">("New");
   const [isAllView, setIsAllView] = useState(false);
+  const [salesDoneLeads, setSalesDoneLeads] = useState([]);
+const [showSalesDoneDialog, setShowSalesDoneDialog] = useState(false);
+
 
   const [resultDialogOpen, setResultDialogOpen] = useState(false);
   const [resultMessage, setResultMessage] = useState({
@@ -142,6 +166,8 @@ const [allLeads, setAllLeads] = useState([]);
     description: '',
     isError: false
   });
+
+
 
   // Add this effect to auto-close the dialog
   useEffect(() => {
@@ -156,6 +182,7 @@ const [allLeads, setAllLeads] = useState([]);
 
   useEffect(() => {
     fetchGoogleSheets();
+    // fetchAllUniqueSources();
     // ... your other useEffect code
   }, []);
 
@@ -188,7 +215,12 @@ const [allLeads, setAllLeads] = useState([]);
     lead.city.toLowerCase().includes(searchTerm.toLowerCase());
 
   const matchesStatus = statusFilter === "all" || lead.status === statusFilter;
-  const matchesSource = sourceFilter === "all" || lead.source === sourceFilter;
+  // const matchesSource = sourceFilter === "all" || lead.source === sourceFilter;
+
+  const matchesSource =
+  sourceFilter === "all" ||
+  (lead.source?.toLowerCase().trim() === sourceFilter.toLowerCase().trim());
+
 
   const matchesTab =
     leadTab === "All" ||
@@ -287,7 +319,98 @@ const filteredSales = salesHistory.filter((item) => {
       setLoading(false);
     }
   };
+// Convert local date to UTC range
+const getUTCRange = (dateStr: string, isStart: boolean) => {
+  const date = new Date(dateStr);
+  if (isStart) {
+    date.setHours(0, 0, 0, 0);
+  } else {
+    date.setHours(23, 59, 59, 999);
+  }
+  return date.toISOString(); // Converts to UTC properly
+};
 
+const fetchDistinctSalesLeads = async () => {
+  let query = supabase
+    .from("leads")
+    .select("*")
+    .eq("current_stage", "sale done"); // Be careful: check if it's "sale done" (not "sales done")
+
+  if (distinctSalesStartDate && distinctSalesEndDate) {
+    query = query
+      .gte("created_at", getUTCRange(distinctSalesStartDate, true))
+      .lte("created_at", getUTCRange(distinctSalesEndDate, false));
+  }
+
+  if (distinctSalesSource !== "all") {
+    query = query.eq("source", distinctSalesSource);
+  }
+
+  const { data, error } = await query.order("created_at", { ascending: false });
+
+  if (!error) {
+    setDistinctSalesLeads(data || []);
+  } else {
+    console.error("Error fetching distinct sales leads:", error);
+  }
+};
+
+const handleFilterChange = async ({
+  startDate = distinctSalesStartDate,
+  endDate = distinctSalesEndDate,
+  source = distinctSalesSource,
+}: {
+  startDate?: string;
+  endDate?: string;
+  source?: string;
+}) => {
+  setDistinctSalesStartDate(startDate);
+  setDistinctSalesEndDate(endDate);
+  setDistinctSalesSource(source);
+  
+  // then fetch after setting all 3
+  let query = supabase
+    .from("leads")
+    .select("*")
+    .eq("current_stage", "sale done");
+
+  if (startDate && endDate) {
+    const getUTCRange = (dateStr: string, isStart: boolean) => {
+      const date = new Date(dateStr);
+      if (isStart) date.setHours(0, 0, 0, 0);
+      else date.setHours(23, 59, 59, 999);
+      return date.toISOString();
+    };
+
+    query = query
+      .gte("created_at", getUTCRange(startDate, true))
+      .lte("created_at", getUTCRange(endDate, false));
+  }
+
+  if (source !== "all") {
+    query = query.eq("source", source);
+  }
+
+  const { data, error } = await query;
+  if (!error) setDistinctSalesLeads(data || []);
+};
+
+
+const fetchAllUniqueSources = async () => {
+  try {
+    const { data, error } = await supabase
+      .from("leads")
+      .select("source")
+      .neq("source", "") // optional: ignore empty sources
+
+    if (error) throw error;
+
+    const sources = [...new Set(data.map(item => item.source))];
+    setUniqueSources(sources);
+  } catch (err) {
+    console.error("Error fetching unique sources:", err);
+  }
+};
 
   const handleIndividualAssign = async (leadId: string, assignedTo: string) => {
     setLoading(true, "Assigning... please wait");
@@ -375,8 +498,13 @@ if (startDate && endDate) {
 }
 
 
-      if (tab) query = query.eq("status", tab);
-      if (search) {
+      // if (tab) query = query.eq("status", tab);
+
+if (tab && tab !== "All") {
+  query = query.eq("status", tab);
+}
+
+if (search) {
         query = query.or(`name.ilike.%${search}%,phone.ilike.%${search}%,email.ilike.%${search}%,city.ilike.%${search}%`);
       }
       if (source !== "all") query = query.eq("source", source);
@@ -413,9 +541,14 @@ if (startDate && endDate) {
   //   fetchLeadsAndSales(currentPage, leadTab, searchTerm, statusFilter, sourceFilter);
   // }, [currentPage, leadTab, pageSize, searchTerm, statusFilter, sourceFilter]);
 
-  useEffect(() => {
+//   useEffect(() => {
+//   fetchLeadsAndSales(currentPage, leadTab, searchTerm, statusFilter, sourceFilter);
+// }, [currentPage, leadTab, pageSize, searchTerm, statusFilter, sourceFilter, startDate, endDate]);
+
+useEffect(() => {
   fetchLeadsAndSales(currentPage, leadTab, searchTerm, statusFilter, sourceFilter);
 }, [currentPage, leadTab, pageSize, searchTerm, statusFilter, sourceFilter, startDate, endDate]);
+
 
 
 
@@ -624,6 +757,52 @@ if (error) {
         return "bg-gray-100 text-gray-800";
     }
   };
+
+  const handleDistinctFilterChange = async ({
+  startDate,
+  endDate,
+  source,
+}: {
+  startDate: string;
+  endDate: string;
+  source: string;
+}) => {
+  setDistinctSalesStartDate(startDate);
+  setDistinctSalesEndDate(endDate);
+  setDistinctSalesSource(source);
+
+  const getUTCRange = (dateStr: string, isStart: boolean) => {
+    const date = new Date(dateStr);
+    if (isStart) date.setHours(0, 0, 0, 0);
+    else date.setHours(23, 59, 59, 999);
+    return date.toISOString();
+  };
+
+  let query = supabase
+    .from("leads")
+    .select("*")
+    .eq("current_stage", "sale done");
+
+  if (startDate && endDate) {
+    query = query
+      .gte("created_at", getUTCRange(startDate, true))
+      .lte("created_at", getUTCRange(endDate, false));
+  }
+
+  if (source !== "all") {
+    query = query.eq("source", source);
+  }
+
+  const { data, error } = await query;
+  if (!error) {
+    setDistinctSalesLeads(data || []);
+    const sourceList = [...new Set((data || []).map((d) => d.source?.trim()).filter(Boolean))];
+    setDistinctSources(sourceList);
+  } else {
+    console.error("Error fetching filtered leads:", error);
+  }
+};
+
 
   const handleAddNewSheet = async () => {
     try {
@@ -935,6 +1114,33 @@ setSalesHistoryDialogOpen(true);
                         <List className="mr-2 h-4 w-4" />
                         <span>View all Google Sheets</span>
                       </DropdownMenuItem>
+
+                     <DropdownMenuItem
+  className="cursor-pointer"
+  onClick={async () => {
+    setDistinctSalesStartDate("");
+    setDistinctSalesEndDate("");
+    setDistinctSalesSource("all");
+
+    const { data, error } = await supabase
+      .from("leads")
+      .select("source")
+      .eq("current_stage", "sales done");
+
+    if (!error) {
+      const sources = [...new Set(data.map((d) => d.source).filter(Boolean))];
+      setDistinctSources(sources);
+    }
+
+    await fetchDistinctSalesLeads();
+    setDistinctSalesDialogOpen(true);
+  }}
+>
+  <List className="mr-2 h-4 w-4" />
+  <span>See Distinct Sales History</span>
+</DropdownMenuItem>
+
+
                     </DropdownMenuContent>
                   </DropdownMenu>
 
@@ -1097,6 +1303,125 @@ setSalesHistoryDialogOpen(true);
                       </DialogFooter>
                     </DialogContent>
                   </Dialog>
+
+<Dialog open={distinctSalesDialogOpen} onOpenChange={setDistinctSalesDialogOpen}>
+  <DialogContent className="max-w-6xl">
+    <DialogHeader>
+      <DialogTitle>Total Sales History</DialogTitle>
+      <DialogDescription>
+        Leads with current stage marked as <strong>"sales done"</strong>
+      </DialogDescription>
+    </DialogHeader>
+
+    {/* Filters */}
+    <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+  <div className="flex flex-wrap gap-2 items-center">
+    <div>
+      <Label className="text-sm text-gray-600">Start Date</Label>
+      <Input
+        type="date"
+        value={distinctSalesStartDate}
+        onChange={(e) => {
+          handleDistinctFilterChange({
+            startDate: e.target.value,
+            endDate: distinctSalesEndDate,
+            source: distinctSalesSource,
+          });
+        }}
+      />
+    </div>
+    <div>
+      <Label className="text-sm text-gray-600">End Date</Label>
+      <Input
+        type="date"
+        value={distinctSalesEndDate}
+        onChange={(e) => {
+          handleDistinctFilterChange({
+            startDate: distinctSalesStartDate,
+            endDate: e.target.value,
+            source: distinctSalesSource,
+          });
+        }}
+      />
+    </div>
+    <div>
+      <Label className="text-sm text-gray-600">Source</Label>
+      <Select
+        value={distinctSalesSource}
+        onValueChange={(value) => {
+          handleDistinctFilterChange({
+            startDate: distinctSalesStartDate,
+            endDate: distinctSalesEndDate,
+            source: value,
+          });
+        }}
+      >
+        <SelectTrigger className="w-[180px]">
+          <SelectValue placeholder="Select Source" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">All Sources</SelectItem>
+          {distinctSources.map((source) => (
+            <SelectItem key={source} value={source}>
+              {source}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  </div>
+  <div className="text-green-600 text-sm">
+    Showing {distinctSalesLeads.length}{" "}
+    {distinctSalesLeads.length === 1 ? "record" : "records"}
+  </div>
+</div>
+
+
+    {/* Table */}
+    {distinctSalesLeads.length > 0 ? (
+      <div className="overflow-auto max-h-[400px] border rounded-lg">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>S.No</TableHead>
+              <TableHead>Business ID</TableHead>
+              <TableHead>Name</TableHead>
+              <TableHead>Phone</TableHead>
+              <TableHead>Email</TableHead>
+              <TableHead>City</TableHead>
+              <TableHead>Source</TableHead>
+              <TableHead>Created At</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {distinctSalesLeads.map((lead, index) => (
+              <TableRow key={lead.id}>
+                <TableCell>{index + 1}</TableCell>
+                <TableCell>{lead.business_id}</TableCell>
+                <TableCell>{lead.name}</TableCell>
+                <TableCell>{lead.phone}</TableCell>
+                <TableCell>{lead.email}</TableCell>
+                <TableCell>{lead.city}</TableCell>
+                <TableCell>{lead.source}</TableCell>
+                <TableCell>
+                  {new Date(lead.created_at).toLocaleDateString("en-IN", {
+                    day: "2-digit",
+                    month: "2-digit",
+                    year: "numeric",
+                  })}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    ) : (
+      <div className="py-6 text-center text-gray-500">
+        <p>No sales done records found.</p>
+      </div>
+    )}
+  </DialogContent>
+</Dialog>
 
                   <Dialog open={resultDialogOpen} onOpenChange={setResultDialogOpen}>
                     <DialogContent className="max-w-sm">
@@ -1340,7 +1665,9 @@ setSalesHistoryDialogOpen(true);
   onClick={async () => {
     setLeadTab("All");
     setCurrentPage(1);
-    setIsAllView(true);
+    // setIsAllView(true);
+        setIsAllView(false); // 👈 make sure this is false to enable pagination
+
 
     // Fetch all leads fresh from DB
     const { data, error } = await supabase.from("leads").select("*").order("created_at", { ascending: false });
@@ -1348,6 +1675,8 @@ setSalesHistoryDialogOpen(true);
       console.error("❌ Failed to fetch all leads:", error);
     } else {
       setLeads(data); // ✅ overwrite full lead list
+            fetchAllUniqueSources(); // ✅ Re-fetch sources now that you're pulling full dataset
+
     }
   }}
 >
@@ -1357,26 +1686,33 @@ setSalesHistoryDialogOpen(true);
 
                     <div className="w-full sm:w-auto flex justify-end">
                       {/* <Select onValueChange={(value) => setPageSize(Number(value))}> */}
-                      <Select
+                     <Select
   onValueChange={async (value) => {
     if (value === "all") {
       setIsAllView(true);
       setCurrentPage(1);
 
-      // fetch fresh full data
-      const { data, error } = await supabase.from("leads").select("*").order("created_at", { ascending: false });
-      if (error) {
-        console.error("❌ Failed to fetch all leads for 'All':", error);
-      } else {
+      // Fetch all data if "All" is selected
+      const { data, error } = await supabase
+        .from("leads")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (!error) {
         setLeads(data);
       }
     } else {
+      const pageSizeValue = Number(value);
+      setPageSize(pageSizeValue);
       setIsAllView(false);
-      setPageSize(Number(value));
       setCurrentPage(1);
+
+      // ✅ REFETCH data with new pageSize
+      fetchLeadsAndSales(1, leadTab, searchTerm, statusFilter, sourceFilter);
     }
   }}
 >
+
 
                         <SelectTrigger className="w-[150px]">
                           <SelectValue placeholder={`${pageSize} per page`} />
@@ -1635,52 +1971,6 @@ setSalesHistoryDialogOpen(true);
 </div>
 </div>
     </DialogHeader>
-    
-
-    {/* {salesHistory.length > 0 ? (
-      <div className="overflow-auto max-h-[400px] border rounded-lg">
-        
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>S.No</TableHead>
-              <TableHead>Lead ID</TableHead>
-              <TableHead>Name</TableHead>
-              <TableHead>Phone</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Sale $</TableHead>
-              <TableHead>Cycle (days)</TableHead>
-              <TableHead>Payment</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Closed At</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-              {filteredSales.map((item, index) => (
-              <TableRow key={item.id}>
-                <TableCell>{index+1}</TableCell>
-                <TableCell>{item.lead_id}</TableCell>
-                <TableCell>{item.lead_name}</TableCell>
-<TableCell>{item.lead_phone}</TableCell>
-
-                <TableCell>{item.email}</TableCell>
-                <TableCell>${item.sale_value}</TableCell>
-                <TableCell>{item.subscription_cycle}</TableCell>
-                <TableCell>{item.payment_mode}</TableCell>
-                <TableCell>{item.finance_status}</TableCell>
-                <TableCell>{new Date(item.closed_at).toLocaleDateString()}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-    ) : (
-      <div className="py-6 text-center text-gray-500">
-        <p>No sales records yet.</p>
-      </div>
-    )}
-    
-    */}
 
     {salesHistory.length > 0 ? (
   <>
@@ -1735,6 +2025,7 @@ setSalesHistoryDialogOpen(true);
 
   </DialogContent>
 </Dialog>
+
 
 
               <Dialog open={bulkAssignDialogOpen} onOpenChange={setBulkAssignDialogOpen}>
