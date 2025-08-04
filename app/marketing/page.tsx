@@ -470,72 +470,166 @@ const fetchAllUniqueSources = async () => {
   }, []);
 
 
-  const fetchLeadsAndSales = async (
-    page = 1,
-    tab = leadTab,
-    search = searchTerm,
-    status = statusFilter,
-    source = sourceFilter
-  ) => {
-    setLoading(true);
-    try {
-      const from = (page - 1) * pageSize;
-      const to = from + pageSize - 1;
+//   const fetchLeadsAndSales = async (
+//     page = 1,
+//     tab = leadTab,
+//     search = searchTerm,
+//     status = statusFilter,
+//     source = sourceFilter
+//   ) => {
+//     setLoading(true);
+//     try {
+//       const from = (page - 1) * pageSize;
+//       const to = from + pageSize - 1;
 
-      let query = supabase
-        .from("leads")
-        .select("*", { count: "exact" })
-        .range(from, to)
-        .order("created_at", { ascending: false });
+//       let query = supabase
+//         .from("leads")
+//         .select("*", { count: "exact" })
+//         .range(from, to)
+//         .order("created_at", { ascending: false });
 
-//         if (startDate && endDate) {
-//   query = query.gte("created_at", `${startDate}T00:00:00`).lte("created_at", `${endDate}T23:59:59`);
+// //         if (startDate && endDate) {
+// //   query = query.gte("created_at", `${startDate}T00:00:00`).lte("created_at", `${endDate}T23:59:59`);
+// // }
+// if (startDate && endDate) {
+//   query = query
+//     .gte("created_at", `${startDate}T00:00:00+05:30`)
+//     .lte("created_at", `${endDate}T23:59:59+05:30`);
 // }
-if (startDate && endDate) {
-  query = query
-    .gte("created_at", `${startDate}T00:00:00+05:30`)
-    .lte("created_at", `${endDate}T23:59:59+05:30`);
-}
 
 
-      // if (tab) query = query.eq("status", tab);
+//       // if (tab) query = query.eq("status", tab);
 
-if (tab && tab !== "All") {
-  query = query.eq("status", tab);
-}
+// if (tab && tab !== "All") {
+//   query = query.eq("status", tab);
+// }
 
-if (search) {
-        query = query.or(`name.ilike.%${search}%,phone.ilike.%${search}%,email.ilike.%${search}%,city.ilike.%${search}%`);
-      }
-      if (source !== "all") query = query.eq("source", source);
-      if (status !== "all") query = query.eq("status", status);
+// if (search) {
+//         query = query.or(`name.ilike.%${search}%,phone.ilike.%${search}%,email.ilike.%${search}%,city.ilike.%${search}%`);
+//       }
+//       if (source !== "all") query = query.eq("source", source);
+//       if (status !== "all") query = query.eq("status", status);
 
-      const { data: leadsData, error, count } = await query;
-      // leadsData?.sort((a, b) => {
-      //   const numA = parseInt(a.business_id.replace("AWL-", ""), 10);
-      //   const numB = parseInt(b.business_id.replace("AWL-", ""), 10);
-      //   return numA - numB;
-      // });
+//       const { data: leadsData, error, count } = await query;
+//       // leadsData?.sort((a, b) => {
+//       //   const numA = parseInt(a.business_id.replace("AWL-", ""), 10);
+//       //   const numB = parseInt(b.business_id.replace("AWL-", ""), 10);
+//       //   return numA - numB;
+//       // });
 
-      // setLeads(leadsData ?? []);
+//       // setLeads(leadsData ?? []);
 
-      if (error) throw error;
+//       if (error) throw error;
 
-      setLeads(leadsData ?? []);
-      setTotalPages(Math.ceil((count || 0) / pageSize));
-      setUniqueSources([...new Set((leadsData ?? []).map((l) => l.source))]);
+//       setLeads(leadsData ?? []);
+//       setTotalPages(Math.ceil((count || 0) / pageSize));
+//       setUniqueSources([...new Set((leadsData ?? []).map((l) => l.source))]);
 
-      // Fetch Sales Team
-      const res = await fetch("/api/sales-users", { method: "GET" });
-      if (!res.ok) throw new Error(`Sales API failed: ${await res.text()}`);
-      const users = await res.json();
-      setSalesTeamMembers(users);
-    } catch (err) {
-      console.error("Error fetching leads:", err);
-    } finally {
-      setLoading(false);
+//       // Fetch Sales Team
+//       const res = await fetch("/api/sales-users", { method: "GET" });
+//       if (!res.ok) throw new Error(`Sales API failed: ${await res.text()}`);
+//       const users = await res.json();
+//       setSalesTeamMembers(users);
+//     } catch (err) {
+//       console.error("Error fetching leads:", err);
+//     } finally {
+//       setLoading(false);
+//     }
+//   };
+
+const handleMainFilterChange = ({
+  start,
+  end,
+  source,
+  status = statusFilter,
+  tab = leadTab,
+  search = searchTerm,
+}: {
+  start?: string;
+  end?: string;
+  source?: string;
+  status?: string;
+  tab?: "New" | "Assigned" | "All";
+  search?: string;
+}) => {
+  const finalStart = start ?? startDate;
+  const finalEnd = end ?? endDate;
+  const finalSource = source ?? sourceFilter;
+
+  // Update state
+  setStartDate(finalStart);
+  setEndDate(finalEnd);
+  setSourceFilter(finalSource);
+
+  // Fetch filtered data
+  fetchLeadsAndSales(
+    1,
+    tab,
+    search,
+    status,
+    finalSource,
+    finalStart,
+    finalEnd
+  );
+  setCurrentPage(1);
+};
+
+
+const fetchLeadsAndSales = async (
+  page = 1,
+  tab = leadTab,
+  search = searchTerm,
+  status = statusFilter,
+  source = sourceFilter,
+  start = startDate,
+  end = endDate
+) => {
+  setLoading(true);
+  try {
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+
+    let query = supabase
+      .from("leads")
+      .select("*", { count: "exact" })
+      .range(from, to)
+      .order("created_at", { ascending: false });
+
+    if (start && end) {
+      const getUTCRange = (dateStr: string, isStart: boolean) => {
+        const date = new Date(dateStr);
+        if (isStart) date.setHours(0, 0, 0, 0);
+        else date.setHours(23, 59, 59, 999);
+        return date.toISOString();
+      };
+
+      query = query
+        .gte("created_at", getUTCRange(start, true))
+        .lte("created_at", getUTCRange(end, false));
     }
-  };
+
+    if (tab && tab !== "All") query = query.eq("status", tab);
+    if (search) {
+      query = query.or(
+        `name.ilike.%${search}%,phone.ilike.%${search}%,email.ilike.%${search}%,city.ilike.%${search}%`
+      );
+    }
+    if (source !== "all") query = query.eq("source", source);
+    if (status !== "all") query = query.eq("status", status);
+
+    const { data: leadsData, error, count } = await query;
+    if (error) throw error;
+
+    setLeads(leadsData ?? []);
+    setTotalPages(Math.ceil((count || 0) / pageSize));
+    setUniqueSources([...new Set((leadsData ?? []).map((l) => l.source))]);
+  } catch (err) {
+    console.error("Error fetching leads:", err);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   // useEffect(() => {
   //   fetchLeadsAndSales(currentPage, leadTab, searchTerm, statusFilter, sourceFilter);
@@ -1370,10 +1464,26 @@ setSalesHistoryDialogOpen(true);
       </Select>
     </div>
   </div>
-  <div className="text-green-600 text-sm">
+ <div className="text-green-600 text-sm flex items-center gap-4">
+  <span>
     Showing {distinctSalesLeads.length}{" "}
     {distinctSalesLeads.length === 1 ? "record" : "records"}
-  </div>
+  </span>
+  <Button
+    variant="ghost"
+    className="text-red-500 text-xs"
+    onClick={() =>
+      handleDistinctFilterChange({
+        startDate: "",
+        endDate: "",
+        source: "all",
+      })
+    }
+  >
+    🔄 Reset Filters
+  </Button>
+</div>
+
 </div>
 
 
@@ -1571,7 +1681,7 @@ setSalesHistoryDialogOpen(true);
                       </SelectContent>
                     </Select>
 
-                    <Select value={sourceFilter} onValueChange={setSourceFilter}>
+                    {/* <Select value={sourceFilter} onValueChange={setSourceFilter}>
                       <SelectTrigger className="min-w-[150px] w-full sm:w-auto">
                         <SelectValue placeholder="Source" />
                       </SelectTrigger>
@@ -1583,7 +1693,27 @@ setSalesHistoryDialogOpen(true);
                           </SelectItem>
                         ))}
                       </SelectContent>
-                    </Select>
+                    </Select> */}
+
+                    <Select
+  value={sourceFilter}
+  onValueChange={(value) =>
+    handleMainFilterChange({ source: value })
+  }
+>
+  <SelectTrigger className="min-w-[150px] w-full sm:w-auto">
+    <SelectValue placeholder="Source" />
+  </SelectTrigger>
+  <SelectContent>
+    <SelectItem value="all">All Sources</SelectItem>
+    {uniqueSources.map((source) => (
+      <SelectItem key={source} value={source}>
+        {source}
+      </SelectItem>
+    ))}
+  </SelectContent>
+</Select>
+
 
                     <div className="flex flex-col sm:flex-row gap-2">
 
@@ -1599,26 +1729,40 @@ setSalesHistoryDialogOpen(true);
   <DropdownMenuContent className="p-4 space-y-4 w-[250px] sm:w-[300px]">
     <div className="space-y-2">
       <Label className="text-sm text-gray-600">Start Date</Label>
-      <Input
+      {/* <Input
         type="date"
         value={startDate}
         onChange={(e) => {
           setStartDate(e.target.value);
           setCurrentPage(1);
         }}
-      />
+      /> */}
+      <Input
+  type="date"
+  value={startDate}
+  onChange={(e) =>
+    handleMainFilterChange({ start: e.target.value })
+  }
+/>
     </div>
 
     <div className="space-y-2">
       <Label className="text-sm text-gray-600">End Date</Label>
-      <Input
+      {/* <Input
         type="date"
         value={endDate}
         onChange={(e) => {
           setEndDate(e.target.value);
           setCurrentPage(1);
         }}
-      />
+      /> */}
+      <Input
+  type="date"
+  value={endDate}
+  onChange={(e) =>
+    handleMainFilterChange({ end: e.target.value })
+  }
+/>
     </div>
 
     <Button
