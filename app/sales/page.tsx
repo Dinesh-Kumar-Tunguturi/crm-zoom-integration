@@ -1,3 +1,4 @@
+//app/sales/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -23,7 +24,7 @@ import isBetween from "dayjs/plugin/isBetween";
 dayjs.extend(isBetween);
 
 
-type SalesStage = "Prospect" | "DNP" | "Out of TG" | "Not Interested" | "Conversation Done" | "Sale Done";
+type SalesStage = "Prospect" | "DNP" | "Out of TG" | "Not Interested" | "Conversation Done" | "Sale Done"  | "Target";
 
 interface CallHistory {
   date: string;
@@ -72,7 +73,7 @@ interface FollowUp {
 }
 
 const salesStages: SalesStage[] = [
-  "Prospect", "DNP", "Out of TG", "Not Interested", "Conversation Done", "Sale Done"
+  "Prospect", "DNP", "Out of TG", "Not Interested", "Conversation Done", "Target", "Sale Done"
 ];
 
 const getStageColor = (stage: SalesStage) => {
@@ -83,6 +84,7 @@ const getStageColor = (stage: SalesStage) => {
     case "Not Interested": return "bg-red-100 text-red-800";
     case "Conversation Done": return "bg-purple-100 text-purple-800";
     case "Sale Done": return "bg-green-100 text-green-800";
+    case "Target": return "bg-orange-100 text-orange-800";
     default: return "bg-gray-100 text-gray-800";
   }
 };
@@ -107,8 +109,76 @@ export default function SalesPage() {
   const [totalAmount, setTotalAmount] = useState(0);
 const [subscriptionEndsOn, setSubscriptionEndsOn] = useState<string>("");
 const [startDate, setStartDate] = useState<string | null>(null);
+const [editingNote, setEditingNote] = useState(false);
+const [editedNote, setEditedNote] = useState("");
+
+
 const [endDate, setEndDate] = useState<string | null>(null);
 const [isDateDropdownOpen, setIsDateDropdownOpen] = useState(false);
+const [onboardDialogOpen, setOnboardDialogOpen] = useState(false);
+
+// Client Info
+const [clientName, setClientName] = useState("");
+const [clientEmail, setClientEmail] = useState("");
+const [contactNumber, setContactNumber] = useState("");
+const [city, setCity] = useState("");
+const [onboardingDate, setOnboardingDate] = useState("");
+
+// Subscription
+const [paymentMode, setPaymentMode] = useState("");
+const [subscriptionCycle, setSubscriptionCycle] = useState(""); // Values: "15", "30", "60", "90"
+const [subscriptionSaleValue, setSubscriptionSaleValue] = useState("");
+const [subscriptionSource, setSubscriptionSource] = useState("");
+
+// Add-ons
+const [resumeValue, setResumeValue] = useState("");
+const [portfolioValue, setPortfolioValue] = useState("");
+const [linkedinValue, setLinkedinValue] = useState("");
+const [githubValue, setGithubValue] = useState("");
+
+// Calculated Fields
+const [autoTotal, setAutoTotal] = useState(0);
+const [totalSale, setTotalSale] = useState(0);
+const [nextDueDate, setNextDueDate] = useState("-");
+
+// Auto calculate subscription total
+useEffect(() => {
+  const base = parseFloat(subscriptionSaleValue || "0");
+  const cycle = parseInt(subscriptionCycle || "0");
+
+  const multiplier =
+    cycle === 15 ? 0.5 :
+    cycle === 30 ? 1 :
+    cycle === 60 ? 2 :
+    cycle === 90 ? 3 : 0;
+
+  setAutoTotal(base * multiplier);
+}, [subscriptionSaleValue, subscriptionCycle]);
+
+// Auto calculate total sale
+useEffect(() => {
+  const resume = parseFloat(resumeValue || "0");
+  const linkedin = parseFloat(linkedinValue || "0");
+  const github = parseFloat(githubValue || "0");
+  const portfolio = parseFloat(portfolioValue || "0");
+
+  setTotalSale(autoTotal + resume + linkedin + github + portfolio);
+}, [autoTotal, resumeValue, linkedinValue, githubValue, portfolioValue]);
+
+// Calculate next payment due date
+useEffect(() => {
+  const days = parseInt(subscriptionCycle || "0");
+  if (days) {
+    const today = new Date();
+    today.setDate(today.getDate() + days);
+    const formatted = today.toISOString().split("T")[0];
+    setNextDueDate(formatted);
+  } else {
+    setNextDueDate("-");
+  }
+}, [subscriptionCycle]);
+
+
 
 
 
@@ -231,47 +301,97 @@ useEffect(() => {
 }, [saleData.closed_at, saleData.subscription_cycle]);
 
 
+  // const fetchFollowUps = async () => {
+
+  //   const { data: leadsData, error: leadsError } = await supabase
+  //     .from("leads")
+  //     .select("id, business_id, name, email, phone, assigned_to, current_stage")
+  //     .in("current_stage", ["DNP", "Conversation Done"]);
+
+  //   if (leadsError) {
+  //     console.error("❌ Error fetching leads:", leadsError);
+  //     return [];
+  //   }
+
+  //   const businessIds = leadsData.map((l) => l.business_id);
+
+  //   const { data: historyData, error: historyError } = await supabase
+  //     .from("call_history")
+  //     .select("lead_id, followup_date, notes")
+  //     .in("lead_id", businessIds)
+  //     .order("followup_date", { ascending: false }); // 👈 sorted by latest first
+
+  //   if (historyError) {
+  //     console.error("❌ Error fetching call history:", historyError);
+  //     return [];
+  //   }
+
+  //   const mostRecentMap = new Map<string, { followup_date: string; notes: string }>();
+  //   for (const entry of historyData) {
+  //     if (!mostRecentMap.has(entry.lead_id)) {
+  //       mostRecentMap.set(entry.lead_id, {
+  //         followup_date: entry.followup_date ?? "N/A",
+  //         notes: entry.notes ?? "N/A",
+  //       });
+  //     }
+  //   }
+
+  //   return leadsData.map((lead) => ({
+  //     ...lead,
+  //     followup_date: mostRecentMap.get(lead.business_id)?.followup_date ?? "N/A",
+  //     notes: mostRecentMap.get(lead.business_id)?.notes ?? "N/A",
+  //   }));
+  // };
+
   const fetchFollowUps = async () => {
+  if (!userProfile) return [];
 
-    const { data: leadsData, error: leadsError } = await supabase
-      .from("leads")
-      .select("id, business_id, name, email, phone, assigned_to, current_stage")
-      .in("current_stage", ["DNP", "Conversation Done"]);
+  let leadsQuery = supabase
+    .from("leads")
+    .select("id, business_id, name, email, phone, assigned_to, current_stage")
+    .in("current_stage", ["DNP", "Conversation Done", "Target"]);
 
-    if (leadsError) {
-      console.error("❌ Error fetching leads:", leadsError);
-      return [];
+  // 🔒 Filter by name if not Admin
+  if (userProfile.roles === "Sales Associate") {
+    leadsQuery = leadsQuery.eq("assigned_to", userProfile.full_name);
+  }
+
+  const { data: leadsData, error: leadsError } = await leadsQuery;
+  if (leadsError) {
+    console.error("❌ Error fetching leads:", leadsError);
+    return [];
+  }
+
+  const businessIds = leadsData.map((l) => l.business_id);
+
+  const { data: historyData, error: historyError } = await supabase
+    .from("call_history")
+    .select("id, lead_id, followup_date, notes")
+    .in("lead_id", businessIds)
+    .order("followup_date", { ascending: false });
+
+  if (historyError) {
+    console.error("❌ Error fetching call history:", historyError);
+    return [];
+  }
+
+  const mostRecentMap = new Map<string, { followup_date: string; notes: string }>();
+  for (const entry of historyData) {
+    if (!mostRecentMap.has(entry.lead_id)) {
+      mostRecentMap.set(entry.lead_id, {
+        followup_date: entry.followup_date ?? "N/A",
+        notes: entry.notes ?? "N/A",
+      });
     }
+  }
 
-    const businessIds = leadsData.map((l) => l.business_id);
+  return leadsData.map((lead) => ({
+    ...lead,
+    followup_date: mostRecentMap.get(lead.business_id)?.followup_date ?? "N/A",
+    notes: mostRecentMap.get(lead.business_id)?.notes ?? "N/A",
+  }));
+};
 
-    const { data: historyData, error: historyError } = await supabase
-      .from("call_history")
-      .select("lead_id, followup_date, notes")
-      .in("lead_id", businessIds)
-      .order("followup_date", { ascending: false }); // 👈 sorted by latest first
-
-    if (historyError) {
-      console.error("❌ Error fetching call history:", historyError);
-      return [];
-    }
-
-    const mostRecentMap = new Map<string, { followup_date: string; notes: string }>();
-    for (const entry of historyData) {
-      if (!mostRecentMap.has(entry.lead_id)) {
-        mostRecentMap.set(entry.lead_id, {
-          followup_date: entry.followup_date ?? "N/A",
-          notes: entry.notes ?? "N/A",
-        });
-      }
-    }
-
-    return leadsData.map((lead) => ({
-      ...lead,
-      followup_date: mostRecentMap.get(lead.business_id)?.followup_date ?? "N/A",
-      notes: mostRecentMap.get(lead.business_id)?.notes ?? "N/A",
-    }));
-  };
 
   // const filteredLeads = leads.filter((lead) => {
   //   const matchesSearch = lead.client_name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -321,7 +441,7 @@ useEffect(() => {
     setSelectedLead(lead);
     setPreviousStage(lead.current_stage); // Save current stage for revert
 
-    if (newStage === "DNP" || newStage === "Conversation Done") {
+    if (newStage === "DNP" || newStage === "Conversation Done" || newStage === "Target") {
       setLeads((prev) =>
         prev.map((l) => (l.id === leadId ? { ...l, current_stage: newStage } : l))
       );
@@ -577,6 +697,121 @@ setFollowUpsData(prev =>
     return callHistoryData;
   };
 
+
+  // This function will go in your SalesPage component
+// Add it after defining useState for all input fields used in the dialog
+async function handleOnboardClientSubmit() {
+  try {
+    const confirmed = window.confirm("Are you sure you want to onboard this client?");
+    if (!confirmed) return;
+
+    // 1. Generate Lead ID
+    const { data: idResult, error: idError } = await supabase.rpc('generate_custom_lead_id');
+    if (idError || !idResult) {
+      console.error("Failed to generate lead ID:", idError);
+      return alert("Could not generate Lead ID. Try again.");
+    }
+    const newLeadId = idResult;
+
+    // 2. Parse input values
+    const baseValue = parseInt(subscriptionSaleValue || "0");
+    const resume = parseInt(resumeValue || "0");
+    const linkedin = parseInt(linkedinValue || "0");
+    const github = parseInt(githubValue || "0");
+    const portfolio = parseInt(portfolioValue || "0");
+    const totalSale = baseValue + resume + linkedin + github + portfolio;
+
+    const start = new Date(onboardingDate);
+    const nextDueDate = new Date(start);
+    const durationInDays = parseInt(subscriptionCycle || "0");
+    nextDueDate.setDate(start.getDate() + durationInDays);
+
+    const now = new Date().toISOString();
+
+    // 3. Insert into leads table
+    const { error: leadsInsertError } = await supabase.from("leads").insert({
+      business_id: newLeadId,
+      name: clientName,
+      email: clientEmail,
+      phone: contactNumber,
+      city: city,
+      created_at: now,
+      source: subscriptionSource || "Onboarded Client",
+      status: "Assigned",
+    });
+    if (leadsInsertError) throw leadsInsertError;
+
+    // 4. Insert into sales_closure table
+    const { error: salesInsertError } = await supabase.from("sales_closure").insert({
+      lead_id: newLeadId,
+      email: clientEmail,
+      lead_name: clientName,
+      payment_mode: paymentMode,
+      subscription_cycle: durationInDays,
+      sale_value: totalSale,
+      closed_at: onboardingDate,
+      onboarded_date: onboardingDate,
+      finance_status: "Paid",
+      resume_sale_value: resume,
+      linkedin_sale_value: linkedin,
+      github_sale_value: github,
+      portfolio_sale_value: portfolio,
+
+      // Optional defaulted fields (update if needed)
+      associates_email: "", 
+      associates_name: "",
+      associates_tl_email: "",
+      associates_tl_name: "",
+      checkout_date: null,
+      invoice_url: "",
+    });
+    if (salesInsertError) throw salesInsertError;
+
+    // 5. Reset form
+    setClientName("");
+    setClientEmail("");
+    setContactNumber("");
+    setCity("");
+    setOnboardingDate("");
+    setSubscriptionCycle("");
+    setSubscriptionSaleValue("");
+    setPaymentMode("");
+    setResumeValue("");
+    setPortfolioValue("");
+    setLinkedinValue("");
+    setGithubValue("");
+
+    setOnboardDialogOpen(false);
+    alert("✅ Client onboarded successfully!");
+
+  } catch (err: any) {
+    console.error("❌ Error onboarding client:", err?.message || err);
+    alert(`Failed to onboard client: ${err?.message || "Unknown error"}`);
+  }
+}
+
+const handleUpdateNote = async (call: CallHistory) => {
+  try {
+    const { error } = await supabase
+      .from("call_history")
+      .update({ notes: editedNote })
+      .eq("lead_id", selectedLead?.business_id)
+      .eq("followup_date", call.date); // Assuming `followup_date` is the primary way to match
+
+    if (error) throw error;
+
+    // ✅ Refresh call history and exit edit mode
+    const updated = await fetchCallHistory(selectedLead!.id);
+    setSelectedLead((prev) => prev ? { ...prev, call_history: updated } : null);
+    setEditingNote(false);
+    alert("Note updated!");
+  } catch (err) {
+    console.error("Failed to update note:", err);
+    alert("Failed to update note.");
+  }
+};
+
+
   return (
     <ProtectedRoute allowedRoles={["Sales","Sales Associate", "Super Admin"]}>
 
@@ -585,6 +820,14 @@ setFollowUpsData(prev =>
           <div className="flex justify-between items-center">
             <h1 className="text-3xl font-bold">Sales CRM</h1>
 
+<div className="justify-end flex gap-2">
+            <Button
+    className="bg-green-600 hover:bg-green-700 text-white"
+    onClick={() => setOnboardDialogOpen(true)}
+  >
+    Onboard New Client
+  </Button>
+
             <Button onClick={async () => {
               const followUps = await fetchFollowUps();
               setFollowUpsData(followUps);
@@ -592,6 +835,7 @@ setFollowUpsData(prev =>
             }}>
               Follow Ups
             </Button>
+            </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
             <Dialog open={followUpsDialogOpen} onOpenChange={setFollowUpsDialogOpen}>
@@ -901,9 +1145,9 @@ setFollowUpsData(prev =>
           </Card>
 
           {/* History Dialog */}
-          <Dialog open={historyDialogOpen} onOpenChange={setHistoryDialogOpen}>
+          <Dialog  open={historyDialogOpen} onOpenChange={setHistoryDialogOpen} >
             {/* <DialogContent className="max-w-2xl"> */}
-            <DialogContent onPointerDownOutside={(e) => e.preventDefault()}>
+            <DialogContent className="max-w-5xl"onPointerDownOutside={(e) => e.preventDefault()}>
 
               <DialogHeader>
                 <DialogTitle>{selectedLead?.client_name} - Call History</DialogTitle>
@@ -922,7 +1166,7 @@ setFollowUpsData(prev =>
                   <div>
                     <Label>Call History</Label>
                     <div className="space-y-3 max-h-64 overflow-y-auto">
-                      {selectedLead.call_history.map((call, index) => (
+                      {/* {selectedLead.call_history.map((call, index) => (
                         <div key={index} className="p-3 bg-gray-50 rounded-lg">
                           <div className="flex justify-between items-center mb-1">
                             <Badge className={getStageColor(call.stage)}>{call.stage}</Badge>
@@ -930,7 +1174,49 @@ setFollowUpsData(prev =>
                           </div>
                           <p className="text-sm text-gray-600">{call.notes}</p>
                         </div>
-                      ))}
+                      ))} */}
+                      {selectedLead.call_history.map((call, index) => {
+  const isLatest = index === 0;
+  return (
+    <div key={index} className="p-3 bg-gray-50 rounded-lg space-y-1">
+      <div className="flex justify-between items-center mb-1">
+        <Badge className={getStageColor(call.stage)}>{call.stage}</Badge>
+        <span className="text-xs text-gray-500">{call.date}</span>
+      </div>
+
+      {/* ✏️ Editable note for latest only */}
+      {isLatest && editingNote ? (
+        <div className="space-y-2">
+          <Textarea
+            value={editedNote}
+            onChange={(e) => setEditedNote(e.target.value)}
+          />
+          <Button size="sm" onClick={() => handleUpdateNote(call)}>
+            Save
+          </Button>
+        </div>
+      ) : (
+        <div className="flex justify-between">
+          <p className="text-sm text-gray-600">{call.notes}</p>
+          {isLatest && (
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-5 w-5 text-lg text-gray-500"
+              onClick={() => {
+                setEditingNote(true);
+                setEditedNote(call.notes);
+              }}
+            >
+              Edit
+            </Button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+})}
+
                     </div>
                   </div>
                 </div>
@@ -957,6 +1243,161 @@ setFollowUpsData(prev =>
               <DialogFooter><Button onClick={handleFollowUpSubmit}>Save Follow-up</Button></DialogFooter>
             </DialogContent>
           </Dialog>
+
+          <Dialog open={onboardDialogOpen} onOpenChange={setOnboardDialogOpen}>
+  <DialogContent className="max-w-5xl" onPointerDownOutside={(e) => e.preventDefault()}>
+    <DialogHeader>
+      <DialogTitle className="flex items-center gap-2">
+        🧾 Onboard New Client
+      </DialogTitle>
+    </DialogHeader>
+
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* Client Details */}
+      <div className="border rounded-md p-4 space-y-3">
+        <Label className="font-semibold">Client Details <span className="text-red-500">*</span></Label>
+        <Input
+  placeholder="Client Full Name"
+  value={clientName}
+  onChange={(e) => setClientName(e.target.value)}
+/>
+
+<Input
+  placeholder="Client Email"
+  value={clientEmail}
+  onChange={(e) => setClientEmail(e.target.value)}
+/>
+
+<Input
+  placeholder="Contact Number with country code"
+  value={contactNumber}
+  onChange={(e) => setContactNumber(e.target.value)}
+/>
+
+<Input
+  placeholder="City"
+  value={city}
+  onChange={(e) => setCity(e.target.value)}
+/>
+
+<Input
+  type="date"
+  value={onboardingDate}
+  onChange={(e) => setOnboardingDate(e.target.value)}
+  placeholder="dd-mm-yyyy"
+/>
+
+
+      </div>
+
+      {/* Subscription & Payment Info */}
+      <div className="border rounded-md p-4 space-y-3">
+        <Label className="font-semibold">Subscription & Payment Info <span className="text-red-500">*</span></Label>
+        <Select value={paymentMode} onValueChange={setPaymentMode}>
+  <SelectTrigger>
+    <SelectValue placeholder="Select Payment Mode" />
+  </SelectTrigger>
+  <SelectContent>
+    <SelectItem value="UPI">UPI</SelectItem>
+    <SelectItem value="PayPal">PayPal</SelectItem>
+    <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
+    <SelectItem value="Credit/Debit Card">Credit/Debit Card</SelectItem>
+  </SelectContent>
+</Select>
+
+<Select value={subscriptionCycle} onValueChange={setSubscriptionCycle}>
+  <SelectTrigger>
+    <SelectValue placeholder="Select Subscription Duration" />
+  </SelectTrigger>
+  <SelectContent>
+    <SelectItem value="15">15 Days</SelectItem>
+    <SelectItem value="30">1 Month</SelectItem>
+    <SelectItem value="60">2 Months</SelectItem>
+    <SelectItem value="90">3 Months</SelectItem>
+  </SelectContent>
+</Select>
+
+<Input
+  placeholder="Subscription Sale Value ($)"
+  value={subscriptionSaleValue}
+  onChange={(e) => setSubscriptionSaleValue(e.target.value)}
+/>
+
+<Input
+  placeholder="Auto Total (Subscription Only)"
+  value={autoTotal}
+  disabled
+/>
+
+<Select value={subscriptionSource} onValueChange={setSubscriptionSource}>
+  <SelectTrigger>
+    <SelectValue placeholder="Select Client Source" />
+  </SelectTrigger>
+  <SelectContent>
+    <SelectItem value="Referral">Referral</SelectItem>
+    <SelectItem value="NEW">NEW</SelectItem>
+  </SelectContent>
+</Select>
+
+      </div>
+    </div>
+
+    {/* Add-on Services */}
+    <div className="border rounded-md p-4 mt-4 space-y-3">
+      <Label className="font-semibold">Optional Add-On Services</Label>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Input
+  placeholder="Resume Sale Value ($)"
+  value={resumeValue}
+  onChange={(e) => setResumeValue(e.target.value)}
+/>
+
+<Input
+  placeholder="Portfolio Creation Value ($)"
+  value={portfolioValue}
+  onChange={(e) => setPortfolioValue(e.target.value)}
+/>
+
+<Input
+  placeholder="LinkedIn Optimization Value ($)"
+  value={linkedinValue}
+  onChange={(e) => setLinkedinValue(e.target.value)}
+/>
+
+<Input
+  placeholder="GitHub Optimization Value ($)"
+  value={githubValue}
+  onChange={(e) => setGithubValue(e.target.value)}
+/>
+
+      </div>
+    </div>
+
+    {/* Auto Calculated Section */}
+    <div className="border rounded-md p-4 mt-4">
+      <Label className="font-semibold">Auto Calculated</Label>
+      <div className="flex justify-between mt-2">
+        {/* <p>Total Sale Value: <strong>$0</strong></p>
+        <p>Next Payment Due Date: <strong>-</strong></p> */}
+       <p>Total Sale Value: <strong>${totalSale}</strong></p>
+<p>Next Payment Due Date: <strong>{nextDueDate}</strong></p>
+
+      </div>
+    </div>
+
+    {/* Submit */}
+    <DialogFooter className="pt-4">
+      <Button
+  className="bg-green-600 text-white hover:bg-green-700"
+  onClick={handleOnboardClientSubmit}
+>
+  Submit
+</Button>
+
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
+
 
           <Dialog open={saleClosingDialogOpen} onOpenChange={(open) => {
             if (!open && pendingStageUpdate && previousStage) {
