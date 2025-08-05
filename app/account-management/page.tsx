@@ -114,6 +114,9 @@ export default function AccountManagementPage() {
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [csvData, setCsvData] = useState<any[]>([]);
+  const [sortKey, setSortKey] = useState<"client_name" | "created_at" | null>(null);
+const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+
 
   useEffect(() => {
     const fetchClients = async () => {
@@ -256,6 +259,28 @@ export default function AccountManagementPage() {
 
     return matchesSearch;
   });
+
+  const sortedClients = [...filteredClients].sort((a, b) => {
+  if (!sortKey) return 0;
+
+  const valA = a[sortKey]?.toLowerCase?.() || a[sortKey];
+  const valB = b[sortKey]?.toLowerCase?.() || b[sortKey];
+
+  if (sortOrder === "asc") {
+    return valA > valB ? 1 : -1;
+  } else {
+    return valA < valB ? 1 : -1;
+  }
+});
+
+const handleSort = (key: "client_name" | "created_at") => {
+  if (sortKey === key) {
+    setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+  } else {
+    setSortKey(key);
+    setSortOrder("asc");
+  }
+};
 
 
   // function getRenewWithinStatus(closedAt: string): string {
@@ -844,18 +869,76 @@ const handleCSVSubmit = async () => {
                     <TableHeader>
                       <TableRow>
                         <TableHead>S.No</TableHead>
-                        <TableHead>Client Name</TableHead>
+                        {/* <TableHead>Client Name</TableHead> */}
+                       <TableHead className="flex items-center gap-1 select-none">
+                        <div className="flex flex-center gap-1">
+  Client Name
+  
+    <span
+      className={`cursor-pointer text-lg leading-none ${
+        sortKey === "client_name" && sortOrder === "desc" ? "text-blue-500" : "text-gray-400"
+      }`}
+      onClick={() => {
+        setSortKey("client_name");
+        setSortOrder("desc");
+      }}
+    >
+      ↑
+    </span>
+    <span
+      className={`cursor-pointer text-lg leading-none ${
+        sortKey === "client_name" && sortOrder === "asc" ? "text-blue-500" : "text-gray-400"
+      }`}
+      onClick={() => {
+        setSortKey("client_name");
+        setSortOrder("asc");
+      }}
+    >
+      ↓
+    </span>
+  </div>
+</TableHead>
+
                         <TableHead>Email</TableHead>
                         <TableHead>Phone</TableHead>
                         <TableHead>Assigned To</TableHead>
                         <TableHead>Stage</TableHead>
-                        <TableHead>Closed At</TableHead>
+                        {/* <TableHead>Closed At</TableHead> */}
+                       <TableHead className="flex items-center gap-1 select-none">
+                        <div className="flex flex-center gap-1">
+  Closed At
+  
+    <span
+      className={`cursor-pointer text-lg leading-none ${
+        sortKey === "created_at" && sortOrder === "desc" ? "text-blue-500" : "text-gray-400"
+      }`}
+      onClick={() => {
+        setSortKey("created_at");
+        setSortOrder("desc");
+      }}
+    >
+      ↑
+    </span>
+    <span
+      className={`cursor-pointer text-lg leading-none ${
+        sortKey === "created_at" && sortOrder === "asc" ? "text-blue-500" : "text-gray-400"
+      }`}
+      onClick={() => {
+        setSortKey("created_at");
+        setSortOrder("asc");
+      }}
+    >
+      ↓
+    </span>
+  </div>
+</TableHead>
+
                         <TableHead>Deadline</TableHead>
                         <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredClients.map((client, idx) => (
+                      {sortedClients.map((client, idx) => (
                         <TableRow key={client.id}>
                           <TableCell>{idx + 1}</TableCell>
                           <TableCell className="font-medium">{client.client_name}</TableCell>

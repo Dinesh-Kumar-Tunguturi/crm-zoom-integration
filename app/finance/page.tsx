@@ -189,6 +189,8 @@ export default function FinancePage() {
   const [loadingNotOnboarded, setLoadingNotOnboarded] = useState(false);
   const [feedbackMsg, setFeedbackMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
+const [sortField, setSortField] = useState<string | null>(null);
+const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
 
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -557,6 +559,7 @@ for (const record of rows) {
     setDueDate(nextDue.toLocaleDateString("en-GB")); // or "en-US" as needed
   }, [startDate, subscriptionCycle]);
 
+  
 
   const filteredSales = sales.filter((sale) => {
     const matchesSearch =
@@ -581,7 +584,61 @@ for (const record of rows) {
     return matchesSearch && matchesStatus;
   });
 
-  // function getRenewWithinBadge(createdAt: string): React.ReactNode {
+  function handleSort(field: string) {
+  if (sortField === field) {
+    // Toggle sort direction
+    setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+  } else {
+    setSortField(field);
+    setSortOrder("asc"); // default order
+  }
+}
+
+const sortedSales = [...filteredSales].sort((a, b) => {
+  if (!sortField) return 0;
+
+  if (sortField === "lead_id") {
+    const aNum = parseInt(a.lead_id.split("-")[1]);
+    const bNum = parseInt(b.lead_id.split("-")[1]);
+    return sortOrder === "asc" ? aNum - bNum : bNum - aNum;
+  }
+
+  if (sortField === "leads") {
+    const nameA = a.leads?.name?.toLowerCase() ?? "";
+    const nameB = b.leads?.name?.toLowerCase() ?? "";
+    return sortOrder === "asc"
+      ? nameA.localeCompare(nameB)
+      : nameB.localeCompare(nameA);
+  }
+
+  if (sortField === "sale_value") {
+    return sortOrder === "asc"
+      ? a.sale_value - b.sale_value
+      : b.sale_value - a.sale_value;
+  }
+
+  if (sortField === "closed_at") {
+    const dateA = new Date(a.closed_at).getTime();
+    const dateB = new Date(b.closed_at).getTime();
+    return sortOrder === "asc" ? dateA - dateB : dateB - dateA;
+  }
+
+  if (sortField === "onboarded_date") {
+    const dateA = new Date(a.onboarded_date ?? "").getTime();
+    const dateB = new Date(b.onboarded_date ?? "").getTime();
+    return sortOrder === "asc" ? dateA - dateB : dateB - dateA;
+  }
+
+  if (sortField === "next_renewal_date") {
+    const dateA = new Date(calculateNextRenewal(a.onboarded_date, a.subscription_cycle)).getTime();
+    const dateB = new Date(calculateNextRenewal(b.onboarded_date, b.subscription_cycle)).getTime();
+    return sortOrder === "asc" ? dateA - dateB : dateB - dateA;
+  }
+
+  return 0;
+});
+
+// function getRenewWithinBadge(createdAt: string): React.ReactNode {
   //   const closedDate = new Date(createdAt);
   //   const today = new Date();
   //   const diffInDays = Math.floor((today.getTime() - closedDate.getTime()) / (1000 * 60 * 60 * 24));
@@ -1556,16 +1613,79 @@ function calculateNextRenewal(onboarded: string | undefined, cycle: number): str
                 <TableHeader>
                   <TableRow>
                     <TableHead>S.No</TableHead>
-                    <TableHead>Client Id</TableHead>
-                    <TableHead>Name</TableHead>
+                    {/* <TableHead>Client Id</TableHead> */}
+                    <TableHead className="cursor-pointer  items-center gap-1" onClick={() => handleSort("lead_id")}>
+                      <div className="flex flex-center gap-1">
+  ClientID
+  
+    <span
+      className={`text-xs leading-none ${sortField === "lead_id" && sortOrder === "desc" ? "text-blue-600" : "text-gray-400"}`}
+    >▲</span>
+    <span
+      className={`text-xs leading-none ${sortField === "lead_id" && sortOrder === "asc" ? "text-blue-600" : "text-gray-400"}`}
+    >▼</span>
+  </div>
+</TableHead>
+
+                    {/* <TableHead>Name</TableHead> */}
+                    <TableHead className="cursor-pointer  items-center gap-1" onClick={() => handleSort("name")}>
+                      <div className="flex flex-center gap-1">
+  Name
+  
+    <span
+      className={`text-xs leading-none ${sortField === "name" && sortOrder === "desc" ? "text-blue-600" : "text-gray-400"}`}
+    >▲</span>
+    <span
+      className={`text-xs leading-none ${sortField === "name" && sortOrder === "asc" ? "text-blue-600" : "text-gray-400"}`}
+    >▼</span>
+  </div>
+</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Phone</TableHead>
-                    <TableHead>Sale Value</TableHead>
+                    {/* <TableHead>Sale Value</TableHead> */}
+                     <TableHead className="cursor-pointer  items-center gap-1" onClick={() => handleSort("sale_value")}>
+                      <div className="flex flex-center gap-1">
+  Sale value
+  
+    <span
+      className={`text-xs leading-none ${sortField === "sale_value" && sortOrder === "desc" ? "text-blue-600" : "text-gray-400"}`}
+    >▲</span>
+    <span
+      className={`text-xs leading-none ${sortField === "sale_value" && sortOrder === "asc" ? "text-blue-600" : "text-gray-400"}`}
+    >▼</span>
+  </div>
+</TableHead>
                     <TableHead>Subscription Cycle</TableHead>
                     <TableHead>Assigned To</TableHead>
                     <TableHead>Stage</TableHead>
-                    <TableHead>saleDone At</TableHead>
-                    <TableHead>Onboarded / last payment at</TableHead>
+                    {/* <TableHead>saleDone At</TableHead> */}
+                     <TableHead className="cursor-pointer  items-center gap-1" onClick={() => handleSort("oldest_sale_done_at")}>
+                      <div className="flex flex-center gap-1">
+  SaledoneAt
+  
+    <span
+      className={`text-xs leading-none ${sortField === "oldest_sale_done_at" && sortOrder === "desc" ? "text-blue-600" : "text-gray-400"}`}
+    >▲</span>
+    <span
+      className={`text-xs leading-none ${sortField === "oldest_sale_done_at" && sortOrder === "asc" ? "text-blue-600" : "text-gray-400"}`}
+    >▼</span>
+  </div>
+</TableHead>
+                    {/* <TableHead>Onboarded / last payment at</TableHead> */}
+
+ <TableHead className="cursor-pointer  items-center gap-1" onClick={() => handleSort("onboarded_date")}>
+                      <div className="flex flex-center gap-1">
+  Onboarded/lastPaymentAt
+  
+    <span
+      className={`text-xs leading-none ${sortField === "onboarded_date" && sortOrder === "desc" ? "text-blue-600" : "text-gray-400"}`}
+    >▲</span>
+    <span
+      className={`text-xs leading-none ${sortField === "onboarded_date" && sortOrder === "asc" ? "text-blue-600" : "text-gray-400"}`}
+    >▼</span>
+  </div>
+</TableHead>
+                    
 <TableHead>Next Renewal Date</TableHead>
 
                     <TableHead>Deadline</TableHead>
@@ -1575,8 +1695,8 @@ function calculateNextRenewal(onboarded: string | undefined, cycle: number): str
                 </TableHeader>
 
                 <TableBody>
-                  {filteredSales.length > 0 ? (
-                    filteredSales.map((sale, idx) => (
+                  {sortedSales.length > 0 ? (
+                    sortedSales.map((sale, idx) => (
                       <TableRow key={sale.id}>
                         <TableCell>{idx + 1}</TableCell>
                         <TableCell className="font-medium">{sale.lead_id}</TableCell>

@@ -109,6 +109,8 @@ export default function MarketingPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [pageSize, setPageSize] = useState(15);
   const [cycleFilter, setCycleFilter] = useState("all");
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" } | null>(null);
+
 
   const [allLeadsStats, setAllLeadsStats] = useState({ total: 0, assigned: 0, new: 0 });
   // const [showReassignDialog, setShowReassignDialog] = useState(false);
@@ -230,7 +232,9 @@ const [showSalesDoneDialog, setShowSalesDoneDialog] = useState(false);
   return matchesSearch && matchesStatus && matchesSource && matchesTab;
 });
 
-const paginationPages = Math.ceil(filteredLeads.length / pageSize);
+// const paginationPages = Math.ceil(filteredLeads.length / pageSize);
+const paginationPages = totalPages;
+
 
 // Slice for current page view
 // const paginatedLeads = filteredLeads.slice(
@@ -238,12 +242,65 @@ const paginationPages = Math.ceil(filteredLeads.length / pageSize);
 //   currentPage * pageSize
 // );
 
-const paginatedLeads = isAllView
-  ? filteredLeads // don’t slice, show all
-  : filteredLeads.slice(
-      (currentPage - 1) * pageSize,
-      currentPage * pageSize
-    );
+// const paginatedLeads = isAllView
+//   ? filteredLeads // don’t slice, show all
+//   : filteredLeads.slice(
+//       (currentPage - 1) * pageSize,
+//       currentPage * pageSize
+//     );
+
+
+  const sortLeads = (leads: Lead[]) => {
+  if (!sortConfig) return leads;
+
+  const sorted = [...leads].sort((a, b) => {
+    const aVal = a[sortConfig.key as keyof Lead];
+    const bVal = b[sortConfig.key as keyof Lead];
+
+    if (sortConfig.key === "created_at" || sortConfig.key === "assigned_at") {
+      return sortConfig.direction === "asc"
+        ? new Date(aVal as string).getTime() - new Date(bVal as string).getTime()
+        : new Date(bVal as string).getTime() - new Date(aVal as string).getTime();
+    }
+
+    if (sortConfig.key === "lead_age") {
+      const aAge = new Date().getTime() - new Date(a.created_at).getTime();
+      const bAge = new Date().getTime() - new Date(b.created_at).getTime();
+      return sortConfig.direction === "asc" ? aAge - bAge : bAge - aAge;
+    }
+
+   if (sortConfig.key === "business_id") {
+  const getNumericPart = (val: string) => {
+    const match = val?.match(/\d+$/); // extract number after "AWL-"
+    return match ? parseInt(match[0]) : 0;
+  };
+
+  const aNum = getNumericPart(a.business_id);
+  const bNum = getNumericPart(b.business_id);
+
+  return sortConfig.direction === "asc" ? aNum - bNum : bNum - aNum;
+}
+
+
+    // if (aStr < bStr) return sortConfig.direction === "asc" ? -1 : 1;
+    // if (aStr > bStr) return sortConfig.direction === "asc" ? 1 : -1;
+    return 0;
+  });
+
+  return sorted;
+};
+
+const sortedLeads = sortLeads(filteredLeads);
+// const paginatedLeads = isAllView
+//   ? sortedLeads
+//   : sortedLeads.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+const paginatedLeads = isAllView ? sortedLeads : sortedLeads;
+
+
+// const paginatedLeads = isAllView
+//   ? filteredLeads // full dataset shown, slice locally
+//   : leads; // already paginated server-side, use directly
+
 
 //     const filteredSales = salesHistory.filter((item) => {
 //   const closedDate = new Date(item.closed_at).toISOString().split("T")[0]; // Convert to YYYY-MM-DD
@@ -623,6 +680,14 @@ const fetchLeadsAndSales = async (
     setLeads(leadsData ?? []);
     setTotalPages(Math.ceil((count || 0) / pageSize));
     setUniqueSources([...new Set((leadsData ?? []).map((l) => l.source))]);
+
+    // Fetch Sales Team
+      const res = await fetch("/api/sales-users", { method: "GET" });
+      if (!res.ok) throw new Error(`Sales API failed: ${await res.text()}`);
+      const users = await res.json();
+      setSalesTeamMembers(users);
+   
+//     }
   } catch (err) {
     console.error("Error fetching leads:", err);
   } finally {
@@ -967,6 +1032,10 @@ if (error) {
       console.error('Error fetching Google Sheets:', err);
     }
   };
+
+const handleSort = (key: string, direction: "asc" | "desc") => {
+  setSortConfig({ key, direction });
+};
 
 
   return (
@@ -1894,7 +1963,7 @@ setSalesHistoryDialogOpen(true);
 
                           <TableHead className="sticky top-0 bg-white z-10 w-16 max-w-[70px] whitespace-normal">s.no</TableHead>
 
-                          <TableHead className="sticky top-0 bg-white z-10 text-center">ID</TableHead>
+                          {/* <TableHead className="sticky top-0 bg-white z-10 text-center">ID</TableHead>
                           <TableHead className="sticky top-0 bg-white z-10 text-center">Name</TableHead>
                           <TableHead className="sticky top-0 bg-white z-10 text-center">Phone</TableHead>
                           <TableHead className="sticky top-0 bg-white z-10 text-center">Email</TableHead>
@@ -1903,7 +1972,166 @@ setSalesHistoryDialogOpen(true);
                           <TableHead className="sticky top-0 bg-white z-10 text-center">Status</TableHead>
                           <TableHead className="sticky top-0 bg-white z-10 text-center">Created At</TableHead>
                           <TableHead className="sticky top-0 bg-white z-10 text-center">Lead age</TableHead>
-                          <TableHead className="sticky top-0 bg-white z-10 text-center">Actions</TableHead>
+                          <TableHead className="sticky top-0 bg-white z-10 text-center">Actions</TableHead> */}
+
+                          <>
+  <TableHead className="sticky top-0 bg-white z-10 text-center">
+    <div className="flex flex-col items-center">
+             {/* <div className="flex flex-col text-xs"> */}
+      <div className="flex items-center gap-1">
+      ID
+      <span
+        onClick={() => handleSort("business_id", "asc")}
+        className={`leading-none hover:text-blue-600 cursor-pointer ${
+          sortConfig?.key === "business_id" && sortConfig.direction === "asc"
+            ? "text-blue-700 font-bold"
+            : "text-gray-500"
+        }`}
+      >
+        ↑
+      </span>
+      <span
+        onClick={() => handleSort("business_id", "desc")}
+        className={`leading-none hover:text-blue-600 cursor-pointer ${
+          sortConfig?.key === "business_id" && sortConfig.direction === "desc"
+            ? "text-blue-700 font-bold"
+            : "text-gray-500"
+        }`}
+      >
+        ↓
+      </span>
+    </div>
+    </div>
+  </TableHead>
+
+  <TableHead className="sticky top-0 bg-white z-10 text-center">
+    <div className="flex flex-col items-center">
+            <div className="flex items-center gap-1">
+
+      Name
+      <span
+        onClick={() => handleSort("name", "asc")}
+        className={`hover:text-blue-600 cursor-pointer ${
+          sortConfig?.key === "name" && sortConfig.direction === "asc"
+            ? "text-blue-700 font-semibold"
+            : "text-gray-500"
+        }`}
+      >
+        ↑
+      </span>
+      <span
+        onClick={() => handleSort("name", "desc")}
+        className={`hover:text-blue-600 cursor-pointer ${
+          sortConfig?.key === "name" && sortConfig.direction === "desc"
+            ? "text-blue-700 font-semibold"
+            : "text-gray-500"
+        }`}
+      >
+        ↓
+      </span>
+    </div>
+    </div>
+  </TableHead>
+
+  <TableHead className="sticky top-0 bg-white z-10 text-center">Phone</TableHead>
+
+  <TableHead className="sticky top-0 bg-white z-10 text-center">Email</TableHead>
+
+  <TableHead className="sticky top-0 bg-white z-10 text-center">
+    <div className="flex flex-col items-center">
+            <div className="flex items-center gap-1">
+
+      City
+      <span
+        onClick={() => handleSort("city", "asc")}
+        className={`hover:text-blue-600 cursor-pointer ${
+          sortConfig?.key === "city" && sortConfig.direction === "asc"
+            ? "text-blue-700 font-semibold"
+            : "text-gray-500"
+        }`}
+      >
+        ↑
+      </span>
+      <span
+        onClick={() => handleSort("city", "desc")}
+        className={`hover:text-blue-600 cursor-pointer${
+          sortConfig?.key === "city" && sortConfig.direction === "desc"
+            ? "text-blue-700 font-semibold"
+            : "text-gray-500"
+        }`}
+      >
+        ↓
+      </span>
+    </div>
+    </div>
+  </TableHead>
+
+  <TableHead className="sticky top-0 bg-white z-10 text-center">Source</TableHead>
+
+  <TableHead className="sticky top-0 bg-white z-10 text-center">Status</TableHead>
+
+  <TableHead className="sticky top-0 bg-white z-10 text-center">
+    <div className="flex flex-col items-center">
+      <div className="flex items-center gap-1">
+      Created At
+      <span>
+      <span
+        onClick={() => handleSort("created_at", "asc")}
+        className={`hover:text-blue-600 cursor-pointer ${
+          sortConfig?.key === "created_at" && sortConfig.direction === "asc"
+            ? "text-blue-700 font-semibold"
+            : "text-gray-500"
+        }`}
+      >
+        ↑
+      </span>
+      <span
+        onClick={() => handleSort("created_at", "desc")}
+        className={`hover:text-blue-600 cursor-pointer ${
+          sortConfig?.key === "created_at" && sortConfig.direction === "desc"
+            ? "text-blue-700 font-semibold"
+            : "text-gray-500"
+        }`}
+      >
+        ↓
+      </span>
+      </span>
+    </div>
+    </div>
+  </TableHead>
+
+  <TableHead className="sticky top-0 bg-white z-10 text-center">
+    <div className="flex flex-col items-center">
+    <div className="flex items-center gap-1">
+      <span>Lead Age</span>
+      {/* <div className="flex flex-col text-xs leading-none"> */}
+      <span
+        onClick={() => handleSort("lead_age", "asc")}
+        className={`hover:text-blue-600 cursor-pointer ${
+          sortConfig?.key === "lead_age" && sortConfig.direction === "asc"
+            ? "text-blue-700 font-semibold"
+            : "text-gray-500"
+        }`}
+      >
+        ↑
+      </span>
+      <span
+        onClick={() => handleSort("lead_age", "desc")}
+        className={`hover:text-blue-600 cursor-pointer ${
+          sortConfig?.key === "lead_age" && sortConfig.direction === "desc"
+            ? "text-blue-700 font-semibold"
+            : "text-gray-500"
+        }`}
+      >
+        ↓
+      </span>
+    </div>
+    </div>
+  </TableHead>
+
+  <TableHead className="sticky top-0 bg-white z-10 text-center">Actions</TableHead>
+</>
+
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -2012,7 +2240,7 @@ setSalesHistoryDialogOpen(true);
   <span className="text-gray-600">Showing all {filteredLeads.length} leads</span>
 ) : (
   <span className="text-gray-600">
-    Page {currentPage} of {paginationPages}
+  Page {currentPage} of {totalPages}
   </span>
 )}
 

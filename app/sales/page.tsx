@@ -24,7 +24,7 @@ import isBetween from "dayjs/plugin/isBetween";
 dayjs.extend(isBetween);
 
 
-type SalesStage = "Prospect" | "DNP" | "Out of TG" | "Not Interested" | "Conversation Done" | "Sale Done"  | "Target";
+type SalesStage = "Prospect" | "DNP" | "Out of TG" | "Not Interested" | "Conversation Done" | "sale done"  | "Target";
 
 interface CallHistory {
   date: string;
@@ -73,7 +73,7 @@ interface FollowUp {
 }
 
 const salesStages: SalesStage[] = [
-  "Prospect", "DNP", "Out of TG", "Not Interested", "Conversation Done", "Target", "Sale Done"
+  "Prospect", "DNP", "Out of TG", "Not Interested", "Conversation Done", "Target", "sale done"
 ];
 
 const getStageColor = (stage: SalesStage) => {
@@ -83,7 +83,7 @@ const getStageColor = (stage: SalesStage) => {
     case "Out of TG":
     case "Not Interested": return "bg-red-100 text-red-800";
     case "Conversation Done": return "bg-purple-100 text-purple-800";
-    case "Sale Done": return "bg-green-100 text-green-800";
+    case "sale done": return "bg-green-100 text-green-800";
     case "Target": return "bg-orange-100 text-orange-800";
     default: return "bg-gray-100 text-gray-800";
   }
@@ -401,7 +401,19 @@ useEffect(() => {
   //   return matchesSearch && matchesStage;
   // });
 
-  
+  // 🧭 Sorting Config
+const [sortConfig, setSortConfig] = useState<{
+  key: keyof Lead | null;
+  direction: 'asc' | 'desc';
+}>({ key: null, direction: 'asc' });
+
+const handleSort = (key: keyof Lead) => {
+  setSortConfig((prev) => ({
+    key,
+    direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc',
+  }));
+};
+
 
   const filteredLeads = leads.filter((lead) => {
   const matchesSearch =
@@ -450,13 +462,13 @@ useEffect(() => {
       return;
     }
 
-    if (newStage === "Sale Done") {
+    if (newStage === "sale done") {
       setPreviousStage(lead.current_stage); // Save current
       setPendingStageUpdate({ leadId, stage: newStage });
       // Save lead to act on after Save
       setLeads((prev) =>
         prev.map((l) =>
-          l.id === leadId ? { ...l, current_stage: "Sale Done" } : l
+          l.id === leadId ? { ...l, current_stage: "sale done" } : l
         )
       );
       setSaleClosingDialogOpen(true);
@@ -576,7 +588,7 @@ useEffect(() => {
 
   //   const { error: stageError } = await supabase
   //     .from("leads")
-  //     .update({ current_stage: "Sale Done" })
+  //     .update({ current_stage: "sale done" })
   //     .eq("id", pendingStageUpdate.leadId);
 
   //   if (stageError) {
@@ -604,7 +616,7 @@ useEffect(() => {
 
 setFollowUpsData(prev =>
    prev.map(f =>
-     f.id === pendingStageUpdate.leadId ? { ...f, current_stage: "Sale Done" } : f
+     f.id === pendingStageUpdate.leadId ? { ...f, current_stage: "sale done" } : f
    )
  );
 
@@ -639,7 +651,7 @@ setFollowUpsData(prev =>
     
 
     await supabase.from("leads")
-      .update({ current_stage: "Sale Done" })
+      .update({ current_stage: "sale done" })
       .eq("id", pendingStageUpdate.leadId);
 
     // ✅ UI clean-up
@@ -669,9 +681,9 @@ setFollowUpsData(prev =>
   const dnpAndConvoCount = leads.filter(l =>
     l.current_stage === "DNP" || l.current_stage === "Conversation Done"
   ).length;
-  const saleDoneCount = leads.filter(l => l.current_stage === "Sale Done").length;
+  const saleDoneCount = leads.filter(l => l.current_stage === "sale done").length;
   const othersCount = leads.filter(l =>
-    !["Prospect", "DNP", "Conversation Done", "Sale Done"].includes(l.current_stage)
+    !["Prospect", "DNP", "Conversation Done", "sale done"].includes(l.current_stage)
   ).length;
 
   const fetchCallHistory = async (leadId: string) => {
@@ -811,6 +823,68 @@ const handleUpdateNote = async (call: CallHistory) => {
   }
 };
 
+// 📍 Place this just before rendering the table rows
+// const sortedLeads = [...filteredLeads].sort((a, b) => {
+//   const { key, direction } = sortConfig;
+//   if (!key) return 0;
+
+//   let aValue: any = a[key];
+//   let bValue: any = b[key];
+
+//   // Handle date sorting
+//   if (key === 'created_at' || key === 'assigned_at') {
+//     aValue = aValue ? new Date(aValue).getTime() : 0;
+//     bValue = bValue ? new Date(bValue).getTime() : 0;
+//     return direction === 'asc' ? aValue - bValue : bValue - aValue;
+//   }
+
+//   // Lead age (based on created_at)
+//   if (key === 'created_at' && a.created_at && b.created_at) {
+//     const aDays = dayjs().diff(dayjs(a.created_at), 'day');
+//     const bDays = dayjs().diff(dayjs(b.created_at), 'day');
+//     return direction === 'asc' ? aDays - bDays : bDays - aDays;
+//   }
+
+//   // Handle string sorting
+//   if (typeof aValue === 'string' && typeof bValue === 'string') {
+//     return direction === 'asc'
+//       ? aValue.localeCompare(bValue)
+//       : bValue.localeCompare(aValue);
+//   }
+
+//   // Handle number fallback
+//   return direction === 'asc'
+//     ? (aValue || 0) - (bValue || 0)
+//     : (bValue || 0) - (aValue || 0);
+// });
+
+const sortedLeads = [...filteredLeads].sort((a, b) => {
+  const { key, direction } = sortConfig;
+  if (!key) return 0;
+
+  let aValue: any = a[key];
+  let bValue: any = b[key];
+
+  // 📅 Date fields
+  if (key === 'created_at' || key === 'assigned_at') {
+    const aTime = aValue ? new Date(aValue).getTime() : 0;
+    const bTime = bValue ? new Date(bValue).getTime() : 0;
+    return direction === 'asc' ? aTime - bTime : bTime - aTime;
+  }
+
+  // 🔤 String fields
+  if (typeof aValue === 'string' && typeof bValue === 'string') {
+    return direction === 'asc'
+      ? aValue.localeCompare(bValue)
+      : bValue.localeCompare(aValue);
+  }
+
+  // 🔢 Number fields fallback
+  return direction === 'asc'
+    ? (aValue || 0) - (bValue || 0)
+    : (bValue || 0) - (aValue || 0);
+});
+
 
   return (
     <ProtectedRoute allowedRoles={["Sales","Sales Associate", "Super Admin"]}>
@@ -916,7 +990,7 @@ const handleUpdateNote = async (call: CallHistory) => {
                                 >
                                   {/* <SelectTrigger className="w-40"><SelectValue /></SelectTrigger> */}
                                   <SelectTrigger
-                                    className={`w-40 ${item.current_stage === "Sale Done"
+                                    className={`w-40 ${item.current_stage === "sale done"
                                       ? "pointer-events-none opacity-100 text-black bg-gray-100 border border-gray-300 cursor-not-allowed"
                                       : ""
                                       }`}
@@ -1060,7 +1134,7 @@ const handleUpdateNote = async (call: CallHistory) => {
 
           </div>
 
-          <Card>
+          {/* <Card>
             <CardHeader><CardTitle>Sales Pipeline</CardTitle></CardHeader>
             <CardContent>
               <div className="rounded-md border">
@@ -1082,7 +1156,7 @@ const handleUpdateNote = async (call: CallHistory) => {
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
-                  <TableBody>
+                  <TableBody>  
                     {filteredLeads.map((lead, idx) => (
                       <TableRow key={lead.id}>
                         <TableCell>{idx + 1}</TableCell>
@@ -1090,15 +1164,10 @@ const handleUpdateNote = async (call: CallHistory) => {
                         <TableCell>{lead.client_name}</TableCell>
                         <TableCell className="w-32 truncate">{lead.email}</TableCell>
                        <TableCell>{lead.phone}</TableCell>
-{/* <TableCell>{lead.created_at ? lead.created_at.slice(0, 10) : "N/A"}</TableCell> */}
 
 <TableCell className="w-40">{lead.created_at ? dayjs(lead.created_at).format('DD MMM YYYY') : "N/A"}</TableCell>
 <TableCell>  {lead.created_at ? `${dayjs().diff(dayjs(lead.created_at), 'day')} days` : "N/A"}
 </TableCell>
-
-{/* <TableCell>{lead.assigned_at ? lead.assigned_at.slice(0, 10) : "N/A"}</TableCell> */}
-{/* <TableCell>{lead.assigned_at ? lead.assigned_at.slice(0, 10) : "N/A"}</TableCell> */}
-
 
 <TableCell className="w-40">{lead.assigned_at ? dayjs(lead.assigned_at).format('DD MMM YYYY') : "N/A"}</TableCell>
 
@@ -1109,7 +1178,7 @@ const handleUpdateNote = async (call: CallHistory) => {
                           <Select value={lead.current_stage} onValueChange={(value: SalesStage) => handleStageUpdate(lead.id, value)}
                           >
                             <SelectTrigger
-                              className={`w-40 ${lead.current_stage === "Sale Done"
+                              className={`w-40 ${lead.current_stage === "sale done"
                                 ? "pointer-events-none opacity-100 text-black bg-gray-100 border border-gray-300 cursor-not-allowed"
                                 : ""
                                 }`}
@@ -1142,7 +1211,188 @@ const handleUpdateNote = async (call: CallHistory) => {
                 </Table>
               </div>
             </CardContent>
-          </Card>
+          </Card> */}
+
+
+          <Card>
+  <CardHeader>
+    <CardTitle>Sales Pipeline</CardTitle>
+  </CardHeader>
+  <CardContent>
+    <div className="rounded-md border">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>S.No</TableHead>
+
+            {/* <TableHead onClick={() => handleSort("business_id")} className="cursor-pointer select-none">
+              <div className="flex items-center gap-1">
+                Business ID
+                {sortConfig.key === "business_id" && (
+                  <span className="text-sm">{sortConfig.direction === "asc" ? "↑" : "↓"}</span>
+                )}
+              </div>
+            </TableHead> */}
+            <TableHead onClick={() => handleSort("business_id")} className="cursor-pointer select-none">
+  <div className="flex items-center gap-1">
+    Business ID
+    <span className="text-sm">
+      <span className={sortConfig.key === "business_id" && sortConfig.direction === "asc" ? "font-bold text-blue-600" : "text-gray-400"}>
+        ↓
+      </span>
+      <span className={sortConfig.key === "business_id" && sortConfig.direction === "desc" ? "font-bold text-blue-600" : "text-gray-400"}>
+        ↑
+      </span>
+    </span>
+  </div>
+</TableHead>
+
+           <TableHead onClick={() => handleSort("client_name")} className="cursor-pointer select-none">
+  <div className="flex items-center gap-1">
+    Client Name
+    <span className="text-sm">
+      <span className={sortConfig.key === "client_name" && sortConfig.direction === "asc" ? "font-bold text-blue-600" : "text-gray-400"}>
+        ↑
+      </span>
+      <span className={sortConfig.key === "client_name" && sortConfig.direction === "desc" ? "font-bold text-blue-600" : "text-gray-400"}>
+        ↓
+      </span>
+    </span>
+  </div>
+</TableHead>
+
+            <TableHead className="w-32">Email</TableHead>
+            <TableHead>Phone</TableHead>
+
+            <TableHead onClick={() => handleSort("created_at")} className="cursor-pointer select-none w-40">
+  <div className="flex items-center gap-1">
+    Created At
+    <span className="text-sm">
+      <span className={sortConfig.key === "created_at" && sortConfig.direction === "asc" ? "font-bold text-blue-600" : "text-gray-400"}>
+        ↑
+      </span>
+      <span className={sortConfig.key === "created_at" && sortConfig.direction === "desc" ? "font-bold text-blue-600" : "text-gray-400"}>
+        ↓
+      </span>
+    </span>
+  </div>
+</TableHead>
+<TableHead onClick={() => handleSort("created_at")} className="cursor-pointer select-none w-20">
+  <div className="flex items-center gap-1">
+    Lead Age
+    <span className="text-sm">
+      <span className={sortConfig.key === "created_at" && sortConfig.direction === "asc" ? "font-bold text-blue-600" : "text-gray-400"}>
+        ↑
+      </span>
+      <span className={sortConfig.key === "created_at" && sortConfig.direction === "desc" ? "font-bold text-blue-600" : "text-gray-400"}>
+        ↓
+      </span>
+    </span>
+  </div>
+</TableHead>
+
+           <TableHead onClick={() => handleSort("assigned_at")} className="cursor-pointer select-none w-40">
+  <div className="flex items-center gap-1">
+    Assigned At
+    <span className="text-sm">
+      <span className={sortConfig.key === "assigned_at" && sortConfig.direction === "asc" ? "font-bold text-blue-600" : "text-gray-400"}>
+        ↑
+      </span>
+      <span className={sortConfig.key === "assigned_at" && sortConfig.direction === "desc" ? "font-bold text-blue-600" : "text-gray-400"}>
+        ↓
+      </span>
+    </span>
+  </div>
+</TableHead>
+
+<TableHead onClick={() => handleSort("assigned_to")} className="cursor-pointer select-none">
+  <div className="flex items-center gap-1">
+    Assigned To
+    <span className="text-sm">
+      <span className={sortConfig.key === "assigned_to" && sortConfig.direction === "asc" ? "font-bold text-blue-600" : "text-gray-400"}>
+        ↑
+      </span>
+      <span className={sortConfig.key === "assigned_to" && sortConfig.direction === "desc" ? "font-bold text-blue-600" : "text-gray-400"}>
+        ↓
+      </span>
+    </span>
+  </div>
+</TableHead>
+            <TableHead>Stage</TableHead>
+            <TableHead>Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+
+        <TableBody>
+          {sortedLeads.map((lead, idx) => (
+            <TableRow key={lead.id}>
+              <TableCell>{idx + 1}</TableCell>
+              <TableCell>{lead.business_id}</TableCell>
+              <TableCell>{lead.client_name}</TableCell>
+              <TableCell className="w-32 truncate">{lead.email}</TableCell>
+              <TableCell>{lead.phone}</TableCell>
+
+              <TableCell className="w-40">
+                {lead.created_at ? dayjs(lead.created_at).format("DD MMM YYYY") : "N/A"}
+              </TableCell>
+
+              <TableCell>
+                {lead.created_at ? `${dayjs().diff(dayjs(lead.created_at), "day")} days` : "N/A"}
+              </TableCell>
+
+              <TableCell className="w-40">
+                {lead.assigned_at ? dayjs(lead.assigned_at).format("DD MMM YYYY") : "N/A"}
+              </TableCell>
+
+              <TableCell>{lead.assigned_to}</TableCell>
+
+              <TableCell>
+                <Select
+                  value={lead.current_stage}
+                  onValueChange={(value: SalesStage) => handleStageUpdate(lead.id, value)}
+                >
+                  <SelectTrigger
+                    className={`w-40 ${
+                      lead.current_stage === "sale done"
+                        ? "pointer-events-none opacity-100 text-black bg-gray-100 border border-gray-300 cursor-not-allowed"
+                        : ""
+                    }`}
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {salesStages
+                      .filter((stage) => lead.current_stage === "Prospect" || stage !== "Prospect")
+                      .map((stage) => (
+                        <SelectItem key={stage} value={stage}>
+                          <Badge className={getStageColor(stage)}>{stage}</Badge>
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </TableCell>
+
+              <TableCell>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={async () => {
+                    const callHistory = await fetchCallHistory(lead.id);
+                    setSelectedLead({ ...lead, call_history: callHistory });
+                    setHistoryDialogOpen(true);
+                  }}
+                >
+                  <Eye className="h-3 w-3" />
+                </Button>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  </CardContent>
+</Card>
+
 
           {/* History Dialog */}
           <Dialog  open={historyDialogOpen} onOpenChange={setHistoryDialogOpen} >
@@ -1170,7 +1420,7 @@ const handleUpdateNote = async (call: CallHistory) => {
                         <div key={index} className="p-3 bg-gray-50 rounded-lg">
                           <div className="flex justify-between items-center mb-1">
                             <Badge className={getStageColor(call.stage)}>{call.stage}</Badge>
-                            <span className="text-xs text-gray-500">{call.date}</span>
+                            <span className="text-sm text-gray-500">{call.date}</span>
                           </div>
                           <p className="text-sm text-gray-600">{call.notes}</p>
                         </div>
