@@ -121,6 +121,8 @@ const [distinctSalesStartDate, setDistinctSalesStartDate] = useState("");
 const [distinctSalesEndDate, setDistinctSalesEndDate] = useState("");
 const [distinctSalesSource, setDistinctSalesSource] = useState("all");
 const [distinctSources, setDistinctSources] = useState<string[]>([]);
+const [distinctSalesPerson, setDistinctSalesPerson] = useState("all");
+const [distinctSalesPersons, setDistinctSalesPersons] = useState<string[]>([]);
 
 
 
@@ -917,18 +919,67 @@ if (error) {
     }
   };
 
-  const handleDistinctFilterChange = async ({
+//   const handleDistinctFilterChange = async ({
+//   startDate,
+//   endDate,
+//   source,
+// }: {
+//   startDate: string;
+//   endDate: string;
+//   source: string;
+// }) => {
+//   setDistinctSalesStartDate(startDate);
+//   setDistinctSalesEndDate(endDate);
+//   setDistinctSalesSource(source);
+
+//   const getUTCRange = (dateStr: string, isStart: boolean) => {
+//     const date = new Date(dateStr);
+//     if (isStart) date.setHours(0, 0, 0, 0);
+//     else date.setHours(23, 59, 59, 999);
+//     return date.toISOString();
+//   };
+
+//   let query = supabase
+//     .from("leads")
+//     .select("*")
+//     .eq("current_stage", "sale done");
+
+//   if (startDate && endDate) {
+//     query = query
+//       .gte("created_at", getUTCRange(startDate, true))
+//       .lte("created_at", getUTCRange(endDate, false));
+//   }
+
+//   if (source !== "all") {
+//     query = query.eq("source", source);
+//   }
+
+//   const { data, error } = await query;
+//   if (!error) {
+//     setDistinctSalesLeads(data || []);
+//     const sourceList = [...new Set((data || []).map((d) => d.source?.trim()).filter(Boolean))];
+//     setDistinctSources(sourceList);
+//   } else {
+//     console.error("Error fetching filtered leads:", error);
+//   }
+// };
+
+
+const handleDistinctFilterChange = async ({
   startDate,
   endDate,
   source,
+  assignedTo = distinctSalesPerson,
 }: {
   startDate: string;
   endDate: string;
   source: string;
+  assignedTo?: string;
 }) => {
   setDistinctSalesStartDate(startDate);
   setDistinctSalesEndDate(endDate);
   setDistinctSalesSource(source);
+  setDistinctSalesPerson(assignedTo || "all");
 
   const getUTCRange = (dateStr: string, isStart: boolean) => {
     const date = new Date(dateStr);
@@ -952,13 +1003,32 @@ if (error) {
     query = query.eq("source", source);
   }
 
+  if (assignedTo && assignedTo !== "all") {
+    query = query.eq("assigned_to", assignedTo);
+  }
+
   const { data, error } = await query;
   if (!error) {
     setDistinctSalesLeads(data || []);
+
     const sourceList = [...new Set((data || []).map((d) => d.source?.trim()).filter(Boolean))];
     setDistinctSources(sourceList);
   } else {
     console.error("Error fetching filtered leads:", error);
+  }
+};
+
+const fetchDistinctSalesPersons = async () => {
+  const { data, error } = await supabase
+    .from("leads")
+    .select("assigned_to") // 👈 just fetch the column
+    .neq("assigned_to", null); // 👈 filter out nulls
+
+  if (!error && data) {
+    const names = [...new Set(data.map((item) => item.assigned_to?.trim()).filter(Boolean))];
+    setDistinctSalesPersons(names);
+  } else {
+    console.error("Error fetching distinct salespersons:", error);
   }
 };
 
@@ -1278,30 +1348,39 @@ setSalesHistoryDialogOpen(true);
                         <span>View all Google Sheets</span>
                       </DropdownMenuItem>
 
-                     <DropdownMenuItem
-  className="cursor-pointer"
+     <DropdownMenuItem
   onClick={async () => {
+    // Reset filters
     setDistinctSalesStartDate("");
     setDistinctSalesEndDate("");
     setDistinctSalesSource("all");
+    setDistinctSalesPerson("all");
 
+    // ✅ Fetch salespersons before opening dialog
+    await fetchDistinctSalesPersons();
+
+    // ✅ Fetch sources
     const { data, error } = await supabase
       .from("leads")
       .select("source")
-      .eq("current_stage", "sales done");
+      .eq("current_stage", "sale done");
 
     if (!error) {
       const sources = [...new Set(data.map((d) => d.source).filter(Boolean))];
       setDistinctSources(sources);
     }
 
+    // ✅ Fetch sales done leads
     await fetchDistinctSalesLeads();
+
+    // ✅ Now open the dialog
     setDistinctSalesDialogOpen(true);
   }}
 >
   <List className="mr-2 h-4 w-4" />
   <span>See Distinct Sales History</span>
 </DropdownMenuItem>
+
 
 
                     </DropdownMenuContent>
@@ -1508,6 +1587,33 @@ setSalesHistoryDialogOpen(true);
       />
     </div>
     <div>
+  <Label className="text-sm text-gray-600">Salesperson</Label>
+  <Select
+    value={distinctSalesPerson}
+    onValueChange={(value) => {
+      handleDistinctFilterChange({
+        startDate: distinctSalesStartDate,
+        endDate: distinctSalesEndDate,
+        source: distinctSalesSource,
+        assignedTo: value,
+      });
+    }}
+  >
+    <SelectTrigger className="w-[180px]">
+      <SelectValue placeholder="Select Salesperson" />
+    </SelectTrigger>
+    <SelectContent>
+      <SelectItem value="all">All</SelectItem>
+      {distinctSalesPersons.map((person) => (
+        <SelectItem key={person} value={person}>
+          {person}
+        </SelectItem>
+      ))}
+    </SelectContent>
+  </Select>
+</div>
+
+    <div>
       <Label className="text-sm text-gray-600">Source</Label>
       <Select
         value={distinctSalesSource}
@@ -1546,6 +1652,8 @@ setSalesHistoryDialogOpen(true);
         startDate: "",
         endDate: "",
         source: "all",
+              assignedTo: "all", // 👈 include this
+
       })
     }
   >
@@ -1568,6 +1676,8 @@ setSalesHistoryDialogOpen(true);
               <TableHead>Phone</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>City</TableHead>
+              <TableHead>Assigned To</TableHead>
+
               <TableHead>Source</TableHead>
               <TableHead>Created At</TableHead>
             </TableRow>
@@ -1581,6 +1691,8 @@ setSalesHistoryDialogOpen(true);
                 <TableCell>{lead.phone}</TableCell>
                 <TableCell>{lead.email}</TableCell>
                 <TableCell>{lead.city}</TableCell>
+                <TableCell>{lead.assigned_to || "Unassigned"}</TableCell>
+
                 <TableCell>{lead.source}</TableCell>
                 <TableCell>
                   {new Date(lead.created_at).toLocaleDateString("en-IN", {
