@@ -969,15 +969,21 @@ const [refLookupError, setRefLookupError] = useState<string | null>(null);
     const router = useRouter();
 
 
-    useEffect(() => {
-    if (user === null) return;
-    const allowed = ["Super Admin", "Resume Head", "Technical Head", "Marketing","Account Management","Finance"] as const;
-    if (!user || !allowed.includes(user.role as any)) {
-      router.push("/unauthorized");
-      return;
-    }
-    setLoading(false);
-  }, [user, router]);
+   useEffect(() => {
+  if (user === null) return;
+  type UserRole = "Super Admin" | "Sales" | "Sales Associate" | "Marketing" | "Account Management" | "Finance" | "Resume Head" | "Technical Head";
+  const allowed: UserRole[] = [
+    "Super Admin","Sales","Sales Associate",
+    "Marketing","Account Management","Finance",
+    "Resume Head","Technical Head",
+  ];
+  if (!user || !allowed.includes(user.role)) {
+    router.push("/unauthorized");
+    return;
+  }
+  setLoading(false);
+}, [user, router]);
+
 
   useEffect(() => {
   if (!user) return;
