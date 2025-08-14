@@ -11,8 +11,26 @@ import { Button } from "@/components/ui/button";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { useEmail } from "../context/EmailProvider";
 
-const roles = ["Admin", "Finance", "Sales", "Marketing", "Accounts","Marketing Associate", 
-              "Sales Associate", "Finance Associate", "Accounts Associate"];
+export const roles = [
+  "Admin",
+  "Finance",
+  "Sales",
+  "Marketing",
+  "Accounts",
+  "Marketing Associate",
+  "Sales Associate",
+  "Finance Associate",
+  "Accounts Associate",
+  // new:
+  "Technical Head",
+  "Technical Associate",
+  "Resume Head",
+  "Resume Associate",
+] as const;
+
+// // (optional) get a Role union type from the array
+// export type Role = typeof roles[number];
+
 
 export default function AddUserPage() {
   const [email, setEmail] = useState("");
