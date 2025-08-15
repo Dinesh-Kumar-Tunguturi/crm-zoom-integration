@@ -1,1041 +1,6 @@
 // "use client";
 
 // import { useEffect, useState } from "react";
-// import { supabase } from "@/utils/supabase/client";
-// import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-// import { Badge } from "@/components/ui/badge";
-// import { Input } from "@/components/ui/input";
-// import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-// import { MessageSquare } from "lucide-react";
-// import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
-// import ProtectedRoute from "@/components/auth/ProtectedRoute";
-// import { DashboardLayout } from "@/components/layout/dashboard-layout";
-// import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-// import { Textarea } from "@/components/ui/textarea";
-// import { Button } from "@/components/ui/button";
-// import Papa from "papaparse";
-
-
-// import { useAuth } from "@/components/providers/auth-provider";
-// import { useRouter } from "next/navigation";
-
-// type FinanceStatus = "Paid" | "Unpaid" | "Paused" | "Closed" | "Got Placed";
-
-// // interface SalesClosure {
-// //   id: string;
-// //   lead_id: string;
-// //   email: string;
-// //   sale_value: number;
-// //   subscription_cycle: number;
-// //   closed_at: string;
-// //   onboarded_date?: string;
-// //   finance_status: FinanceStatus;
-// //   reason_for_close?: string;
-// //   leads?: {
-// //     name: string;
-// //     phone: string;
-// //   };
-// //     oldest_closed_at?: string; // ✅ Add this
-
-// // }
-
-// interface SalesClosure {
-//   id: string;
-//   lead_id: string;
-//   email: string;
-//   sale_value: number;
-//   subscription_cycle: number;
-//   closed_at: string;
-//   onboarded_date?: string;
-//   finance_status: FinanceStatus;
-//   reason_for_close?: string;
-//   lead_name?: string;                 // 👈 add
-//   resume_sale_value?: number | null;  // 👈 add
-//   github_sale_value?: number | null;  // 👈 add
-//   portfolio_sale_value?: number | null; // 👈 add
-//   leads?: { name: string; phone: string };
-//   oldest_closed_at?: string;
-// }
-
-// export default function FinanceAssociatesPage() {
-//   const [loading, setLoading] = useState(true);
-//   const [sales, setSales] = useState<SalesClosure[]>([]);
-//   const [searchTerm, setSearchTerm] = useState("");
-//   const [statusFilter, setStatusFilter] = useState<FinanceStatus | "All">("All");
-//   const [actionSelections, setActionSelections] = useState<Record<string, string>>({});
-//   const [followUpFilter, setFollowUpFilter] = useState<"All" | "Today">("Today");
-//   const [showCloseDialog, setShowCloseDialog] = useState(false);
-//   const [selectedSaleId, setSelectedSaleId] = useState<string | null>(null);
-//   const [closingNote, setClosingNote] = useState("");
-//   const [csvFile, setCsvFile] = useState<File | null>(null);
-//   const [csvRowCount, setCsvRowCount] = useState<number>(0);
-//   const [parsedCSVData, setParsedCSVData] = useState<any[]>([]);
-//   const [showCSVDialog, setShowCSVDialog] = useState(false);
-//   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-//   const [pendingAction, setPendingAction] = useState<{ saleId: string; newStatus: FinanceStatus | null } | null>(null);
-//   const [showReasonDialog, setShowReasonDialog] = useState(false);
-//   const [selectedReasonType, setSelectedReasonType] = useState<FinanceStatus | null>(null);
-//   const [reasonNote, setReasonNote] = useState("");
-
-//   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
-// const [paymentAmount, setPaymentAmount] = useState("");
-// const [onboardDate, setOnboardDate] = useState<Date | null>(null);
-// const [subscriptionMonths, setSubscriptionMonths] = useState("1");
-
-//   const { user, hasAccess } = useAuth();
-//   const router = useRouter();
-
-  
-// // const fetchSales = async () => {
-// //   if (!user) return;
-
-// //   // 1. Fetch TL's profile (name & email are already in `user`)
-// //   const { name, email } = user;
-
-// //   const { data: salesData, error: salesError } = await supabase
-// //     .from("sales_closure")
-// //     .select("*")
-// //     .eq("associates_tl_email", email)
-// //     .eq("associates_tl_name", name)
-// //     .not("onboarded_date", "is", null);
-
-// //   if (salesError) {
-// //     console.error("Failed to fetch sales data:", salesError);
-// //     return;
-// //   }
-
-// //   // 2. Get the latest record per lead_id
-// //   const latestSalesMap = new Map<string, SalesClosure>();
-// //   for (const record of salesData ?? []) {
-// //     const existing = latestSalesMap.get(record.lead_id);
-
-// //     const existingDate = existing?.onboarded_date || existing?.closed_at || "";
-// //     const currentDate = record?.onboarded_date || record?.closed_at || "";
-
-// //     if (!existing || new Date(currentDate) > new Date(existingDate)) {
-// //       latestSalesMap.set(record.lead_id, record);
-// //     }
-// //   }
-
-// //   const latestSales = Array.from(latestSalesMap.values());
-
-// //   // 3. Enrich with name & phone
-// //   const leadIds = latestSales.map((s) => s.lead_id);
-
-// //   const { data: leadsData, error: leadsError } = await supabase
-// //     .from("leads")
-// //     .select("business_id, name, phone")
-// //     .in("business_id", leadIds);
-
-// //   if (leadsError) {
-// //     console.error("Failed to fetch leads data:", leadsError);
-// //     return;
-// //   }
-
-// //   const leadMap = new Map(
-// //     leadsData?.map((l) => [l.business_id, { name: l.name, phone: l.phone }])
-// //   );
-
-// //   const enrichedSales = latestSales.map((sale) => ({
-// //     ...sale,
-// //     leads: leadMap.get(sale.lead_id) || { name: "-", phone: "-" },
-// //   }));
-
-// //   setSales(enrichedSales);
-// // };
-
-
-// const fetchSales = async () => {
-//   if (!user) return;
-
-//   let salesQuery = supabase
-//   .from("sales_closure")
-//   .select("*")
-//   .or("portfolio_sale_value.is.not.null,github_sale_value.is.not.null"); // 👈 OR where either is NOT NULL
-
-// // Visibility: Heads see all; Associates see their own
-// if (user.role === "Technical Associate" || user.role === "Finance Associate") {
-//   salesQuery = salesQuery.eq("associates_email", user.email);
-// }
-
-
-//   const { data: salesData, error: salesError } = await salesQuery;
-//   if (salesError) {
-//     console.error("Failed to fetch sales data:", salesError);
-//     return;
-//   }
-
-//   // 2. Get the latest record per lead_id
-//   const latestSalesMap = new Map<string, SalesClosure>();
-//   for (const record of salesData ?? []) {
-//     const existing = latestSalesMap.get(record.lead_id);
-
-//     const existingDate = existing?.onboarded_date || existing?.closed_at || "";
-//     const currentDate = record?.onboarded_date || record?.closed_at || "";
-
-//     if (!existing || new Date(currentDate) > new Date(existingDate)) {
-//       latestSalesMap.set(record.lead_id, record);
-//     }
-//   }
-
-//   const latestSales = Array.from(latestSalesMap.values());
-
-//   // 🧠 Step: Build a map of oldest closed_at per lead_id
-// const oldestDatesMap = new Map<string, string>();
-// for (const record of salesData ?? []) {
-//   const prev = oldestDatesMap.get(record.lead_id);
-//   if (!prev || new Date(record.closed_at) < new Date(prev)) {
-//     oldestDatesMap.set(record.lead_id, record.closed_at);
-//   }
-// }
-
-
-//   // 3. Enrich with name & phone
-//   const leadIds = latestSales.map((s) => s.lead_id);
-
-//   const { data: leadsData, error: leadsError } = await supabase
-//     .from("leads")
-//     .select("business_id, name, phone")
-//     .in("business_id", leadIds);
-
-//   if (leadsError) {
-//     console.error("Failed to fetch leads data:", leadsError);
-//     return;
-//   }
-
-//   const leadMap = new Map(
-//     leadsData?.map((l) => [l.business_id, { name: l.name, phone: l.phone }])
-//   );
-
-//   // const enrichedSales = latestSales.map((sale) => ({
-//   //   ...sale,
-//   //   leads: leadMap.get(sale.lead_id) || { name: "-", phone: "-" },
-//   // }));
-
-//   const enrichedSales = latestSales.map((sale) => ({
-//   ...sale,
-//   leads: leadMap.get(sale.lead_id) || { name: "-", phone: "-" },
-//   oldest_closed_at: oldestDatesMap.get(sale.lead_id) || sale.closed_at,
-// }));
-
-
-//   setSales(enrichedSales);
-// };
-
-
-// //   useEffect(() => {
-// //     if (user === null) return;
-// //     setLoading(false);
-// //     if (!hasAccess("techincal-associate")) {
-// //       router.push("/unauthorized");
-// //     }
-// //   }, [user]);
-
-// useEffect(() => {
-//   if (user === null) return;          // still waiting for auth
-//   setLoading(false);
-
-//   const allowed = [
-//     "Super Admin",
-//     "Finance Associate",
-//     "Technical Head",
-//     "Technical Associate",
-//   ] as const;
-
-//   if (!user || !allowed.includes(user.role as any)) {
-//     router.push("/unauthorized");
-//   }
-// }, [user, router]);
-
-
-//   useEffect(() => {
-//     if (user && hasAccess("technical-associate")) {
-//       fetchSales();
-//     }
-//   }, [user]);
-
-//   // ✅ After all hooks declared, do the early return
-//   if (loading) return <p className="p-6 text-gray-600">Loading...</p>;
-
-//   // ⬇️ Continue with the rest of your logic and JSX...
-
-
-
-
-
-//   const getStageColor = (status: FinanceStatus) => {
-//     switch (status) {
-//       case "Paid":
-//         return "bg-green-100 text-green-800";
-//       case "Unpaid":
-//         return "bg-red-100 text-red-800";
-//       case "Paused":
-//         return "bg-yellow-100 text-yellow-800";
-//       case "Got Placed":
-//         return "bg-blue-100 text-blue-800";
-//       default:
-//         return "bg-gray-100 text-gray-800";
-//     }
-//   };
-
-//   const updateFinanceStatus = async (saleId: string, newStatus: FinanceStatus) => {
-//   const { error } = await supabase
-//     .from("sales_closure")
-//     .update({ finance_status: newStatus })
-//     .eq("id", saleId);
-
-//   if (error) {
-//     console.error("Error updating status:", error);
-//   } else {
-//     setSales((prev) =>
-//       prev.map((s) => (s.id === saleId ? { ...s, finance_status: newStatus } : s))
-//     );
-//   }
-// };
-
-
-//  const getRenewWithinBadge = (createdAt: string, subscriptionCycle: number): React.ReactNode => {
-//   if (!createdAt || !subscriptionCycle) return null;
-
-//   const startDate = new Date(createdAt);
-//   const today = new Date();
-
-//   // Strip time from both dates for clean date comparison
-//   startDate.setHours(0, 0, 0, 0);
-//   today.setHours(0, 0, 0, 0);
-
-//   const diffInDays = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-
-//   if (diffInDays < subscriptionCycle) {
-//     const daysLeft = subscriptionCycle - diffInDays;
-//     return (
-//       <Badge className="bg-green-100 text-green-800">
-//         Within {daysLeft} day{daysLeft !== 1 ? "s" : ""}
-//       </Badge>
-//     );
-//   } else if (diffInDays === subscriptionCycle) {
-//     return <Badge className="bg-yellow-100 text-gray-800">Today last date</Badge>;
-//   } else {
-//     const overdue = diffInDays - subscriptionCycle;
-//     return (
-//       <Badge className="bg-red-100 text-red-800">
-//         Overdue by {overdue} day{overdue !== 1 ? "s" : ""}
-//       </Badge>
-//     );
-//   }
-// };
-
-
-// const filteredSales = sales
-//   .filter((sale) => {
-//     const matchesSearch =
-//       sale.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-//       sale.lead_id.toLowerCase().includes(searchTerm.toLowerCase());
-
-//     const matchesStatus =
-//       statusFilter === "All" || sale.finance_status === statusFilter;
-
-//     const onboardedDate = sale.onboarded_date ? new Date(sale.onboarded_date) : null;
-//     const today = new Date();
-//     const subscriptionCycle = sale.subscription_cycle || 0; // Default to 0 if not set
-//     const diffInDays = onboardedDate
-//       ? Math.floor((today.getTime() - onboardedDate.getTime()) / (1000 * 60 * 60 * 24))
-//       : null;
-
-//     const matchesFollowUp =
-//       followUpFilter === "All" || (diffInDays !== null && diffInDays >= subscriptionCycle);
-
-//     return matchesSearch && matchesStatus && matchesFollowUp;
-//   })
-//   .sort((a, b) => {
-//     const dateA = new Date(a.onboarded_date || a.closed_at || "");
-//     const dateB = new Date(b.onboarded_date || b.closed_at || "");
-//     return  dateB.getTime()-dateA.getTime(); // 🟢 descending
-//   });
-
-//   const handleCSVUpload = (file: File) => {
-//   Papa.parse(file, {
-//     header: true,
-//     skipEmptyLines: true,
-//     complete: async function (results) {
-//       const rows = results.data as {
-//         lead_id: string;
-//         associates_email: string;
-//         associates_name: string;
-//         associates_tl_email: string;
-//         associates_tl_name: string;
-//       }[];
-
-//       for (const row of rows) {
-//         const { error } = await supabase
-//           .from("sales_closure")
-//           .update({
-//             associates_email: row.associates_email?.trim(),
-//             associates_name: row.associates_name?.trim(),
-//             associates_tl_email: row.associates_tl_email?.trim(),
-//             associates_tl_name: row.associates_tl_name?.trim(),
-//           })
-//           .eq("lead_id", row.lead_id?.trim());
-
-//         if (error) {
-//           console.error(`Failed to update lead_id: ${row.lead_id}`, error);
-//         }
-//       }
-
-//       alert("✅ CSV processed and updates sent to Supabase.");
-//       fetchSales(); // Refresh table
-//     },
-//     error: function (err) {
-//       console.error("Error parsing CSV:", err);
-//       alert("❌ Failed to parse CSV file.");
-//     },
-//   });
-// };
-
-// const handleParseCSV = (file: File) => {
-//   setCsvFile(file);
-
-//   Papa.parse(file, {
-//     header: true,
-//     skipEmptyLines: true,
-//     complete: function (results) {
-//       const rows = results.data as {
-//         lead_id: string;
-//         associates_email: string;
-//         associates_name: string;
-//         associates_tl_email: string;
-//         associates_tl_name: string;
-//       }[];
-
-//       setParsedCSVData(rows);
-//       setCsvRowCount(rows.length);
-//     },
-//     error: function (err) {
-//       console.error("Error parsing CSV:", err);
-//       alert("❌ Failed to parse CSV file.");
-//     },
-//   });
-// };
-
-// const handleCSVSubmit = async () => {
-//   for (const row of parsedCSVData) {
-//     const { error } = await supabase
-//       .from("sales_closure")
-//       .update({
-//         associates_email: row.associates_email?.trim(),
-//         associates_name: row.associates_name?.trim(),
-//         associates_tl_email: row.associates_tl_email?.trim(),
-//         associates_tl_name: row.associates_tl_name?.trim(),
-//       })
-//       .eq("lead_id", row.lead_id?.trim());
-
-//     if (error) {
-//       console.error(`❌ Failed to update lead_id: ${row.lead_id}`, error);
-//     }
-//   }
-
-//   alert("✅ Data updated successfully.");
-//   fetchSales(); // Refresh UI
-//   setParsedCSVData([]);
-//   setCsvRowCount(0);
-// };
-
-//   return (
-// <ProtectedRoute
-//   allowedRoles={[
-//     "Super Admin",
-//     "Technical Head",
-//     "Technical Associate",
-//   ]}
-// >
-//       <DashboardLayout>
-//         <div className="space-y-6">
-//           <div className="flex justify-between items-center">
-//             <h1 className="text-3xl font-bold text-gray-900">Finance Associates Page</h1>
-//           </div>
-
-//           <div className="flex items-center justify-between mt-4">
-//             <Input
-//               placeholder="Search by email or lead_id"
-//               value={searchTerm}
-//               onChange={(e) => setSearchTerm(e.target.value)}
-//               className="max-w-md"
-//             />
-//             <div className="flex space-x-4 justify-end">
-//             <Select value={followUpFilter} onValueChange={(value) => setFollowUpFilter(value as "Today" | "All")}>
-//   <SelectTrigger className="w-40">
-//     <SelectValue placeholder="Follow Up" />
-//   </SelectTrigger>
-//   <SelectContent>
-//     <SelectItem value="All">All</SelectItem>
-//     <SelectItem value="Today">Today</SelectItem>
-//   </SelectContent>
-// </Select>
-
-//             <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as FinanceStatus | "All")}>
-//               <SelectTrigger className="w-40">
-//                 <SelectValue placeholder="Filter by Status" />
-//               </SelectTrigger>
-//               <SelectContent>
-//                 <SelectItem value="All">All</SelectItem>
-//                 <SelectItem value="Paid">Paid</SelectItem>
-//                 <SelectItem value="Unpaid">Unpaid</SelectItem>
-//                 <SelectItem value="Paused">Paused</SelectItem>
-//                 <SelectItem value="Closed">Closed</SelectItem>
-//                 <SelectItem value="Got Placed">Got Placed</SelectItem>
-
-//               </SelectContent>
-//             </Select>
-//             <Button onClick={() => setShowCSVDialog(true)}>Upload CSV</Button>
-//           </div>
-          
-
-// <Dialog open={showCSVDialog} onOpenChange={setShowCSVDialog}>
-//   <DialogContent>
-//     <DialogHeader>
-//       <DialogTitle>Upload CSV File</DialogTitle>
-//     </DialogHeader>
-
-//     <input
-//       type="file"
-//       accept=".csv"
-//       onChange={(e) => {
-//         const file = e.target.files?.[0];
-//         if (file) handleParseCSV(file);
-//       }}
-//     />
-
-//     {csvRowCount > 0 && (
-//       <p className="text-sm mt-2">✅ {csvRowCount} rows found in the file.</p>
-//     )}
-
-//     <div className="flex justify-end gap-3 mt-4">
-//       <Button variant="outline" onClick={() => setShowCSVDialog(false)}>Cancel</Button>
-//       <Button
-//         onClick={async () => {
-//           await handleCSVSubmit(); // ⬅ actual upload
-//           setShowCSVDialog(false);
-//         }}
-//         disabled={parsedCSVData.length === 0}
-//       >
-//         Submit
-//       </Button>
-//     </div>
-//   </DialogContent>
-// </Dialog>
-
-// </div>
-//           <div className="rounded-md border mt-4">
-//             <Table>
-//               <TableHeader>
-//                 <TableRow>
-//                   <TableHead>S.No</TableHead>
-//                   <TableHead>Client ID</TableHead>
-//                   <TableHead>Name</TableHead>
-//                   <TableHead>Email</TableHead>
-//                   <TableHead>Phone</TableHead>
-//                   {/* <TableHead>Sale Value</TableHead> */}
-//                   <TableHead>Subscription</TableHead>
-//                   <TableHead>Status</TableHead>
-//                    <TableHead>Portfolio Sale</TableHead>      {/* new */}
-// <TableHead>GitHub Sale</TableHead>      {/* new */}
-//                   <TableHead>Sale Date</TableHead>
-//                   <TableHead>Onboarded / last payment at</TableHead>
-                 
-//                   <TableHead>Deadline</TableHead>
-//                   <TableHead>Renewal date</TableHead>
-//                   <TableHead>Actions</TableHead>
-//                   <TableHead>Reason</TableHead>
-//                 </TableRow>
-//               </TableHeader>
-//               <TableBody>
-//                 {filteredSales.map((sale, idx) => (
-//                   <TableRow key={sale.id}>
-//                     <TableCell>{idx + 1}</TableCell>
-//                     <TableCell>{sale.lead_id}</TableCell>
-//                     <TableCell>{sale.leads?.name || "-"}</TableCell>
-//                     <TableCell>{sale.email}</TableCell>
-//                     <TableCell>{sale.leads?.phone || "-"}</TableCell>
-//                     {/* <TableCell>${sale.sale_value}</TableCell> */}
-//                     <TableCell>{sale.subscription_cycle} days</TableCell>
-//                     <TableCell>
-//                       <Badge className={getStageColor(sale.finance_status)}>{sale.finance_status}</Badge>
-//                     </TableCell>
-
-//                     <TableCell>{sale.resume_sale_value ?? "-"}</TableCell>
-// <TableCell>{sale.github_sale_value ?? "-"}</TableCell>
-
-//                     {/* <TableCell>{new Date(sale.closed_at).toLocaleDateString("en-GB")}</TableCell> */}
-//                     <TableCell>
-//   {sale.oldest_closed_at
-//     ? new Date(sale.oldest_closed_at).toLocaleDateString("en-GB")
-//     : "-"}
-// </TableCell>
-
-//                     <TableCell>{sale.onboarded_date ? new Date(sale.onboarded_date).toLocaleDateString("en-GB") : "-"}</TableCell>
-//                     <TableCell>
-//   {getRenewWithinBadge(sale.onboarded_date || "", sale.subscription_cycle)}
-// </TableCell>
-// <TableCell>
-//   {(() => {
-//     const onboarded = sale.onboarded_date ? new Date(sale.onboarded_date) : null;
-//     const cycle = sale.subscription_cycle || 0;
-
-//     if (!onboarded || isNaN(cycle)) return "-";
-
-//     const renewalDate = new Date(onboarded);
-//     renewalDate.setDate(renewalDate.getDate() + cycle);
-//     return renewalDate.toLocaleDateString("en-GB");
-//   })()}
-// </TableCell>
-
-
-//                     <TableCell>
-//   {(() => {
-//     const onboarded = sale.onboarded_date ? new Date(sale.onboarded_date) : null;
-//     const today = new Date();
-//     let isOlderThan25 = false;
-
-//     if (onboarded) {
-//       const diffDays = Math.floor((today.getTime() - onboarded.getTime()) / (1000 * 60 * 60 * 24));
-//       isOlderThan25 = diffDays < 25;
-//     }
-
-//     const disableDropdown = isOlderThan25;
-
-
-//     return (
-// <Select
-//   value={actionSelections[sale.id] || ""}
-// //   onValueChange={(value) => {
-// //   setActionSelections((prev) => ({
-// //     ...prev,
-// //     [sale.id]: value,
-// //   }));
-
-// //   if (value === "Closed") {
-// //     setSelectedSaleId(sale.id);
-// //     setShowCloseDialog(true);
-// //   } else if (value === "Paused") {
-// //     setPendingAction({ saleId: sale.id, newStatus: value as FinanceStatus });
-// //     setShowConfirmDialog(true);
-// //   } else {
-// //     updateFinanceStatus(sale.id, value as FinanceStatus);
-// //   }
-// // }}
-
-// onValueChange={(value) => {
-//   setActionSelections((prev) => ({
-//     ...prev,
-//     [sale.id]: value,
-//   }));
-
-//   if (value === "Paid") {
-//     const confirmed = window.confirm("Are you sure you want to update status as PAID ?");
-// if (!confirmed) return;
-
-//   setSelectedSaleId(sale.id);
-//   setShowPaymentDialog(true);
-//   return;
-// }
-//   else if (value === "Closed") {
-//     const confirmed = window.confirm("Are you sure you want to update status as CLOSED ?");
-// if (!confirmed) return;
-
-//     setSelectedSaleId(sale.id);
-//     setSelectedReasonType("Closed");
-//     setShowReasonDialog(true);
-//   } else if (value === "Paused") {
-//     const confirmed = window.confirm("Are you sure you want to update status as PAUSED ?");
-// if (!confirmed) return;
-
-    
-//     setSelectedSaleId(sale.id);
-//     setSelectedReasonType("Paused");
-//     setShowReasonDialog(true);
-    
-//   } else if (value === "Unpaid") {
-//     const confirmed = window.confirm("Are you sure you want to update status as UNPAID ?");
-// if (!confirmed) return;
-
-//     setSelectedSaleId(sale.id);
-//     setSelectedReasonType("Unpaid");
-//     setShowReasonDialog(true);
-//   } else if (value === "Got Placed") {
-//     const confirmed = window.confirm("Are you sure you want to update status as GOT PLACED ?");
-// if (!confirmed) return;
-
-//     setSelectedSaleId(sale.id);
-//     setSelectedReasonType("Got Placed");
-//     setShowReasonDialog(true);
-//   } else {
-//     updateFinanceStatus(sale.id, value as FinanceStatus);
-//   }
-// }}
-
-
-//   disabled={disableDropdown}
-// >
-//   <SelectTrigger className="w-36">
-//     <SelectValue placeholder={disableDropdown ? "Not allowed" : "Select Status"} />
-//   </SelectTrigger>
-//   <SelectContent>
-//     <SelectItem value="Paid">Paid</SelectItem>
-//     <SelectItem value="Unpaid">Unpaid</SelectItem>
-//     <SelectItem value="Paused">Paused</SelectItem>
-//     <SelectItem value="Closed">Closed</SelectItem>
-//     <SelectItem value="Got Placed">Got Placed</SelectItem>
-
-//   </SelectContent>
-// </Select>
-
-//     );
-//   })()}
-// </TableCell>
-
-
-//                     {/* <TableCell>
-//                       {sale.finance_status === "Closed" && sale.reason_for_close ? (
-//                         <Popover>
-//                           <PopoverTrigger asChild>
-//                             <button className="hover:text-blue-600">
-//                               <MessageSquare className="w-5 h-5" />
-//                             </button>
-//                           </PopoverTrigger>
-//                           <PopoverContent className="w-[300px] bg-white shadow-lg border p-4 text-sm text-gray-700">
-//                             Reason: '{sale.reason_for_close}'
-//                           </PopoverContent>
-//                         </Popover>
-//                       ) : (
-//                         <span className="text-gray-400 text-xs italic">—</span>
-//                       )}
-//                     </TableCell> */}
-
-
-// <TableCell>
-//   {sale.reason_for_close ? (
-//     <Popover>
-//       <PopoverTrigger asChild>
-//         <button className="hover:text-blue-600">
-//           <MessageSquare className="w-5 h-5" />
-//         </button>
-//       </PopoverTrigger>
-//       <PopoverContent className="w-[300px] bg-white shadow-lg border p-4 text-sm text-gray-700">
-//         Reason: '{sale.reason_for_close}'
-//       </PopoverContent>
-//     </Popover>
-//   ) : (
-//     <span className="text-gray-400 text-xs italic">—</span>
-//   )}
-// </TableCell>
-
-//                   </TableRow>
-//                 ))}
-//               </TableBody>
-//             </Table>
-//           </div>
-          
-//                 {/* <Dialog open={showCloseDialog} onOpenChange={setShowCloseDialog}>
-//   <DialogContent className="sm:max-w-md">
-//     <DialogHeader>
-//       <DialogTitle>Reason for Closing</DialogTitle>
-//     </DialogHeader>
-
-//     <Textarea
-//       placeholder="Enter reason for closing this record..."
-//       value={closingNote}
-//       onChange={(e) => setClosingNote(e.target.value)}
-//       className="min-h-[100px]"
-//     />
-
-//     <div className="flex justify-end mt-4">
-//       <Button
-//         onClick={async () => {
-//           if (!selectedSaleId || closingNote.trim() === "") {
-//             alert("Please enter a reason.");
-//             return;
-//           }
-
-//           const { error } = await supabase
-//             .from("sales_closure")
-//             .update({
-//               finance_status: "Closed",
-//               reason_for_close: closingNote.trim(),
-//             })
-//             .eq("id", selectedSaleId);
-
-//           if (error) {
-//             console.error("Error saving close reason:", error);
-//             alert("❌ Failed to close record.");
-//             return;
-//           }
-
-//           setSales((prev) =>
-//             prev.map((sale) =>
-//               sale.id === selectedSaleId
-//                 ? {
-//                     ...sale,
-//                     finance_status: "Closed",
-//                     reason_for_close: closingNote.trim(),
-//                   }
-//                 : sale
-//             )
-//           );
-
-//           setShowCloseDialog(false);
-//           setSelectedSaleId(null);
-//           setClosingNote("");
-//         }}
-//       >
-//         Submit
-//       </Button>
-//     </div>
-//   </DialogContent>
-// </Dialog> */}
-
-
-// <Dialog open={showReasonDialog} onOpenChange={setShowReasonDialog}>
-//   <DialogContent hideCloseIcon className="sm:max-w-md">
-//     <DialogHeader>
-//       <DialogTitle>Reason for {selectedReasonType}</DialogTitle>
-//     </DialogHeader>
-
-//     <Textarea
-//       placeholder={`Enter reason for marking as ${selectedReasonType}...`}
-//       value={reasonNote}
-//       onChange={(e) => setReasonNote(e.target.value)}
-//       className="min-h-[100px]"
-//     />
-
-//     <div className="flex justify-end mt-4">
-//       <Button
-//         variant="outline"
-//         onClick={() => {
-//           setShowReasonDialog(false);
-//           setSelectedSaleId(null);
-//           setSelectedReasonType(null);
-//           setReasonNote("");
-//         }}
-//       >
-//         Cancel  
-//       </Button>
-//       <Button
-//         onClick={async () => {
-//           if (!selectedSaleId || reasonNote.trim() === "" || !selectedReasonType) {
-//             alert("Please enter a reason.");
-//             return;
-//           }
-
-//           const { error } = await supabase
-//             .from("sales_closure")
-//             .update({
-//               finance_status: selectedReasonType,
-//               reason_for_close: `${selectedReasonType}: ${reasonNote.trim()}`, // ✅ use only this column
-//             })
-//             .eq("id", selectedSaleId);
-
-//           if (error) {
-//             console.error("Error saving reason:", error);
-//             alert("❌ Failed to update record.");
-//             return;
-//           }
-
-//           setSales((prev) =>
-//             prev.map((sale) =>
-//               sale.id === selectedSaleId
-//                 ? {
-//                     ...sale,
-//                     finance_status: selectedReasonType,
-//                     reason_for_close: `${selectedReasonType}: ${reasonNote.trim()}`,
-//                   }
-//                 : sale
-//             )
-//           );
-
-//           setShowReasonDialog(false);
-//           setSelectedSaleId(null);
-//           setSelectedReasonType(null);
-//           setReasonNote("");
-//         }}
-//       >
-//         Submit
-//       </Button>
-//     </div>
-//   </DialogContent>
-// </Dialog>
-
-
-// <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-//   <DialogContent className="sm:max-w-md">
-//     <DialogHeader>
-//       <DialogTitle>Confirm Status Change</DialogTitle>
-//     </DialogHeader>
-
-//     <p className="text-sm text-gray-700 mt-2">
-//       Are you sure you want to mark this record as{" "}
-//       <strong>{pendingAction?.newStatus}</strong>?
-//     </p>
-
-//     <div className="flex justify-end gap-2 mt-6">
-//       <Button
-//         variant="outline"
-//         onClick={() => {
-//           setShowConfirmDialog(false);
-//           setPendingAction(null);
-//         }}
-//       >
-//         Cancel
-//       </Button>
-//       <Button
-//         onClick={async () => {
-//           if (!pendingAction) return;
-
-//           await updateFinanceStatus(pendingAction.saleId, pendingAction.newStatus as FinanceStatus);
-
-//           setShowConfirmDialog(false);
-//           setPendingAction(null);
-//         }}
-//       >
-//         Yes, Proceed
-//       </Button>
-//     </div>
-//   </DialogContent>
-// </Dialog>
-
-// <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
-//   <DialogContent className="w-[420px]">
-//     <DialogHeader>
-//       <DialogTitle>💰 Payment Details</DialogTitle>
-//     </DialogHeader>
-
-//     <p className="text-sm text-muted-foreground mb-2">
-//       Fill the payment info, onboard date, and subscription details to record this payment.
-//     </p>
-
-//     <div className="space-y-4">
-//       {/* Payment Amount */}
-//       <Input
-//         type="number"
-//         placeholder="Payment amount ($)"
-//         value={paymentAmount}
-//         onChange={(e) => setPaymentAmount(e.target.value)}
-//         required
-//       />
-
-//       {/* Onboarded Date */}
-//       <Input
-//         type="date"
-//         placeholder="Onboarded date"
-//         value={onboardDate ? onboardDate.toISOString().slice(0, 10) : ""}
-//         onChange={(e) => setOnboardDate(new Date(e.target.value))}
-//         required
-//       />
-
-//       {/* Subscription Duration */}
-//       <Select value={subscriptionMonths} onValueChange={setSubscriptionMonths}>
-//         <SelectTrigger className="w-full">
-//           <SelectValue placeholder="Subscription duration" />
-//         </SelectTrigger>
-//         <SelectContent>
-//           <SelectItem value="1">1 month</SelectItem>
-//           <SelectItem value="2">2 months</SelectItem>
-//           <SelectItem value="3">3 months</SelectItem>
-//         </SelectContent>
-//       </Select>
-
-// <div className="flex justify-between gap-3 pt-4">
-//   <Button
-//     variant="outline"
-//     className="w-full bg-black text-white hover:bg-gray-800"
-//     onClick={() => {
-//       setShowPaymentDialog(false);
-//       setPaymentAmount("");
-//       setOnboardDate(null);
-//       setSubscriptionMonths("1");
-
-//       // 🧠 Revert dropdown to default
-//       if (selectedSaleId) {
-//         setActionSelections((prev) => ({
-//           ...prev,
-//           [selectedSaleId]: "",
-//         }));
-//       }
-
-//       setSelectedSaleId(null);
-//     }}
-//   >
-//     Cancel
-//   </Button>
-
-//       <Button
-//         className="w-full"
-//         onClick={async () => {
-//           if (!selectedSaleId || !paymentAmount || !onboardDate || !subscriptionMonths) {
-//             alert("Please fill all fields");
-//             return;
-//           }
-
-//           const { error } = await supabase
-//             .from("sales_closure")
-//             .update({
-//               finance_status: "Paid",
-//               sale_value: parseFloat(paymentAmount),
-//               onboarded_date: onboardDate.toISOString(),
-//               subscription_cycle: Number(subscriptionMonths) * 30,
-//             })
-//             .eq("id", selectedSaleId);
-
-//           if (error) {
-//             console.error("Error updating payment:", error);
-//             alert("❌ Failed to record payment");
-//             return;
-//           }
-
-//           // Refresh state
-//           setSales((prev) =>
-//             prev.map((s) =>
-//               s.id === selectedSaleId
-//                 ? {
-//                     ...s,
-//                     finance_status: "Paid",
-//                     sale_value: parseFloat(paymentAmount),
-//                     onboarded_date: onboardDate.toISOString(),
-//                     subscription_cycle: Number(subscriptionMonths) * 30,
-//                   }
-//                 : s
-//             )
-//           );
-
-//           // Reset dialog
-//           setShowPaymentDialog(false);
-//           setPaymentAmount("");
-//           setOnboardDate(null);
-//           setSubscriptionMonths("1");
-//           setSelectedSaleId(null);
-//         }}
-//       >
-//         Payment Close
-//       </Button>
-//       </div>
-//     </div>
-//   </DialogContent>
-// </Dialog>
-
-
-
-//         </div>
-  
-
-//       </DashboardLayout>
-//     </ProtectedRoute>
-//   );
-// }
-
-
-
-// "use client";
-
-// import { useEffect, useMemo, useState } from "react";
 // import { useRouter } from "next/navigation";
 // import { supabase } from "@/utils/supabase/client";
 // import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -1043,6 +8,7 @@
 // import ProtectedRoute from "@/components/auth/ProtectedRoute";
 // import { DashboardLayout } from "@/components/layout/dashboard-layout";
 // import { useAuth } from "@/components/providers/auth-provider";
+
 // type FinanceStatus = "Paid" | "Unpaid" | "Paused" | "Closed" | "Got Placed";
 
 // interface SalesClosure {
@@ -1053,9 +19,13 @@
 //   closed_at: string;
 //   portfolio_sale_value?: number | null;
 //   github_sale_value?: number | null;
-//   // populated after join:
 //   leads?: { name: string; phone: string };
 // }
+
+// // ✅ move columns outside the component (no hooks)
+// // "Portfolio Sale","GitHub Sale",
+// const PORTFOLIO_COLUMNS = ["Client ID", "Name", "Email", "Phone", "Status",  "Closed At"] as const;
+// const GITHUB_COLUMNS    = ["Client ID", "Name", "Email", "Phone", "Status",  "Closed At"] as const;
 
 // export default function TechnicalPage() {
 //   const [loading, setLoading] = useState(true);
@@ -1064,58 +34,49 @@
 //   const { user, hasAccess } = useAuth();
 //   const router = useRouter();
 
-//   // Fetch both portfolio & github rows, enrich with leads (name/phone)
 //   const fetchBoth = async () => {
 //     if (!user) return;
 
-//     // base queries
 //     let qPortfolio = supabase
 //       .from("sales_closure")
 //       .select("*")
-//       .not("portfolio_sale_value", "is", null);
+//       .not("portfolio_sale_value", "is", null)
+//       .neq("portfolio_sale_value", 0);
 
 //     let qGithub = supabase
 //       .from("sales_closure")
 //       .select("*")
-//       .not("github_sale_value", "is", null);
+//       .not("github_sale_value", "is", null)
+//       .neq("github_sale_value", 0);
 
-//     // restrict for associates if you want
-//     if (user.role === "Technical Associate" || user.role === "Finance Associate") {
-//       qPortfolio = qPortfolio.eq("associates_email", user.email);
-//       qGithub = qGithub.eq("associates_email", user.email);
-//     }
+//    // Associates see only their own assignments; Heads see all
+// // if (user.role === "Technical Associate" ) {
+// //   qPortfolio = qPortfolio.eq("associates_email", user.email);
+// //   qGithub = qGithub.eq("associates_email", user.email);
+// // }
 
-//     const [{ data: pData, error: pErr }, { data: gData, error: gErr }] = await Promise.all([
-//       qPortfolio,
-//       qGithub,
-//     ]);
-
+//     const [{ data: pData, error: pErr }, { data: gData, error: gErr }] = await Promise.all([qPortfolio, qGithub]);
 //     if (pErr || gErr) {
 //       console.error("Failed to fetch sales data:", pErr || gErr);
 //       return;
 //     }
 
-//     const p = (pData ?? []) as SalesClosure[];
-//     const g = (gData ?? []) as SalesClosure[];
-
-//     // keep latest per lead_id (by closed_at)
 //     const latestByLead = (rows: SalesClosure[]) => {
 //       const map = new Map<string, SalesClosure>();
-//       for (const r of rows) {
-//         const existing = map.get(r.lead_id);
-//         const ed = existing?.closed_at ?? "";
+//       for (const r of rows ?? []) {
+//         const ex = map.get(r.lead_id);
+//         const ed = ex?.closed_at ?? "";
 //         const cd = r?.closed_at ?? "";
-//         if (!existing || new Date(cd) > new Date(ed)) map.set(r.lead_id, r);
+//         if (!ex || new Date(cd) > new Date(ed)) map.set(r.lead_id, r);
 //       }
 //       return Array.from(map.values()).sort(
 //         (a, b) => new Date(b.closed_at || "").getTime() - new Date(a.closed_at || "").getTime()
 //       );
 //     };
 
-//     const pLatest = latestByLead(p);
-//     const gLatest = latestByLead(g);
+//     const pLatest = latestByLead((pData as SalesClosure[]) ?? []);
+//     const gLatest = latestByLead((gData as SalesClosure[]) ?? []);
 
-//     // one leads lookup for both sets
 //     const allLeadIds = Array.from(new Set([...pLatest, ...gLatest].map((r) => r.lead_id)));
 //     const { data: leadsData, error: leadsError } = await supabase
 //       .from("leads")
@@ -1128,45 +89,29 @@
 //     }
 //     const leadMap = new Map(leadsData?.map((l) => [l.business_id, { name: l.name, phone: l.phone }]));
 
-//     setPortfolioRows(
-//       pLatest.map((r) => ({ ...r, leads: leadMap.get(r.lead_id) || { name: "-", phone: "-" } }))
-//     );
-//     setGithubRows(
-//       gLatest.map((r) => ({ ...r, leads: leadMap.get(r.lead_id) || { name: "-", phone: "-" } }))
-//     );
+//     setPortfolioRows(pLatest.map((r) => ({ ...r, leads: leadMap.get(r.lead_id) || { name: "-", phone: "-" } })));
+//     setGithubRows(gLatest.map((r) => ({ ...r, leads: leadMap.get(r.lead_id) || { name: "-", phone: "-" } })));
 //   };
 
 //   useEffect(() => {
-//     if (user === null) return; // waiting for auth
-//     setLoading(false);
-
-//     const allowed = ["Super Admin", "Finance Associate", "Technical Head", "Technical Associate"] as const;
+//     if (user === null) return;
+//     const allowed = ["Super Admin", "Technical Head", "Technical Associate"] as const;
 //     if (!user || !allowed.includes(user.role as any)) {
 //       router.push("/unauthorized");
+//       return;
 //     }
+//     setLoading(false);
 //   }, [user, router]);
 
-//   useEffect(() => {
-//     if (user && hasAccess("technical-associate")) {
-//       fetchBoth();
-//     }
-//   }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
+// useEffect(() => {
+//   if (!user) return;
+//   const allowed = new Set(["Super Admin", "Technical Head", "Technical Associate"]);
+//   if (allowed.has(user.role as any)) fetchBoth();
+// }, [user]);
 
-//   if (loading) return <p className="p-6 text-gray-600">Loading...</p>;
 
-//   const portfolioColumns = useMemo(
-//     () => ["Client ID", "Name", "Email", "Phone", "Status", "Portfolio Sale", "Closed At"],
-//     []
-//   );
-//   const githubColumns = useMemo(
-//     () => ["Client ID", "Name", "Email", "Phone", "Status", "GitHub Sale", "Closed At"],
-//     []
-//   );
-// const renderTable = (
-//     rows: SalesClosure[],
-//     which: "portfolio" | "github"
-//   ) => {
-//     const columns = which === "portfolio" ? portfolioColumns : githubColumns;
+//   const renderTable = (rows: SalesClosure[], which: "portfolio" | "github") => {
+//     const columns = which === "portfolio" ? PORTFOLIO_COLUMNS : GITHUB_COLUMNS;
 //     return (
 //       <div className="rounded-md border mt-4">
 //         <Table>
@@ -1185,14 +130,8 @@
 //                 <TableCell>{sale.email}</TableCell>
 //                 <TableCell>{sale.leads?.phone || "-"}</TableCell>
 //                 <TableCell>{sale.finance_status}</TableCell>
-//                 {which === "portfolio" ? (
-//                   <TableCell>{sale.portfolio_sale_value ?? "-"}</TableCell>
-//                 ) : (
-//                   <TableCell>{sale.github_sale_value ?? "-"}</TableCell>
-//                 )}
-//                 <TableCell>
-//                   {sale.closed_at ? new Date(sale.closed_at).toLocaleDateString("en-GB") : "-"}
-//                 </TableCell>
+               
+//                 <TableCell>{sale.closed_at ? new Date(sale.closed_at).toLocaleDateString("en-GB") : "-"}</TableCell>
 //               </TableRow>
 //             ))}
 //             {rows.length === 0 && (
@@ -1209,29 +148,26 @@
 //   };
 
 //   return (
-//     <ProtectedRoute
-//       allowedRoles={["Super Admin", "Technical Head", "Technical Associate", "Finance Associate"]}
-//     >
+//     <ProtectedRoute allowedRoles={["Super Admin", "Technical Head", "Technical Associate"]}>
 //       <DashboardLayout>
 //         <div className="space-y-6">
 //           <div className="flex items-center justify-between">
 //             <h1 className="text-3xl font-bold text-gray-900">Technical Page</h1>
 //           </div>
 
-//           <Tabs defaultValue="portfolio" className="w-full">
-//             <TabsList className="grid grid-cols-2 w-full sm:w-auto">
-//               <TabsTrigger value="portfolio">Portfolios</TabsTrigger>
-//               <TabsTrigger value="github">GitHub</TabsTrigger>
-//             </TabsList>
+//           {loading ? (
+//             <p className="p-6 text-gray-600">Loading...</p>
+//           ) : (
+//             <Tabs defaultValue="portfolio" className="w-full">
+//               <TabsList className="grid grid-cols-2 w-full sm:w-auto">
+//                 <TabsTrigger value="portfolio">Portfolios</TabsTrigger>
+//                 <TabsTrigger value="github">GitHub</TabsTrigger>
+//               </TabsList>
 
-//             <TabsContent value="portfolio">
-//               {renderTable(portfolioRows, "portfolio")}
-//             </TabsContent>
-
-//             <TabsContent value="github">
-//               {renderTable(githubRows, "github")}
-//             </TabsContent>
-//           </Tabs>
+//               <TabsContent value="portfolio">{renderTable(portfolioRows, "portfolio")}</TabsContent>
+//               <TabsContent value="github">{renderTable(githubRows, "github")}</TabsContent>
+//             </Tabs>
+//           )}
 //         </div>
 //       </DashboardLayout>
 //     </ProtectedRoute>
@@ -1239,103 +175,2617 @@
 // }
 
 
+
+
+// // app/technicalTeam/page.tsx
+// "use client";
+
+// import { useEffect, useState } from "react";
+// import { useRouter } from "next/navigation";
+// import { supabase } from "@/utils/supabase/client";
+
+// import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+// import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+// import { Button } from "@/components/ui/button";
+
+// import ProtectedRoute from "@/components/auth/ProtectedRoute";
+// import { DashboardLayout } from "@/components/layout/dashboard-layout";
+// import { useAuth } from "@/components/providers/auth-provider";
+
+// type FinanceStatus = "Paid" | "Unpaid" | "Paused" | "Closed" | "Got Placed";
+// type ResumeStatus = "not_started" | "pending" | "waiting_client_approval" | "completed";
+
+// const STATUS_LABEL: Record<ResumeStatus, string> = {
+//   not_started: "Not started",
+//   pending: "Pending",
+//   waiting_client_approval: "Waiting for Client approval",
+//   completed: "Completed",
+// };
+
+// interface SalesClosure {
+//   id: string;
+//   lead_id: string;
+//   email: string;
+//   finance_status: FinanceStatus;
+//   closed_at: string | null;
+//   portfolio_sale_value?: number | null;
+//   github_sale_value?: number | null;
+//   leads?: { name: string; phone: string };
+
+//   // joined from resume_progress:
+//   rp_status?: ResumeStatus;
+//   rp_pdf_path?: string | null;
+// }
+
+// // Columns now include Resume status & PDF
+// const PORTFOLIO_COLUMNS = [
+//   "Client ID",
+//   "Name",
+//   "Email",
+//   "Phone",
+//   "Status",
+//   "Resume Status",
+//   "Resume PDF",
+//   "Closed At",
+// ] as const;
+
+// const GITHUB_COLUMNS = [
+//   "Client ID",
+//   "Name",
+//   "Email",
+//   "Phone",
+//   "Status",
+//   "Resume Status",
+//   "Resume PDF",
+//   "Closed At",
+// ] as const;
+
+// export default function TechnicalPage() {
+//   const [loading, setLoading] = useState(true);
+//   const [portfolioRows, setPortfolioRows] = useState<SalesClosure[]>([]);
+//   const [githubRows, setGithubRows] = useState<SalesClosure[]>([]);
+//   const { user } = useAuth();
+//   const router = useRouter();
+
+//   const fetchBoth = async () => {
+//     if (!user) return;
+
+//     // 1) pull portfolio/github closures
+//     let qPortfolio = supabase
+//       .from("sales_closure")
+//       .select("*")
+//       .not("portfolio_sale_value", "is", null)
+//       .neq("portfolio_sale_value", 0);
+
+//     let qGithub = supabase
+//       .from("sales_closure")
+//       .select("*")
+//       .not("github_sale_value", "is", null)
+//       .neq("github_sale_value", 0);
+
+//     // If associates should only see their own leads, uncomment:
+//     // if (user.role === "Technical Associate") {
+//     //   qPortfolio = qPortfolio.eq("associates_email", user.email);
+//     //   qGithub = qGithub.eq("associates_email", user.email);
+//     // }
+
+//     const [{ data: pData, error: pErr }, { data: gData, error: gErr }] = await Promise.all([qPortfolio, qGithub]);
+//     if (pErr || gErr) {
+//       console.error("Failed to fetch sales data:", pErr || gErr);
+//       return;
+//     }
+
+//     // 2) latest record per lead
+//     const latestByLead = (rows: SalesClosure[]) => {
+//       const map = new Map<string, SalesClosure>();
+//       for (const r of rows ?? []) {
+//         const ex = map.get(r.lead_id);
+//         const ed = ex?.closed_at ?? "";
+//         const cd = r?.closed_at ?? "";
+//         if (!ex || new Date(cd) > new Date(ed)) map.set(r.lead_id, r);
+//       }
+//       return Array.from(map.values()).sort(
+//         (a, b) => new Date(b.closed_at || "").getTime() - new Date(a.closed_at || "").getTime()
+//       );
+//     };
+
+//     const pLatest = latestByLead((pData as SalesClosure[]) ?? []);
+//     const gLatest = latestByLead((gData as SalesClosure[]) ?? []);
+
+//     // 3) fetch lead basics
+//     const allLeadIds = Array.from(new Set([...pLatest, ...gLatest].map((r) => r.lead_id)));
+//     const { data: leadsData, error: leadsError } = await supabase
+//       .from("leads")
+//       .select("business_id, name, phone")
+//       .in("business_id", allLeadIds);
+
+//     if (leadsError) {
+//       console.error("Failed to fetch leads:", leadsError);
+//       return;
+//     }
+//     const leadMap = new Map(leadsData?.map((l) => [l.business_id, { name: l.name, phone: l.phone }]));
+
+//     // 4) fetch resume progress for those leads
+//     const { data: rp, error: rpErr } = await supabase
+//       .from("resume_progress")
+//       .select("lead_id, status, pdf_path")
+//       .in("lead_id", allLeadIds);
+
+//     if (rpErr) {
+//       console.error("Failed to fetch resume progress:", rpErr);
+//       return;
+//     }
+//     const progMap = new Map(rp?.map((x) => [x.lead_id, { status: x.status as ResumeStatus, pdf_path: x.pdf_path }]));
+
+//     // 5) merge
+//     setPortfolioRows(
+//       pLatest.map((r) => ({
+//         ...r,
+//         leads: leadMap.get(r.lead_id) || { name: "-", phone: "-" },
+//         rp_status: progMap.get(r.lead_id)?.status ?? "not_started",
+//         rp_pdf_path: progMap.get(r.lead_id)?.pdf_path ?? null,
+//       }))
+//     );
+
+//     setGithubRows(
+//       gLatest.map((r) => ({
+//         ...r,
+//         leads: leadMap.get(r.lead_id) || { name: "-", phone: "-" },
+//         rp_status: progMap.get(r.lead_id)?.status ?? "not_started",
+//         rp_pdf_path: progMap.get(r.lead_id)?.pdf_path ?? null,
+//       }))
+//     );
+//   };
+
+//   const openPdf = async (path: string) => {
+//     try {
+//       const { data, error } = await supabase.storage.from("resumes").createSignedUrl(path, 60 * 60);
+//       if (error) throw error;
+//       if (data?.signedUrl) window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+//     } catch (e: any) {
+//       alert(e.message || "Could not open PDF");
+//     }
+//   };
+
+//   // role gate
+//   useEffect(() => {
+//     if (user === null) return;
+//     const allowed = ["Super Admin", "Technical Head", "Technical Associate"] as const;
+//     if (!user || !allowed.includes(user.role as any)) {
+//       router.push("/unauthorized");
+//       return;
+//     }
+//     setLoading(false);
+//   }, [user, router]);
+
+//   useEffect(() => {
+//     if (!user) return;
+//     const allowed = new Set(["Super Admin", "Technical Head", "Technical Associate"]);
+//     if (allowed.has(user.role as any)) fetchBoth();
+//   }, [user]);
+
+//   const renderTable = (rows: SalesClosure[], which: "portfolio" | "github") => {
+//     const columns = which === "portfolio" ? PORTFOLIO_COLUMNS : GITHUB_COLUMNS;
+
+//     return (
+//       <div className="rounded-md border mt-4">
+//         <Table>
+//           <TableHeader>
+//             <TableRow>
+//               {columns.map((c) => (
+//                 <TableHead key={c}>{c}</TableHead>
+//               ))}
+//             </TableRow>
+//           </TableHeader>
+//           <TableBody>
+//             {rows.map((sale) => (
+//               <TableRow key={sale.id}>
+//                 <TableCell>{sale.lead_id}</TableCell>
+//                 <TableCell>{sale.leads?.name || "-"}</TableCell>
+//                 <TableCell>{sale.email}</TableCell>
+//                 <TableCell>{sale.leads?.phone || "-"}</TableCell>
+//                 <TableCell>{sale.finance_status}</TableCell>
+
+//                 {/* joined resume status */}
+//                 <TableCell>
+//                   {sale.rp_status ? STATUS_LABEL[sale.rp_status] : "—"}
+//                 </TableCell>
+
+//                 {/* joined resume PDF */}
+//                 <TableCell>
+//                   {sale.rp_pdf_path ? (
+//                     <Button variant="outline" size="sm" onClick={() => openPdf(sale.rp_pdf_path!)}>
+//                       View PDF
+//                     </Button>
+//                   ) : (
+//                     <span className="text-gray-400 text-sm">—</span>
+//                   )}
+//                 </TableCell>
+
+//                 <TableCell>{sale.closed_at ? new Date(sale.closed_at).toLocaleDateString("en-GB") : "-"}</TableCell>
+//               </TableRow>
+//             ))}
+//             {rows.length === 0 && (
+//               <TableRow>
+//                 <TableCell colSpan={columns.length} className="text-center text-sm text-muted-foreground py-10">
+//                   No records found.
+//                 </TableCell>
+//               </TableRow>
+//             )}
+//           </TableBody>
+//         </Table>
+//       </div>
+//     );
+//   };
+
+//   return (
+//     <ProtectedRoute allowedRoles={["Super Admin", "Technical Head", "Technical Associate"]}>
+//       <DashboardLayout>
+//         <div className="space-y-6">
+//           <div className="flex items-center justify-between">
+//             <h1 className="text-3xl font-bold text-gray-900">Technical Page</h1>
+//           </div>
+
+//           {loading ? (
+//             <p className="p-6 text-gray-600">Loading...</p>
+//           ) : (
+//             <Tabs defaultValue="portfolio" className="w-full">
+//               <TabsList className="grid grid-cols-2 w-full sm:w-auto">
+//                 <TabsTrigger value="portfolio">Portfolios</TabsTrigger>
+//                 <TabsTrigger value="github">GitHub</TabsTrigger>
+//               </TabsList>
+
+//               <TabsContent value="portfolio">{renderTable(portfolioRows, "portfolio")}</TabsContent>
+//               <TabsContent value="github">{renderTable(githubRows, "github")}</TabsContent>
+//             </Tabs>
+//           )}
+//         </div>
+//       </DashboardLayout>
+//     </ProtectedRoute>
+//   );
+// }
+
+
+
+// "use client";
+
+// import { useEffect, useRef, useState } from "react";
+// import { useRouter } from "next/navigation";
+// import { supabase } from "@/utils/supabase/client";
+
+// import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+// import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+// import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+// import { Button } from "@/components/ui/button";
+
+// import ProtectedRoute from "@/components/auth/ProtectedRoute";
+// import { DashboardLayout } from "@/components/layout/dashboard-layout";
+// import { useAuth } from "@/components/providers/auth-provider";
+
+// type FinanceStatus = "Paid" | "Unpaid" | "Paused" | "Closed" | "Got Placed";
+// type ResumeStatus = "not_started" | "pending" | "waiting_client_approval" | "completed";
+
+// const STATUS_LABEL: Record<ResumeStatus, string> = {
+//   not_started: "Not started",
+//   pending: "Pending",
+//   waiting_client_approval: "Waiting for Client approval",
+//   completed: "Completed",
+// };
+
+// interface SalesClosure {
+//   id: string;
+//   lead_id: string;
+//   email: string;
+//   finance_status: FinanceStatus;
+//   closed_at: string | null;
+//   portfolio_sale_value?: number | null;
+//   github_sale_value?: number | null;
+//   leads?: { name: string; phone: string };
+//   // from resume_progress
+//   rp_status?: ResumeStatus;
+//   rp_pdf_path?: string | null;
+// }
+
+// const PORTFOLIO_COLUMNS = [
+//   "Client ID",
+//   "Name",
+//   "Email",
+//   "Phone",
+//   "Status",
+//   "Resume Status",
+//   "Resume PDF",
+//   "Closed At",
+// ] as const;
+
+// export default function TechnicalTeamPage() {
+//   const [loading, setLoading] = useState(true);
+//   const [portfolioRows, setPortfolioRows] = useState<SalesClosure[]>([]);
+//   const { user } = useAuth();
+//   const router = useRouter();
+
+//   // ---------- Data fetch ----------
+//   const fetchData = async () => {
+//     if (!user) return;
+
+//     // 1) get rows that actually involve technical work (portfolio/github)
+//     let qPortfolio = supabase
+//       .from("sales_closure")
+//       .select("*")
+//       .not("portfolio_sale_value", "is", null)
+//       .neq("portfolio_sale_value", 0);
+
+//     let qGithub = supabase
+//       .from("sales_closure")
+//       .select("*")
+//       .not("github_sale_value", "is", null)
+//       .neq("github_sale_value", 0);
+
+//     // If you want to scope Associates to only their work, uncomment:
+//     // if (user.role === "Technical Associate") {
+//     //   qPortfolio = qPortfolio.eq("associates_email", user.email);
+//     //   qGithub = qGithub.eq("associates_email", user.email);
+//     // }
+
+    
+
+//     const [{ data: pData, error: pErr }, { data: gData, error: gErr }] = await Promise.all([qPortfolio, qGithub]);
+//     if (pErr || gErr) {
+//       console.error("Failed to fetch sales data:", pErr || gErr);
+//       return;
+//     }
+
+//     const latestByLead = (rows: any[]) => {
+//       const map = new Map<string, any>();
+//       for (const r of rows ?? []) {
+//         const ex = map.get(r.lead_id);
+//         const ed = ex?.closed_at ?? "";
+//         const cd = r?.closed_at ?? "";
+//         if (!ex || new Date(cd) > new Date(ed)) map.set(r.lead_id, r);
+//       }
+//       return Array.from(map.values()).sort(
+//         (a, b) => new Date(b.closed_at || "").getTime() - new Date(a.closed_at || "").getTime()
+//       );
+//     };
+
+//     const pLatest = latestByLead(pData || []);
+//     const gLatest = latestByLead(gData || []);
+//     const allLeadIds = Array.from(new Set([...pLatest, ...gLatest].map((r) => r.lead_id)));
+
+//     // 2) fetch lead name/phone
+//     const { data: leadsData, error: leadsErr } = await supabase
+//       .from("leads")
+//       .select("business_id, name, phone")
+//       .in("business_id", allLeadIds);
+//     if (leadsErr) {
+//       console.error("Failed to fetch leads:", leadsErr);
+//       return;
+//     }
+//     const leadMap = new Map(leadsData?.map((l) => [l.business_id, { name: l.name, phone: l.phone }]));
+
+//     // 3) fetch resume progress for those leads
+//     const { data: progress, error: progErr } = await supabase
+//       .from("resume_progress")
+//       .select("lead_id, status, pdf_path")
+//       .in("lead_id", allLeadIds);
+//     if (progErr) {
+//       console.error("Failed to fetch resume_progress:", progErr);
+//       return;
+//     }
+//     const progMap = new Map(progress?.map((p) => [p.lead_id, { status: p.status as ResumeStatus, pdf_path: p.pdf_path }]));
+
+//     // 4) merge into portfolio side (we show only the portfolio tab here; copy/paste if you also want on GitHub tab)
+//     const mergedPortfolio: SalesClosure[] = pLatest.map((r) => ({
+//       ...r,
+//       leads: leadMap.get(r.lead_id) || { name: "-", phone: "-" },
+//       rp_status: progMap.get(r.lead_id)?.status ?? "not_started",
+//       rp_pdf_path: progMap.get(r.lead_id)?.pdf_path ?? null,
+//     }));
+
+//     setPortfolioRows(mergedPortfolio);
+//   };
+
+//   // view signed url from Storage
+//   const openSignedPdf = async (path: string) => {
+//     try {
+//       const { data, error } = await supabase.storage.from("resumes").createSignedUrl(path, 60 * 60); // 1h
+//       if (error) throw error;
+//       if (data?.signedUrl) window.open(data.signedUrl, "_blank");
+//     } catch (e: any) {
+//       alert(e.message || "Could not open PDF");
+//     }
+//   };
+
+//   async function logResumeProgress() {
+//   const leadId = "AWL-1379";
+
+//   // fetch rows for that lead (latest first)
+//   const { data, error } = await supabase
+//     .from("resume_progress")
+//     .select("id, lead_id, status, pdf_path, pdf_uploaded_at, updated_at, updated_by")
+//     .eq("lead_id", leadId)
+//     .order("updated_at", { ascending: false });
+
+//   if (error) {
+//     console.error("resume_progress query error:", error);
+//     return;
+//   }
+
+//   console.log("resume_progress rows:", data);
+// }
+
+// // call it (e.g., inside useEffect or directly in a script)
+// logResumeProgress();
+
+// const downloadResume = async (path: string) => {
+//   try {
+//     const { data, error } = await supabase.storage
+//       .from("resumes")
+//       // If your SDK supports it, pass the download filename right here:
+//       .createSignedUrl(path, 60 * 60, { download: `Resume-${path.split("/")[0]}.pdf` });
+
+//     if (error) throw error;
+//     if (data?.signedUrl) {
+//       // navigating to the URL triggers the download
+//       window.location.href = data.signedUrl;
+//     }
+//   } catch (e: any) {
+//     alert(e.message || "Could not download PDF");
+//   }
+// };
+
+
+//   useEffect(() => {
+//     if (user === null) return;
+//     const allowed = ["Super Admin", "Technical Head", "Technical Associate"] as const;
+//     if (!user || !allowed.includes(user.role as any)) {
+//       router.push("/unauthorized");
+//       return;
+//     }
+//     setLoading(false);
+//   }, [user, router]);
+
+//   useEffect(() => {
+//     if (user) fetchData();
+//   }, [user]);
+
+//   const renderTable = (rows: SalesClosure[]) => (
+//     <div className="rounded-md border mt-4">
+//       <Table>
+//         <TableHeader>
+//           <TableRow>
+//             {PORTFOLIO_COLUMNS.map((c) => (
+//               <TableHead key={c}>{c}</TableHead>
+//             ))}
+//           </TableRow>
+//         </TableHeader>
+//         <TableBody>
+//           {rows.map((sale) => (
+//             <TableRow key={sale.id}>
+//               <TableCell>{sale.lead_id}</TableCell>
+//               <TableCell>{sale.leads?.name || "-"}</TableCell>
+//               <TableCell>{sale.email}</TableCell>
+//               <TableCell>{sale.leads?.phone || "-"}</TableCell>
+//               <TableCell>{sale.finance_status}</TableCell>
+
+//               {/* Resume Status (read-only here; you can make it editable if you want) */}
+//               <TableCell>{STATUS_LABEL[(sale.rp_status ?? "not_started") as ResumeStatus]}</TableCell>
+
+//               {/* Resume PDF */}
+//           <TableCell>
+//   {sale.rp_pdf_path ? (
+//     <Button
+//       variant="outline"
+//       size="sm"
+//       onClick={() => downloadResume(sale.rp_pdf_path!)}
+//     >
+//       Download Resume
+//     </Button>
+//   ) : (
+//     <span className="text-gray-400 text-sm">—</span>
+//   )}
+// </TableCell>
+
+//               <TableCell>{sale.closed_at ? new Date(sale.closed_at).toLocaleDateString("en-GB") : "-"}</TableCell>
+//             </TableRow>
+//           ))}
+//           {rows.length === 0 && (
+//             <TableRow>
+//               <TableCell colSpan={PORTFOLIO_COLUMNS.length} className="text-center text-sm text-muted-foreground py-10">
+//                 No records found.
+//               </TableCell>
+//             </TableRow>
+//           )}
+//         </TableBody>
+//       </Table>
+//     </div>
+//   );
+
+//   return (
+//     <ProtectedRoute allowedRoles={["Super Admin", "Technical Head", "Technical Associate"]}>
+//       <DashboardLayout>
+//         <div className="space-y-6">
+//           <div className="flex items-center justify-between">
+//             <h1 className="text-3xl font-bold text-gray-900">Technical Page</h1>
+//           </div>
+
+//           {loading ? (
+//             <p className="p-6 text-gray-600">Loading...</p>
+//           ) : (
+//             <Tabs defaultValue="portfolio" className="w-full">
+//               <TabsList className="grid grid-cols-2 w-full sm:w-auto">
+//                 <TabsTrigger value="portfolio">Portfolios</TabsTrigger>
+//                 <TabsTrigger value="github">GitHub</TabsTrigger>
+//               </TabsList>
+
+//               <TabsContent value="portfolio">{renderTable(portfolioRows)}</TabsContent>
+//               {/* If you also need resume status mirrored under the GitHub tab, duplicate the same merge there. */}
+//               <TabsContent value="github">
+//                 <div className="p-6 text-sm text-gray-500">GitHub tab not wired to resumes yet.</div>
+//               </TabsContent>
+//             </Tabs>
+//           )}
+//         </div>
+//       </DashboardLayout>
+//     </ProtectedRoute>
+//   );
+// }
+
+
+
+// "use client";
+
+// import { useEffect, useState } from "react";
+// import { useRouter } from "next/navigation";
+// import { supabase } from "@/utils/supabase/client";
+
+// import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+// import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+// import { Button } from "@/components/ui/button";
+
+// import ProtectedRoute from "@/components/auth/ProtectedRoute";
+// import { DashboardLayout } from "@/components/layout/dashboard-layout";
+// import { useAuth } from "@/components/providers/auth-provider";
+
+// type FinanceStatus = "Paid" | "Unpaid" | "Paused" | "Closed" | "Got Placed";
+// type ResumeStatus = "not_started" | "pending" | "waiting_client_approval" | "completed";
+
+// const STATUS_LABEL: Record<ResumeStatus, string> = {
+//   not_started: "Not started",
+//   pending: "Pending",
+//   waiting_client_approval: "Waiting for Client approval",
+//   completed: "Completed",
+// };
+
+// interface SalesClosure {
+//   id: string;
+//   lead_id: string;
+//   email: string;
+//   finance_status: FinanceStatus;
+//   closed_at: string | null;
+//   portfolio_sale_value?: number | null;
+//   github_sale_value?: number | null;
+//   leads?: { name: string; phone: string };
+//   // from resume_progress
+//   rp_status?: ResumeStatus;
+//   rp_pdf_path?: string | null;
+// }
+
+// const PORTFOLIO_COLUMNS = [
+//   "Client ID",
+//   "Name",
+//   "Email",
+//   "Phone",
+//   "Status",
+//   "Resume Status",
+//   "Resume PDF",
+//   "Closed At",
+// ] as const;
+
+// const GITHUB_COLUMNS = [
+//   "Client ID",
+//   "Name",
+//   "Email",
+//   "Phone",
+//   "Status",
+//   "Closed At",
+// ] as const;
+
+// export default function TechnicalTeamPage() {
+//   const [loading, setLoading] = useState(true);
+//   const [portfolioRows, setPortfolioRows] = useState<SalesClosure[]>([]);
+//   const [githubRows, setGithubRows] = useState<SalesClosure[]>([]);
+//   const { user } = useAuth();
+//   const router = useRouter();
+
+//   // ---------- Helpers ----------
+//   const latestByLead = (rows: any[]) => {
+//     const map = new Map<string, any>();
+//     for (const r of rows ?? []) {
+//       const ex = map.get(r.lead_id);
+//       const ed = ex?.closed_at ?? "";
+//       const cd = r?.closed_at ?? "";
+//       if (!ex || new Date(cd) > new Date(ed)) map.set(r.lead_id, r);
+//     }
+//     return Array.from(map.values()).sort(
+//       (a, b) => new Date(b.closed_at || "").getTime() - new Date(a.closed_at || "").getTime()
+//     );
+//   };
+
+//   const toNiceMoney = (v?: number | null) =>
+//     typeof v === "number" ? v.toLocaleString("en-IN", { maximumFractionDigits: 2 }) : "-";
+
+//   // ---------- Data fetch ----------
+//   const fetchData = async () => {
+//     if (!user) return;
+
+//     // Portfolio rows (not null and not 0)
+//     let qPortfolio = supabase
+//       .from("sales_closure")
+//       .select("*")
+//       .not("portfolio_sale_value", "is", null)
+//       .neq("portfolio_sale_value", 0);
+
+//     // GitHub rows (not null and not 0)
+//     let qGithub = supabase
+//       .from("sales_closure")
+//       .select("*")
+//       .not("github_sale_value", "is", null)
+//       .neq("github_sale_value", 0);
+
+//     // If you want to scope Associates to only their work, uncomment:
+//     // if (user.role === "Technical Associate") {
+//     //   qPortfolio = qPortfolio.eq("associates_email", user.email);
+//     //   qGithub = qGithub.eq("associates_email", user.email);
+//     // }
+
+//     const [{ data: pData, error: pErr }, { data: gData, error: gErr }] = await Promise.all([qPortfolio, qGithub]);
+//     if (pErr || gErr) {
+//       console.error("Failed to fetch sales data:", pErr || gErr);
+//       return;
+//     }
+
+//     const pLatest = latestByLead(pData || []);
+//     const gLatest = latestByLead(gData || []);
+
+//     const allLeadIds = Array.from(new Set([...pLatest, ...gLatest].map((r) => r.lead_id)));
+
+//     // 2) fetch lead name/phone
+//     const { data: leadsData, error: leadsErr } = await supabase
+//       .from("leads")
+//       .select("business_id, name, phone")
+//       .in("business_id", allLeadIds);
+//     if (leadsErr) {
+//       console.error("Failed to fetch leads:", leadsErr);
+//       return;
+//     }
+//     const leadMap = new Map(leadsData?.map((l) => [l.business_id, { name: l.name, phone: l.phone }]));
+
+//     // 3) fetch resume progress for those leads (used only on portfolio tab)
+//     const { data: progress, error: progErr } = await supabase
+//       .from("resume_progress")
+//       .select("lead_id, status, pdf_path")
+//       .in("lead_id", allLeadIds);
+//     if (progErr) {
+//       console.error("Failed to fetch resume_progress:", progErr);
+//       return;
+//     }
+//     const progMap = new Map(progress?.map((p) => [p.lead_id, { status: p.status as ResumeStatus, pdf_path: p.pdf_path }]));
+
+//     // 4) merge into portfolio
+//     const mergedPortfolio: SalesClosure[] = pLatest.map((r) => ({
+//       ...r,
+//       leads: leadMap.get(r.lead_id) || { name: "-", phone: "-" },
+//       rp_status: progMap.get(r.lead_id)?.status ?? "not_started",
+//       rp_pdf_path: progMap.get(r.lead_id)?.pdf_path ?? null,
+//     }));
+
+//     // 5) merge into GitHub (no resume fields shown here)
+//     const mergedGithub: SalesClosure[] = gLatest.map((r) => ({
+//       ...r,
+//       leads: leadMap.get(r.lead_id) || { name: "-", phone: "-" },
+//     }));
+
+//     setPortfolioRows(mergedPortfolio);
+//     setGithubRows(mergedGithub);
+//   };
+
+//   // ---- Direct download from Supabase (auto-saves to Downloads) ----
+//   const downloadResume = async (path: string) => {
+//   try {
+//     const { data, error } = await supabase.storage
+//       .from("resumes")
+//       // If your SDK supports it, pass the download filename right here:
+//       .createSignedUrl(path, 60 * 60, { download: `Resume-${path.split("/")[0]}.pdf` });
+
+//     if (error) throw error;
+//     if (data?.signedUrl) {
+//       // navigating to the URL triggers the download
+//       window.location.href = data.signedUrl;
+//     }
+//   } catch (e: any) {
+//     alert(e.message || "Could not download PDF");
+//   }
+// };
+
+//   useEffect(() => {
+//     if (user === null) return;
+//     const allowed = ["Super Admin", "Technical Head", "Technical Associate"] as const;
+//     if (!user || !allowed.includes(user.role as any)) {
+//       router.push("/unauthorized");
+//       return;
+//     }
+//     setLoading(false);
+//   }, [user, router]);
+
+//   useEffect(() => {
+//     if (user) fetchData();
+//   }, [user]);
+
+//   // ---------- Renderers ----------
+//   const renderPortfolioTable = (rows: SalesClosure[]) => (
+//     <div className="rounded-md border mt-4">
+//       <Table>
+//         <TableHeader>
+//           <TableRow>
+//             {PORTFOLIO_COLUMNS.map((c) => (
+//               <TableHead key={c}>{c}</TableHead>
+//             ))}
+//           </TableRow>
+//         </TableHeader>
+//         <TableBody>
+//           {rows.map((sale) => (
+//             <TableRow key={sale.id}>
+//               <TableCell>{sale.lead_id}</TableCell>
+//               <TableCell>{sale.leads?.name || "-"}</TableCell>
+//               <TableCell>{sale.email}</TableCell>
+//               <TableCell>{sale.leads?.phone || "-"}</TableCell>
+//               <TableCell>{sale.finance_status}</TableCell>
+//               <TableCell>{STATUS_LABEL[(sale.rp_status ?? "not_started") as ResumeStatus]}</TableCell>
+//               <TableCell>
+//                 {sale.rp_pdf_path ? (
+//                   <Button variant="outline" size="sm" onClick={() => downloadResume(sale.rp_pdf_path!)}>
+//                     Download Resume
+//                   </Button>
+//                 ) : (
+//                   <span className="text-gray-400 text-sm">—</span>
+//                 )}
+//               </TableCell>
+//               <TableCell>{sale.closed_at ? new Date(sale.closed_at).toLocaleDateString("en-GB") : "-"}</TableCell>
+//             </TableRow>
+//           ))}
+//           {rows.length === 0 && (
+//             <TableRow>
+//               <TableCell colSpan={PORTFOLIO_COLUMNS.length} className="text-center text-sm text-muted-foreground py-10">
+//                 No records found.
+//               </TableCell>
+//             </TableRow>
+//           )}
+//         </TableBody>
+//       </Table>
+//     </div>
+//   );
+
+//   const renderGithubTable = (rows: SalesClosure[]) => (
+//     <div className="rounded-md border mt-4">
+//       <Table>
+//         <TableHeader>
+//           <TableRow>
+//             {GITHUB_COLUMNS.map((c) => (
+//               <TableHead key={c}>{c}</TableHead>
+//             ))}
+//           </TableRow>
+//         </TableHeader>
+//         <TableBody>
+//           {rows.map((sale) => (
+//             <TableRow key={sale.id}>
+//               <TableCell>{sale.lead_id}</TableCell>
+//               <TableCell>{sale.leads?.name || "-"}</TableCell>
+//               <TableCell>{sale.email}</TableCell>
+//               <TableCell>{sale.leads?.phone || "-"}</TableCell>
+//               <TableCell>{sale.finance_status}</TableCell>
+//               {/* <TableCell>{toNiceMoney(sale.github_sale_value)}</TableCell> */}
+//               <TableCell>{sale.closed_at ? new Date(sale.closed_at).toLocaleDateString("en-GB") : "-"}</TableCell>
+//             </TableRow>
+//           ))}
+//           {rows.length === 0 && (
+//             <TableRow>
+//               <TableCell colSpan={GITHUB_COLUMNS.length} className="text-center text-sm text-muted-foreground py-10">
+//                 No GitHub sales found.
+//               </TableCell>
+//             </TableRow>
+//           )}
+//         </TableBody>
+//       </Table>
+//     </div>
+//   );
+
+//   return (
+//     <ProtectedRoute allowedRoles={["Super Admin", "Technical Head", "Technical Associate"]}>
+//       <DashboardLayout>
+//         <div className="space-y-6">
+//           <div className="flex items-center justify-between">
+//             <h1 className="text-3xl font-bold text-gray-900">Technical Page</h1>
+//           </div>
+
+//           {loading ? (
+//             <p className="p-6 text-gray-600">Loading...</p>
+//           ) : (
+//             <Tabs defaultValue="portfolio" className="w-full">
+//               <TabsList className="grid grid-cols-2 w-full sm:w-auto">
+//                 <TabsTrigger value="portfolio">Portfolios</TabsTrigger>
+//                 <TabsTrigger value="github">GitHub</TabsTrigger>
+//               </TabsList>
+
+//               <TabsContent value="portfolio">{renderPortfolioTable(portfolioRows)}</TabsContent>
+
+//               {/* NEW: GitHub tab wired to sales_closure.github_sale_value (not null, not 0) */}
+//               <TabsContent value="github">{renderGithubTable(githubRows)}</TabsContent>
+//             </Tabs>
+//           )}
+//         </div>
+//       </DashboardLayout>
+//     </ProtectedRoute>
+//   );
+// }
+
+
+// "use client";
+
+// import { useEffect, useState } from "react";
+// import { useRouter } from "next/navigation";
+// import { supabase } from "@/utils/supabase/client";
+
+// import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+// import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+// import { Button } from "@/components/ui/button";
+// import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+// import { Input } from "@/components/ui/input";
+
+// import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+// // import { Input } from "@/components/ui/input";
+
+
+// import ProtectedRoute from "@/components/auth/ProtectedRoute";
+// import { DashboardLayout } from "@/components/layout/dashboard-layout";
+// import { useAuth } from "@/components/providers/auth-provider";
+
+// type FinanceStatus = "Paid" | "Unpaid" | "Paused" | "Closed" | "Got Placed";
+// type ResumeStatus = "not_started" | "pending" | "waiting_client_approval" | "completed";
+
+// const STATUS_LABEL: Record<ResumeStatus, string> = {
+//   not_started: "Not started",
+//   pending: "Pending",
+//   waiting_client_approval: "Waiting for Client approval",
+//   completed: "Completed",
+// };
+
+// // UI <-> DB status mapping for Portfolio column
+// const PORTFOLIO_UI_TO_DB: Record<string, ResumeStatus> = {
+//   Started: "not_started",
+//   Pending: "pending",
+//   "Waiting for Client approval": "waiting_client_approval",
+//   Success: "completed",
+// };
+
+// const PORTFOLIO_DB_TO_UI: Record<ResumeStatus, string> = {
+//   not_started: "Started",
+//   pending: "Pending",
+//   waiting_client_approval: "Waiting for Client approval",
+//   completed: "Success",
+// };
+
+// interface SalesClosure {
+//   id: string;
+//   lead_id: string;
+//   email: string;
+//   finance_status: FinanceStatus;
+//   closed_at: string | null;
+//   portfolio_sale_value?: number | null;
+//   github_sale_value?: number | null;
+//   associates_email?: string | null;
+//   associates_name?: string | null;
+//   associates_tl_email?: string | null;
+//   associates_tl_name?: string | null;
+
+//   leads?: { name: string; phone: string };
+
+//   // from resume_progress
+//   rp_status?: ResumeStatus;
+//   rp_pdf_path?: string | null;
+//   rp_portfolio_link?: string | null; // <- new field we load
+//   rp_portfolio_status?: ResumeStatus | null;
+//   // rp_portfolio_link?: string | null;
+// }
+
+// interface TeamUser {
+//   full_name: string;
+//   user_email: string;
+//   roles: "Technical Head" | "Technical Associate";
+// }
+
+// const PORTFOLIO_COLUMNS = [
+//   "Client ID",
+//   "Name",
+//   "Email",
+//   "Phone",
+//   "Status",
+//   "Resume Status",
+//   "Resume PDF",
+//   "Portfolio Status",     // NEW
+//   "Assignee",             // NEW
+//   "Closed At",
+// ] as const;
+
+// const GITHUB_COLUMNS = [
+//   "Client ID",
+//   "Name",
+//   "Email",
+//   "Phone",
+//   "Status",
+//   "GitHub Sale Value",
+//   "Closed At",
+// ] as const;
+
+// export default function TechnicalTeamPage() {
+//   const [loading, setLoading] = useState(true);
+//   const [portfolioRows, setPortfolioRows] = useState<SalesClosure[]>([]);
+//   const [githubRows, setGithubRows] = useState<SalesClosure[]>([]);
+//   const [teamMembers, setTeamMembers] = useState<TeamUser[]>([]);
+//   // temporary link drafts keyed by lead_id
+//   const [linkDraft, setLinkDraft] = useState<Record<string, string>>({});
+
+//   // Link dialog state
+// const [linkDialogOpen, setLinkDialogOpen] = useState(false);
+// // const [linkDraft, setLinkDraft] = useState("");        // the input value
+// const [linkTargetLeadId, setLinkTargetLeadId] = useState<string | null>(null);
+// const [linkTargetRowId, setLinkTargetRowId] = useState<string | null>(null);
+// const [assigneeByRow, setAssigneeByRow] = useState<Record<string, string | undefined>>({});
+
+
+
+//   const { user } = useAuth();
+//   const router = useRouter();
+
+//   const latestByLead = (rows: any[]) => {
+//     const map = new Map<string, any>();
+//     for (const r of rows ?? []) {
+//       const ex = map.get(r.lead_id);
+//       const ed = ex?.closed_at ?? "";
+//       const cd = r?.closed_at ?? "";
+//       if (!ex || new Date(cd) > new Date(ed)) map.set(r.lead_id, r);
+//     }
+//     return Array.from(map.values()).sort(
+//       (a, b) => new Date(b.closed_at || "").getTime() - new Date(a.closed_at || "").getTime()
+//     );
+//   };
+
+//   useEffect(() => {
+//   setAssigneeByRow((prev) => {
+//     const next = { ...prev };
+//     for (const r of portfolioRows) {
+//       const current = r.associates_email ?? r.associates_tl_email ?? undefined;
+//       if (next[r.id] === undefined) next[r.id] = current;
+//     }
+//     return next;
+//   });
+// }, [portfolioRows, teamMembers]);
+
+
+//  // map (no "Started")
+// const PORTFOLIO_UI_TO_DB = {
+//   Pending: "pending",
+//   "Waiting for Client approval": "waiting_client_approval",
+//   Success: "completed",
+// } as const;
+// type PortfolioUI = keyof typeof PORTFOLIO_UI_TO_DB;
+
+// const PORTFOLIO_DB_TO_UI = (db?: ResumeStatus | null): PortfolioUI =>
+//   db === "completed"
+//     ? "Success"
+//     : db === "waiting_client_approval"
+//     ? "Waiting for Client approval"
+//     : "Pending";
+
+
+
+//   const toNiceMoney = (v?: number | null) =>
+//     typeof v === "number" ? v.toLocaleString("en-IN", { maximumFractionDigits: 2 }) : "-";
+
+//   // ---------- Data fetch ----------
+//   const fetchData = async () => {
+//     if (!user) return;
+
+//     // Portfolio rows (not null and not 0)
+//     let qPortfolio = supabase
+//       .from("sales_closure")
+//       .select("*")
+//       .not("portfolio_sale_value", "is", null)
+//       .neq("portfolio_sale_value", 0);
+
+//     // GitHub rows (not null and not 0)
+//     let qGithub = supabase
+//       .from("sales_closure")
+//       .select("*")
+//       .not("github_sale_value", "is", null)
+//       .neq("github_sale_value", 0);
+
+//     // If you want to scope Associates to only their work, uncomment:
+//     // if (user.role === "Technical Associate") {
+//     //   qPortfolio = qPortfolio.eq("associates_email", user.email);
+//     //   qGithub = qGithub.eq("associates_email", user.email);
+//     // }
+
+//     const [{ data: pData, error: pErr }, { data: gData, error: gErr }] = await Promise.all([qPortfolio, qGithub]);
+//     if (pErr || gErr) {
+//       console.error("Failed to fetch sales data:", pErr || gErr);
+//       return;
+//     }
+
+//     const pLatest = latestByLead(pData || []);
+//     const gLatest = latestByLead(gData || []);
+
+//     const allLeadIds = Array.from(new Set([...pLatest, ...gLatest].map((r) => r.lead_id)));
+
+//     // 2) leads
+//     const { data: leadsData, error: leadsErr } = await supabase
+//       .from("leads")
+//       .select("business_id, name, phone")
+//       .in("business_id", allLeadIds);
+//     if (leadsErr) {
+//       console.error("Failed to fetch leads:", leadsErr);
+//       return;
+//     }
+//     const leadMap = new Map(leadsData?.map((l) => [l.business_id, { name: l.name, phone: l.phone }]));
+
+//     // 3) resume_progress (status/pdf/link)
+//    // fetchData(): resume_progress select
+// const { data: progress } = await supabase
+//   .from("resume_progress")
+//   .select("lead_id, status, pdf_path, portfolio_status, portfolio_link")
+//   .in("lead_id", allLeadIds);
+
+// // build map
+// const progMap = new Map(
+//   progress?.map((p) => [
+//     p.lead_id,
+//     {
+//       status: p.status as ResumeStatus,               // (resume status)
+//       pdf_path: p.pdf_path,
+//       portfolio_status: (p as any).portfolio_status as ResumeStatus | null,
+//       portfolio_link: (p as any).portfolio_link ?? null,
+//     },
+//   ])
+// );
+
+// // merge into rows
+// const mergedPortfolio: SalesClosure[] = pLatest.map((r) => ({
+//   ...r,
+//   leads: leadMap.get(r.lead_id) || { name: "-", phone: "-" },
+//   rp_status: progMap.get(r.lead_id)?.status ?? "not_started",
+//   rp_pdf_path: progMap.get(r.lead_id)?.pdf_path ?? null,
+//   // NEW:
+//   rp_portfolio_status: progMap.get(r.lead_id)?.portfolio_status ?? null,
+//   rp_portfolio_link: progMap.get(r.lead_id)?.portfolio_link ?? null,
+// }));
+
+
+//   // team: Technical Head + Technical Associate
+//   const fetchTeam = async () => {
+//     const { data, error } = await supabase
+//       .from("profiles")
+//       .select("full_name, user_email, roles")
+//       .in("roles", ["Technical Head", "Technical Associate"]);
+//     if (error) {
+//       console.error("Failed to fetch team users:", error);
+//       return;
+//     }
+//     // Sort by role then name
+//     const sorted = (data as TeamUser[]).sort((a, b) =>
+//       a.roles === b.roles ? a.full_name.localeCompare(b.full_name) : a.roles.localeCompare(b.roles)
+//     );
+//     setTeamMembers(sorted);
+//   };
+
+//   // ---- Direct download from Supabase ----
+//   const downloadResume = async (path: string) => {
+//     try {
+//       const fileName = `Resume-${path.split("/")[0]}-${path.split("/").pop() || "resume"}.pdf`;
+//       const { data, error } = await supabase.storage.from("resumes").createSignedUrl(path, 60 * 60);
+//       if (error) throw error;
+//       if (!data?.signedUrl) throw new Error("No signed URL");
+
+//       const res = await fetch(data.signedUrl);
+//       const blob = await res.blob();
+
+//       const url = window.URL.createObjectURL(blob);
+//       const a = document.createElement("a");
+//       a.href = url;
+//       a.download = fileName;
+//       document.body.appendChild(a);
+//       a.click();
+//       a.remove();
+//       window.URL.revokeObjectURL(url);
+//     } catch (e: any) {
+//       alert(e.message || "Could not download PDF");
+//     }
+//   };
+
+//   // change handler
+// const handlePortfolioStatusChange = async (sale: SalesClosure, uiValue: PortfolioUI) => {
+//   if (uiValue === "Success") {
+//     setLinkTargetLeadId(sale.lead_id);
+//     setLinkTargetRowId(sale.id);
+//     setLinkDraft((d) => ({ ...d, [sale.lead_id]: sale.rp_portfolio_link ?? "" }));
+//     setLinkDialogOpen(true);
+//     return;
+//   }
+//   const dbStatus = PORTFOLIO_UI_TO_DB[uiValue];
+//   const { error } = await supabase
+//     .from("resume_progress")
+//     .upsert(
+//       { lead_id: sale.lead_id, portfolio_status: dbStatus, updated_by: user?.email ?? null },
+//       { onConflict: "lead_id" }
+//     );
+//   if (error) return alert(error.message);
+//   setPortfolioRows((prev) => prev.map((r) => r.id === sale.id ? { ...r, rp_portfolio_status: dbStatus } : r));
+// };
+
+// // save link → mark completed + store link
+// const handleSavePortfolioSuccess = async () => {
+//   const link = linkTargetLeadId ? (linkDraft[linkTargetLeadId] ?? "").trim() : "";
+//   if (!link || !linkTargetLeadId || !linkTargetRowId) return alert("Please paste a link.");
+
+//   const { error } = await supabase
+//     .from("resume_progress")
+//     .upsert(
+//       { lead_id: linkTargetLeadId, portfolio_status: "completed", portfolio_link: link, updated_by: user?.email ?? null },
+//       { onConflict: "lead_id" }
+//     );
+//   if (error) return alert(error.message);
+
+//   setPortfolioRows((prev) =>
+//     prev.map((r) => r.id === linkTargetRowId ? { ...r, rp_portfolio_status: "completed", rp_portfolio_link: link } : r)
+//   );
+//   setLinkDialogOpen(false);
+//   setLinkDraft({});
+//   setLinkTargetLeadId(null);
+//   setLinkTargetRowId(null);
+// };
+
+
+//   const handleSavePortfolioLink = async (sale: SalesClosure) => {
+//     const link = linkDraft[sale.lead_id]?.trim();
+//     if (!link) {
+//       alert("Please paste a link first.");
+//       return;
+//     }
+//     try {
+//       const { error } = await supabase
+//         .from("resume_progress")
+//         .upsert(
+//           {
+//             lead_id: sale.lead_id,
+//             status: sale.rp_status ?? "completed", // keep/set current
+//             portfolio_link: link,
+//             updated_by: user?.email ?? null,
+//           },
+//           { onConflict: "lead_id" }
+//         );
+//       if (error) throw error;
+
+//       setPortfolioRows((prev) =>
+//         prev.map((r) => (r.id === sale.id ? { ...r, rp_portfolio_link: link } : r))
+//       );
+//       setLinkDraft((d) => ({ ...d, [sale.lead_id]: "" }));
+//     } catch (e: any) {
+//       alert(e.message || "Failed to save link");
+//     }
+//   };
+
+//   const handleAssign = async (sale: SalesClosure, memberEmail: string) => {
+//   // optimistic selection
+//   setAssigneeByRow((p) => ({ ...p, [sale.id]: memberEmail }));
+
+//   const member = teamMembers.find((m) => m.user_email === memberEmail);
+//   if (!member) return;
+
+//   const updates: any = {};
+//   if (member.roles === "Technical Head") {
+//     updates.associates_tl_email = member.user_email;
+//     updates.associates_tl_name  = member.full_name;
+//   } else {
+//     updates.associates_email = member.user_email;
+//     updates.associates_name  = member.full_name;
+//   }
+
+//   const { error } = await supabase.from("sales_closure").update(updates).eq("id", sale.id);
+//   if (error) {
+//     alert(error.message || "Failed to assign member");
+//     // revert UI
+//     setAssigneeByRow((p) => ({ ...p, [sale.id]: sale.associates_email ?? sale.associates_tl_email ?? undefined }));
+//     return;
+//   }
+
+//   setPortfolioRows((prev) =>
+//     prev.map((r) =>
+//       r.id === sale.id
+//         ? {
+//             ...r,
+//             ...(member.roles === "Technical Head"
+//               ? { associates_tl_email: member.user_email, associates_tl_name: member.full_name }
+//               : { associates_email: member.user_email,    associates_name:    member.full_name }),
+//           }
+//         : r
+//     )
+//   );
+// };
+
+
+//   useEffect(() => {
+//     if (user === null) return;
+//     const allowed = ["Super Admin", "Technical Head", "Technical Associate"] as const;
+//     if (!user || !allowed.includes(user.role as any)) {
+//       router.push("/unauthorized");
+//       return;
+//     }
+//     setLoading(false);
+//   }, [user, router]);
+
+//   useEffect(() => {
+//     if (user) {
+//       fetchData();
+//       fetchTeam();
+//     }
+//   }, [user]);
+
+//   // ---------- Renderers ----------
+//   const renderPortfolioTable = (rows: SalesClosure[]) => (
+//     <div className="rounded-md border mt-4">
+//       <Table>
+//         <TableHeader>
+//           <TableRow>
+//             {PORTFOLIO_COLUMNS.map((c) => (
+//               <TableHead key={c}>{c}</TableHead>
+//             ))}
+//           </TableRow>
+//         </TableHeader>
+//         <TableBody>
+//           {rows.map((sale) => (
+//             <TableRow key={sale.id}>
+//               <TableCell>{sale.lead_id}</TableCell>
+//               <TableCell>{sale.leads?.name || "-"}</TableCell>
+//               <TableCell>{sale.email}</TableCell>
+//               <TableCell>{sale.leads?.phone || "-"}</TableCell>
+//               <TableCell>{sale.finance_status}</TableCell>
+//               <TableCell>{STATUS_LABEL[(sale.rp_status ?? "not_started") as ResumeStatus]}</TableCell>
+//               <TableCell>
+//                 {sale.rp_pdf_path ? (
+//                   <Button variant="outline" size="sm" onClick={() => downloadResume(sale.rp_pdf_path!)}>
+//                     Download Resume
+//                   </Button>
+//                 ) : (
+//                   <span className="text-gray-400 text-sm">—</span>
+//                 )}
+//               </TableCell>
+
+//               {/* NEW: Portfolio Status (editable) */}
+//    <TableCell className="space-y-2">
+//   {sale.rp_portfolio_status === "completed" && sale.rp_portfolio_link ? (
+//     <a href={sale.rp_portfolio_link} target="_blank" rel="noreferrer" className="text-blue-600 underline break-all">
+//       {sale.rp_portfolio_link}
+//     </a>
+//   ) : (
+//     <Select
+//       onValueChange={(v) => handlePortfolioStatusChange(sale, v as PortfolioUI)}
+//       value={PORTFOLIO_DB_TO_UI(sale.rp_portfolio_status)}
+//     >
+//       <SelectTrigger className="w-[220px]">
+//         <SelectValue placeholder="Set status" />
+//       </SelectTrigger>
+//       <SelectContent>
+//         <SelectItem value="Pending">Pending</SelectItem>
+//         <SelectItem value="Waiting for Client approval">Waiting for Client approval</SelectItem>
+//         <SelectItem value="Success">Success</SelectItem>
+//       </SelectContent>
+//     </Select>
+//   )}
+// </TableCell>
+
+
+
+//               {/* NEW: Assignee (names of Heads + Associates; save email) */}
+//               <TableCell>
+//   {(() => {
+//     const current = assigneeByRow[sale.id] ?? sale.associates_email ?? sale.associates_tl_email ?? "";
+//     const inList = !!teamMembers.find((m) => m.user_email === current);
+
+//     return (
+//       <Select
+//         value={current || undefined}
+//         onValueChange={(email) => handleAssign(sale, email)}
+//       >
+//         <SelectTrigger className="w-[240px]">
+//           <SelectValue placeholder="Assign to..." />
+//         </SelectTrigger>
+//         <SelectContent>
+//           {/* fallback so Select can show current even if not in role filters */}
+//           {!inList && current && (
+//             <SelectItem value={current} className="hidden">
+//               {sale.associates_name || sale.associates_tl_name || current}
+//             </SelectItem>
+//           )}
+
+//           <div className="px-2 py-1 text-xs text-muted-foreground">Technical Heads</div>
+//           {teamMembers
+//             .filter((m) => m.roles === "Technical Head")
+//             .map((m) => (
+//               <SelectItem key={m.user_email} value={m.user_email}>
+//                 {m.full_name} • Head
+//               </SelectItem>
+//             ))}
+
+//           <div className="px-2 py-1 text-xs text-muted-foreground">Technical Associates</div>
+//           {teamMembers
+//             .filter((m) => m.roles === "Technical Associate")
+//             .map((m) => (
+//               <SelectItem key={m.user_email} value={m.user_email}>
+//                 {m.full_name} • Associate
+//               </SelectItem>
+//             ))}
+//         </SelectContent>
+//       </Select>
+//     );
+//   })()}
+// </TableCell>
+
+
+//               <TableCell>{sale.closed_at ? new Date(sale.closed_at).toLocaleDateString("en-GB") : "-"}</TableCell>
+//             </TableRow>
+//           ))}
+//           {rows.length === 0 && (
+//             <TableRow>
+//               <TableCell colSpan={PORTFOLIO_COLUMNS.length} className="text-center text-sm text-muted-foreground py-10">
+//                 No records found.
+//               </TableCell>
+//             </TableRow>
+//           )}
+//         </TableBody>
+//       </Table>
+//     </div>
+//   );
+
+//   const renderGithubTable = (rows: SalesClosure[]) => (
+//     <div className="rounded-md border mt-4">
+//       <Table>
+//         <TableHeader>
+//           <TableRow>
+//             {GITHUB_COLUMNS.map((c) => (
+//               <TableHead key={c}>{c}</TableHead>
+//             ))}
+//           </TableRow>
+//         </TableHeader>
+//         <TableBody>
+//           {rows.map((sale) => (
+//             <TableRow key={sale.id}>
+//               <TableCell>{sale.lead_id}</TableCell>
+//               <TableCell>{sale.leads?.name || "-"}</TableCell>
+//               <TableCell>{sale.email}</TableCell>
+//               <TableCell>{sale.leads?.phone || "-"}</TableCell>
+//               <TableCell>{sale.finance_status}</TableCell>
+//               <TableCell>{toNiceMoney(sale.github_sale_value)}</TableCell>
+//               <TableCell>{sale.closed_at ? new Date(sale.closed_at).toLocaleDateString("en-GB") : "-"}</TableCell>
+//             </TableRow>
+//           ))}
+//           {rows.length === 0 && (
+//             <TableRow>
+//               <TableCell colSpan={GITHUB_COLUMNS.length} className="text-center text-sm text-muted-foreground py-10">
+//                 No GitHub sales found.
+//               </TableCell>
+//             </TableRow>
+//           )}
+//         </TableBody>
+//       </Table>
+//     </div>
+//   );
+
+//   return (
+//     <ProtectedRoute allowedRoles={["Super Admin", "Technical Head", "Technical Associate"]}>
+//       <DashboardLayout>
+//         <div className="space-y-6">
+//           <div className="flex items-center justify-between">
+//             <h1 className="text-3xl font-bold text-gray-900">Technical Page</h1>
+//           </div>
+
+//           {loading ? (
+//             <p className="p-6 text-gray-600">Loading...</p>
+//           ) : (
+//             <Tabs defaultValue="portfolio" className="w-full">
+//               <TabsList className="grid grid-cols-2 w-full sm:w-auto">
+//                 <TabsTrigger value="portfolio">Portfolios</TabsTrigger>
+//                 <TabsTrigger value="github">GitHub</TabsTrigger>
+//               </TabsList>
+
+//               <TabsContent value="portfolio">{renderPortfolioTable(portfolioRows)}</TabsContent>
+//               <TabsContent value="github">{renderGithubTable(githubRows)}</TabsContent>
+//             </Tabs>
+//           )}
+//         </div>
+
+//         <Dialog open={linkDialogOpen} onOpenChange={setLinkDialogOpen}>
+//   <DialogContent>
+//     <DialogHeader>
+//       <DialogTitle>Mark as Success</DialogTitle>
+//     </DialogHeader>
+
+//     <div className="space-y-2">
+//       <label className="text-sm text-muted-foreground">Success link</label>
+//       <Input
+//         placeholder="https://…"
+//         value={linkTargetLeadId ? linkDraft[linkTargetLeadId] ?? "" : ""}
+//         onChange={(e) =>
+//           setLinkDraft((prev) => ({
+//             ...prev,
+//             ...(linkTargetLeadId ? { [linkTargetLeadId]: e.target.value } : {}),
+//           }))
+//         }
+//       />
+//       <p className="text-xs text-muted-foreground">
+//         Paste the final portfolio link. After saving, the status cell will show this link.
+//       </p>
+//     </div>
+
+//     <DialogFooter className="mt-4">
+//       <Button variant="outline" onClick={() => setLinkDialogOpen(false)}>
+//         Cancel
+//       </Button>
+//       <Button onClick={handleSavePortfolioSuccess}>
+//         Save
+//       </Button>
+//     </DialogFooter>
+//   </DialogContent>
+// </Dialog>
+
+//       </DashboardLayout>
+//     </ProtectedRoute>
+//   );
+// }
+
+
+
+// "use client";
+
+// import { useEffect, useState } from "react";
+// import { useRouter } from "next/navigation";
+// import { supabase } from "@/utils/supabase/client";
+
+// import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+// import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+// import { Button } from "@/components/ui/button";
+// import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+// import { Input } from "@/components/ui/input";
+// import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+
+// import ProtectedRoute from "@/components/auth/ProtectedRoute";
+// import { DashboardLayout } from "@/components/layout/dashboard-layout";
+// import { useAuth } from "@/components/providers/auth-provider";
+
+// // ---------- Types ----------
+// type FinanceStatus = "Paid" | "Unpaid" | "Paused" | "Closed" | "Got Placed";
+// type ResumeStatus = "not_started" | "pending" | "waiting_client_approval" | "completed";
+
+// const STATUS_LABEL: Record<ResumeStatus, string> = {
+//   not_started: "Not started",
+//   pending: "Pending",
+//   waiting_client_approval: "Waiting for Client approval",
+//   completed: "Completed",
+// };
+
+// // Portfolio UI <-> DB mapping (no "Started")
+// const PORTFOLIO_UI_TO_DB = {
+//   Pending: "pending",
+//   "Waiting for Client approval": "waiting_client_approval",
+//   Success: "completed",
+// } as const;
+// type PortfolioUI = keyof typeof PORTFOLIO_UI_TO_DB;
+
+// const portfolioDbToUi = (db?: ResumeStatus | null): PortfolioUI =>
+//   db === "completed"
+//     ? "Success"
+//     : db === "waiting_client_approval"
+//     ? "Waiting for Client approval"
+//     : "Pending"; // default for null/undefined/not_started/pending
+
+// interface SalesClosure {
+//   id: string;
+//   lead_id: string;
+//   email: string;
+//   finance_status: FinanceStatus;
+//   closed_at: string | null;
+//   portfolio_sale_value?: number | null;
+//   github_sale_value?: number | null;
+
+//   associates_email?: string | null;
+//   associates_name?: string | null;
+//   associates_tl_email?: string | null;
+//   associates_tl_name?: string | null;
+
+//   leads?: { name: string; phone: string };
+
+//   // from resume_progress
+//   rp_status?: ResumeStatus;                 // existing "Resume Status" (read-only)
+//   rp_pdf_path?: string | null;
+//   rp_portfolio_status?: ResumeStatus | null;
+//   rp_portfolio_link?: string | null;
+// }
+
+// interface TeamUser {
+//   full_name: string;
+//   user_email: string;
+//   roles: "Technical Head" | "Technical Associate";
+// }
+
+// const PORTFOLIO_COLUMNS = [
+//   "Client ID",
+//   "Name",
+//   "Email",
+//   "Phone",
+//   "Status",
+//   "Resume Status",
+//   "Resume PDF",
+//   "Portfolio Status",
+//   "Assignee",
+//   "Closed At",
+// ] as const;
+
+// const GITHUB_COLUMNS = [
+//   "Client ID",
+//   "Name",
+//   "Email",
+//   "Phone",
+//   "Status",
+//   "GitHub Sale Value",
+//   "Closed At",
+// ] as const;
+
+// // ---------- Component ----------
+// export default function TechnicalTeamPage() {
+//   const [loading, setLoading] = useState(true);
+//   const [portfolioRows, setPortfolioRows] = useState<SalesClosure[]>([]);
+//   const [githubRows, setGithubRows] = useState<SalesClosure[]>([]);
+//   const [teamMembers, setTeamMembers] = useState<TeamUser[]>([]);
+
+//   // per-lead link drafts (for success dialog)
+//   const [linkDraft, setLinkDraft] = useState<Record<string, string>>({});
+//   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
+//   const [linkTargetLeadId, setLinkTargetLeadId] = useState<string | null>(null);
+//   const [linkTargetRowId, setLinkTargetRowId] = useState<string | null>(null);
+
+//   // controlled Assignee value per row
+//   const [assigneeByRow, setAssigneeByRow] = useState<Record<string, string | undefined>>({});
+
+//   const { user } = useAuth();
+//   const router = useRouter();
+
+//   // ---------- Helpers ----------
+//   const latestByLead = (rows: any[]) => {
+//     const map = new Map<string, any>();
+//     for (const r of rows ?? []) {
+//       const ex = map.get(r.lead_id);
+//       const ed = ex?.closed_at ?? "";
+//       const cd = r?.closed_at ?? "";
+//       if (!ex || new Date(cd) > new Date(ed)) map.set(r.lead_id, r);
+//     }
+//     return Array.from(map.values()).sort(
+//       (a, b) => new Date(b.closed_at || "").getTime() - new Date(a.closed_at || "").getTime()
+//     );
+//   };
+
+//   const toNiceMoney = (v?: number | null) =>
+//     typeof v === "number" ? v.toLocaleString("en-IN", { maximumFractionDigits: 2 }) : "-";
+
+//   // ---------- Data fetch ----------
+//   const fetchData = async () => {
+//     if (!user) return;
+
+//     // portfolio rows
+//     let qPortfolio = supabase
+//       .from("sales_closure")
+//       .select("*")
+//       .not("portfolio_sale_value", "is", null)
+//       .neq("portfolio_sale_value", 0);
+
+//     // github rows
+//     let qGithub = supabase
+//       .from("sales_closure")
+//       .select("*")
+//       .not("github_sale_value", "is", null)
+//       .neq("github_sale_value", 0);
+
+//     // if (user.role === "Technical Associate") { ... }
+
+//     const [{ data: pData, error: pErr }, { data: gData, error: gErr }] = await Promise.all([qPortfolio, qGithub]);
+//     if (pErr || gErr) {
+//       console.error("Failed to fetch sales data:", pErr || gErr);
+//       return;
+//     }
+
+//     const pLatest = latestByLead(pData || []);
+//     const gLatest = latestByLead(gData || []);
+//     const allLeadIds = Array.from(new Set([...pLatest, ...gLatest].map((r) => r.lead_id)));
+
+//     // leads
+//     const { data: leadsData, error: leadsErr } = await supabase
+//       .from("leads")
+//       .select("business_id, name, phone")
+//       .in("business_id", allLeadIds);
+//     if (leadsErr) {
+//       console.error("Failed to fetch leads:", leadsErr);
+//       return;
+//     }
+//     const leadMap = new Map(leadsData?.map((l) => [l.business_id, { name: l.name, phone: l.phone }]));
+
+//     // resume_progress (resume status + portfolio status/link)
+//     const { data: progress, error: progErr } = await supabase
+//       .from("resume_progress")
+//       .select("lead_id, status, pdf_path, portfolio_status, portfolio_link")
+//       .in("lead_id", allLeadIds);
+//     if (progErr) {
+//       console.error("Failed to fetch resume_progress:", progErr);
+//       return;
+//     }
+//     const progMap = new Map(
+//       progress?.map((p) => [
+//         p.lead_id,
+//         {
+//           status: p.status as ResumeStatus,
+//           pdf_path: p.pdf_path,
+//           portfolio_status: (p as any).portfolio_status as ResumeStatus | null,
+//           portfolio_link: (p as any).portfolio_link ?? null,
+//         },
+//       ])
+//     );
+
+//     // merge
+//     const mergedPortfolio: SalesClosure[] = pLatest.map((r) => ({
+//       ...r,
+//       leads: leadMap.get(r.lead_id) || { name: "-", phone: "-" },
+//       rp_status: progMap.get(r.lead_id)?.status ?? "not_started",
+//       rp_pdf_path: progMap.get(r.lead_id)?.pdf_path ?? null,
+//       rp_portfolio_status: progMap.get(r.lead_id)?.portfolio_status ?? null,
+//       rp_portfolio_link: progMap.get(r.lead_id)?.portfolio_link ?? null,
+//     }));
+
+//     const mergedGithub: SalesClosure[] = gLatest.map((r) => ({
+//       ...r,
+//       leads: leadMap.get(r.lead_id) || { name: "-", phone: "-" },
+//     }));
+
+//     setPortfolioRows(mergedPortfolio);
+//     setGithubRows(mergedGithub);
+//   };
+
+//   const fetchTeam = async () => {
+//     const { data, error } = await supabase
+//       .from("profiles")
+//       .select("full_name, user_email, roles")
+//       .in("roles", ["Technical Head", "Technical Associate"]);
+//     if (error) {
+//       console.error("Failed to fetch team users:", error);
+//       return;
+//     }
+//     const sorted = (data as TeamUser[]).sort((a, b) =>
+//       a.roles === b.roles ? a.full_name.localeCompare(b.full_name) : a.roles.localeCompare(b.roles)
+//     );
+//     setTeamMembers(sorted);
+//   };
+
+//   // ---------- Actions ----------
+//   // Direct download from Supabase → auto-saves to Downloads
+//   const downloadResume = async (path: string) => {
+//     try {
+//       const fileName = `Resume-${path.split("/")[0]}-${path.split("/").pop() || "resume"}.pdf`;
+//       const { data, error } = await supabase.storage.from("resumes").createSignedUrl(path, 60 * 60);
+//       if (error) throw error;
+//       if (!data?.signedUrl) throw new Error("No signed URL");
+
+//       const res = await fetch(data.signedUrl);
+//       const blob = await res.blob();
+//       const url = window.URL.createObjectURL(blob);
+
+//       const a = document.createElement("a");
+//       a.href = url;
+//       a.download = fileName;
+//       document.body.appendChild(a);
+//       a.click();
+//       a.remove();
+//       window.URL.revokeObjectURL(url);
+//     } catch (e: any) {
+//       alert(e.message || "Could not download PDF");
+//     }
+//   };
+
+//   const handlePortfolioStatusChange = async (sale: SalesClosure, uiValue: PortfolioUI) => {
+//     if (uiValue === "Success") {
+//       setLinkTargetLeadId(sale.lead_id);
+//       setLinkTargetRowId(sale.id);
+//       setLinkDraft((d) => ({ ...d, [sale.lead_id]: sale.rp_portfolio_link ?? "" }));
+//       setLinkDialogOpen(true);
+//       return;
+//     }
+
+//     const dbStatus = PORTFOLIO_UI_TO_DB[uiValue];
+//     const { error } = await supabase
+//       .from("resume_progress")
+//       .upsert(
+//         { lead_id: sale.lead_id, portfolio_status: dbStatus, updated_by: user?.email ?? null },
+//         { onConflict: "lead_id" }
+//       );
+//     if (error) return alert(error.message);
+
+//     setPortfolioRows((prev) =>
+//       prev.map((r) => (r.id === sale.id ? { ...r, rp_portfolio_status: dbStatus } : r))
+//     );
+//   };
+
+//   // const handleSavePortfolioSuccess = async () => {
+//   //   const link = linkTargetLeadId ? (linkDraft[linkTargetLeadId] ?? "").trim() : "";
+//   //   if (!link || !linkTargetLeadId || !linkTargetRowId) return alert("Please paste a link.");
+
+//   //   const { error } = await supabase
+//   //     .from("resume_progress")
+//   //     .upsert(
+//   //       {
+//   //         lead_id: linkTargetLeadId,
+//   //         portfolio_status: "completed",
+//   //         portfolio_link: link,
+//   //         updated_by: user?.email ?? null,
+//   //       },
+//   //       { onConflict: "lead_id" }
+//   //     );
+//   //   if (error) return alert(error.message);
+
+//   //   setPortfolioRows((prev) =>
+//   //     prev.map((r) =>
+//   //       r.id === linkTargetRowId ? { ...r, rp_portfolio_status: "completed", rp_portfolio_link: link } : r
+//   //     )
+//   //   );
+//   //   setLinkDialogOpen(false);
+//   //   setLinkDraft({});
+//   //   setLinkTargetLeadId(null);
+//   //   setLinkTargetRowId(null);
+//   // };
+
+//   const handleSavePortfolioSuccess = async () => {
+//   const link = linkTargetLeadId ? (linkDraft[linkTargetLeadId] ?? "").trim() : "";
+//   try {
+//     if (!/^https?:\/\//i.test(link)) throw new Error("Enter a valid http(s) URL.");
+//     if (!linkTargetLeadId || !linkTargetRowId) throw new Error("Missing target lead/row.");
+
+//     const { error } = await supabase
+//       .from("resume_progress")
+//       .upsert(
+//         {
+//           lead_id: linkTargetLeadId,
+//           portfolio_status: "completed",
+//           portfolio_link: link,
+//           // If updated_by is UUID in DB, store the user ID, not email:
+//           // updated_by: user?.id ?? null,
+//           updated_by: user?.email ?? null,
+//         },
+//         { onConflict: "lead_id" }
+//       );
+//     if (error) throw error;
+
+//     setPortfolioRows(prev =>
+//       prev.map(r => r.id === linkTargetRowId
+//         ? { ...r, rp_portfolio_status: "completed", rp_portfolio_link: link }
+//         : r
+//       )
+//     );
+//     setLinkDialogOpen(false);
+//     setLinkDraft({});
+//     setLinkTargetLeadId(null);
+//     setLinkTargetRowId(null);
+//   } catch (e: any) {
+//     alert(e.message ?? "Failed to save link");
+//   }
+// };
+
+//   // const handleAssign = async (sale: SalesClosure, memberEmail: string) => {
+//   //   // optimistic selection
+//   //   setAssigneeByRow((p) => ({ ...p, [sale.id]: memberEmail }));
+
+//   //   const member = teamMembers.find((m) => m.user_email === memberEmail);
+//   //   if (!member) return;
+
+//   //   const updates: any = {};
+//   //   if (member.roles === "Technical Head") {
+//   //     updates.associates_tl_email = member.user_email;
+//   //     updates.associates_tl_name = member.full_name;
+//   //   } else {
+//   //     updates.associates_email = member.user_email;
+//   //     updates.associates_name = member.full_name;
+//   //   }
+
+//   //   const { error } = await supabase.from("sales_closure").update(updates).eq("id", sale.id);
+//   //   if (error) {
+//   //     alert(error.message || "Failed to assign member");
+//   //     // revert UI
+//   //     setAssigneeByRow((p) => ({
+//   //       ...p,
+//   //       [sale.id]: sale.associates_email ?? sale.associates_tl_email ?? undefined,
+//   //     }));
+//   //     return;
+//   //   }
+
+//   //   // keep row in sync
+//   //   setPortfolioRows((prev) =>
+//   //     prev.map((r) =>
+//   //       r.id === sale.id
+//   //         ? {
+//   //             ...r,
+//   //             ...(member.roles === "Technical Head"
+//   //               ? { associates_tl_email: member.user_email, associates_tl_name: member.full_name }
+//   //               : { associates_email: member.user_email, associates_name: member.full_name }),
+//   //           }
+//   //         : r
+//   //     )
+//   //   );
+//   // };
+
+// const handleAssign = async (sale: SalesClosure, memberEmail: string) => {
+//   setAssigneeByRow(p => ({ ...p, [sale.id]: memberEmail }));
+
+//   const member = teamMembers.find(m => m.user_email === memberEmail);
+//   if (!member) return;
+
+//   const updates =
+//     member.roles === "Technical Head"
+//       ? { associates_tl_email: member.user_email, associates_tl_name: member.full_name }
+//       : { associates_email: member.user_email, associates_name: member.full_name };
+
+//   const { error } = await supabase
+//     .from("sales_closure")
+//     .update(updates)
+//     .eq("id", sale.id);
+
+//   if (error) {
+//     console.error("Assign failed:", { saleId: sale.id, updates, error });
+//     alert(error.message || "Failed to assign member");
+//     setAssigneeByRow(p => ({ ...p, [sale.id]: sale.associates_email ?? sale.associates_tl_email ?? undefined }));
+//     return;
+//   }
+
+//   setPortfolioRows(prev =>
+//     prev.map(r => r.id === sale.id
+//       ? { ...r, ...(member.roles === "Technical Head"
+//             ? { associates_tl_email: member.user_email, associates_tl_name: member.full_name }
+//             : { associates_email: member.user_email, associates_name: member.full_name }) }
+//       : r
+//     )
+//   );
+// };
+
+//   // ---------- Effects ----------
+//   useEffect(() => {
+//     if (user === null) return;
+//     const allowed = ["Super Admin", "Technical Head", "Technical Associate"] as const;
+//     if (!user || !allowed.includes(user.role as any)) {
+//       router.push("/unauthorized");
+//       return;
+//     }
+//     setLoading(false);
+//   }, [user, router]);
+
+//   useEffect(() => {
+//     if (user) {
+//       fetchData();
+//       fetchTeam();
+//     }
+//   }, [user]);
+
+//   // Seed/stick assignee select values
+//   useEffect(() => {
+//     setAssigneeByRow((prev) => {
+//       const next = { ...prev };
+//       for (const r of portfolioRows) {
+//         const current = r.associates_email ?? r.associates_tl_email ?? undefined;
+//         if (next[r.id] === undefined) next[r.id] = current;
+//       }
+//       return next;
+//     });
+//   }, [portfolioRows, teamMembers]);
+
+//   // ---------- Renderers ----------
+//   const renderPortfolioTable = (rows: SalesClosure[]) => (
+//     <div className="rounded-md border mt-4">
+//       <Table>
+//         <TableHeader>
+//           <TableRow>
+//             {PORTFOLIO_COLUMNS.map((c) => (
+//               <TableHead key={c}>{c}</TableHead>
+//             ))}
+//           </TableRow>
+//         </TableHeader>
+//         <TableBody>
+//           {rows.map((sale) => (
+//             <TableRow key={sale.id}>
+//               <TableCell>{sale.lead_id}</TableCell>
+//               <TableCell>{sale.leads?.name || "-"}</TableCell>
+//               <TableCell>{sale.email}</TableCell>
+//               <TableCell>{sale.leads?.phone || "-"}</TableCell>
+//               <TableCell>{sale.finance_status}</TableCell>
+
+//               {/* Resume Status (read-only) */}
+//               <TableCell>{STATUS_LABEL[(sale.rp_status ?? "not_started") as ResumeStatus]}</TableCell>
+
+//               {/* Resume PDF */}
+//               <TableCell>
+//                 {sale.rp_pdf_path ? (
+//                   <Button variant="outline" size="sm" onClick={() => downloadResume(sale.rp_pdf_path!)}>
+//                     Download Resume
+//                   </Button>
+//                 ) : (
+//                   <span className="text-gray-400 text-sm">—</span>
+//                 )}
+//               </TableCell>
+
+//               {/* Portfolio Status */}
+//               <TableCell className="space-y-2">
+//                 {sale.rp_portfolio_status === "completed" && sale.rp_portfolio_link ? (
+//                   <a
+//                     href={sale.rp_portfolio_link}
+//                     target="_blank"
+//                     rel="noreferrer"
+//                     className="text-blue-600 underline break-all"
+//                     title="Open portfolio link"
+//                   >
+//                     {sale.rp_portfolio_link}
+//                   </a>
+//                 ) : (
+//                   <Select
+//                     onValueChange={(v) => handlePortfolioStatusChange(sale, v as PortfolioUI)}
+//                     value={portfolioDbToUi(sale.rp_portfolio_status)}
+//                   >
+//                     <SelectTrigger className="w-[220px]">
+//                       <SelectValue placeholder="Set status" />
+//                     </SelectTrigger>
+//                     <SelectContent>
+//                       <SelectItem value="Pending">Pending</SelectItem>
+//                       <SelectItem value="Waiting for Client approval">Waiting for Client approval</SelectItem>
+//                       <SelectItem value="Success">Success</SelectItem>
+//                     </SelectContent>
+//                   </Select>
+//                 )}
+//               </TableCell>
+
+//               {/* Assignee */}
+//               <TableCell>
+//                 {(() => {
+//                   const current = assigneeByRow[sale.id] ?? sale.associates_email ?? sale.associates_tl_email ?? "";
+//                   const inList = !!teamMembers.find((m) => m.user_email === current);
+
+//                   return (
+//                     <Select value={current || undefined} onValueChange={(email) => handleAssign(sale, email)}>
+//                       <SelectTrigger className="w-[240px]">
+//                         <SelectValue placeholder="Assign to..." />
+//                       </SelectTrigger>
+//                       <SelectContent>
+//                         {/* fallback so Select can show current even if not in the filtered list */}
+//                         {!inList && current && (
+//                           <SelectItem value={current} className="hidden">
+//                             {sale.associates_name || sale.associates_tl_name || current}
+//                           </SelectItem>
+//                         )}
+
+//                         <div className="px-2 py-1 text-xs text-muted-foreground">Technical Heads</div>
+//                         {teamMembers
+//                           .filter((m) => m.roles === "Technical Head")
+//                           .map((m) => (
+//                             <SelectItem key={m.user_email} value={m.user_email}>
+//                               {m.full_name} • Head
+//                             </SelectItem>
+//                           ))}
+
+//                         <div className="px-2 py-1 text-xs text-muted-foreground">Technical Associates</div>
+//                         {teamMembers
+//                           .filter((m) => m.roles === "Technical Associate")
+//                           .map((m) => (
+//                             <SelectItem key={m.user_email} value={m.user_email}>
+//                               {m.full_name} • Associate
+//                             </SelectItem>
+//                           ))}
+//                       </SelectContent>
+//                     </Select>
+//                   );
+//                 })()}
+//               </TableCell>
+
+//               <TableCell>{sale.closed_at ? new Date(sale.closed_at).toLocaleDateString("en-GB") : "-"}</TableCell>
+//             </TableRow>
+//           ))}
+//           {rows.length === 0 && (
+//             <TableRow>
+//               <TableCell colSpan={PORTFOLIO_COLUMNS.length} className="text-center text-sm text-muted-foreground py-10">
+//                 No records found.
+//               </TableCell>
+//             </TableRow>
+//           )}
+//         </TableBody>
+//       </Table>
+//     </div>
+//   );
+
+//   const renderGithubTable = (rows: SalesClosure[]) => (
+//     <div className="rounded-md border mt-4">
+//       <Table>
+//         <TableHeader>
+//           <TableRow>
+//             {GITHUB_COLUMNS.map((c) => (
+//               <TableHead key={c}>{c}</TableHead>
+//             ))}
+//           </TableRow>
+//         </TableHeader>
+//         <TableBody>
+//           {rows.map((sale) => (
+//             <TableRow key={sale.id}>
+//               <TableCell>{sale.lead_id}</TableCell>
+//               <TableCell>{sale.leads?.name || "-"}</TableCell>
+//               <TableCell>{sale.email}</TableCell>
+//               <TableCell>{sale.leads?.phone || "-"}</TableCell>
+//               <TableCell>{sale.finance_status}</TableCell>
+//               <TableCell>{toNiceMoney(sale.github_sale_value)}</TableCell>
+//               <TableCell>{sale.closed_at ? new Date(sale.closed_at).toLocaleDateString("en-GB") : "-"}</TableCell>
+//             </TableRow>
+//           ))}
+//           {rows.length === 0 && (
+//             <TableRow>
+//               <TableCell colSpan={GITHUB_COLUMNS.length} className="text-center text-sm text-muted-foreground py-10">
+//                 No GitHub sales found.
+//               </TableCell>
+//             </TableRow>
+//           )}
+//         </TableBody>
+//       </Table>
+//     </div>
+//   );
+
+//   return (
+//     <ProtectedRoute allowedRoles={["Super Admin", "Technical Head", "Technical Associate"]}>
+//       <DashboardLayout>
+//         <div className="space-y-6">
+//           <div className="flex items-center justify-between">
+//             <h1 className="text-3xl font-bold text-gray-900">Technical Page</h1>
+//           </div>
+
+//           {loading ? (
+//             <p className="p-6 text-gray-600">Loading...</p>
+//           ) : (
+//             <Tabs defaultValue="portfolio" className="w-full">
+//               <TabsList className="grid grid-cols-2 w-full sm:w-auto">
+//                 <TabsTrigger value="portfolio">Portfolios</TabsTrigger>
+//                 <TabsTrigger value="github">GitHub</TabsTrigger>
+//               </TabsList>
+
+//               <TabsContent value="portfolio">{renderPortfolioTable(portfolioRows)}</TabsContent>
+//               <TabsContent value="github">{renderGithubTable(githubRows)}</TabsContent>
+//             </Tabs>
+//           )}
+//         </div>
+
+//         {/* Success dialog */}
+//         <Dialog open={linkDialogOpen} onOpenChange={setLinkDialogOpen}>
+//           <DialogContent>
+//             <DialogHeader>
+//               <DialogTitle>Mark as Success</DialogTitle>
+//             </DialogHeader>
+
+//             <div className="space-y-2">
+//               <label className="text-sm text-muted-foreground">Success link</label>
+//               <Input
+//                 placeholder="https://…"
+//                 value={linkTargetLeadId ? linkDraft[linkTargetLeadId] ?? "" : ""}
+//                 onChange={(e) =>
+//                   setLinkDraft((prev) => ({
+//                     ...prev,
+//                     ...(linkTargetLeadId ? { [linkTargetLeadId]: e.target.value } : {}),
+//                   }))
+//                 }
+//               />
+//               <p className="text-xs text-muted-foreground">
+//                 Paste the final portfolio link. After saving, the status cell will show this link.
+//               </p>
+//             </div>
+
+//             <DialogFooter className="mt-4">
+//               <Button variant="outline" onClick={() => setLinkDialogOpen(false)}>
+//                 Cancel
+//               </Button>
+//               <Button onClick={handleSavePortfolioSuccess}>Save</Button>
+//             </DialogFooter>
+//           </DialogContent>
+//         </Dialog>
+//       </DashboardLayout>
+//     </ProtectedRoute>
+//   );
+// }
+
+
+
 "use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { useAuth } from "@/components/providers/auth-provider";
 
+/* =========================
+   Types & Constants
+   ========================= */
+
 type FinanceStatus = "Paid" | "Unpaid" | "Paused" | "Closed" | "Got Placed";
+
+type ResumeStatus =
+  | "not_started"
+  | "pending"
+  | "waiting_client_approval"
+  | "completed";
+
+const STATUS_LABEL: Record<ResumeStatus, string> = {
+  not_started: "Not started",
+  pending: "Pending",
+  waiting_client_approval: "Waiting for Client approval",
+  completed: "Completed",
+};
+
+/** NEW: Portfolio status is now separate in portfolio_progress */
+type PortfolioStatus =
+  | "not_started"
+  | "pending"
+  | "waiting_client_approval"
+  | "success";
+
+const PORTFOLIO_STATUS_LABEL: Record<PortfolioStatus, string> = {
+  not_started: "Not started",
+  pending: "Pending",
+  waiting_client_approval: "Waiting for Client approval",
+  success: "Success",
+};
+
+const PORTFOLIO_STATUS_OPTIONS: PortfolioStatus[] = [
+  "not_started",
+  "pending",
+  "waiting_client_approval",
+  "success",
+];
 
 interface SalesClosure {
   id: string;
-  lead_id: string;
+  lead_id: string; // text in DB
   email: string;
   finance_status: FinanceStatus;
-  closed_at: string;
+  closed_at: string | null;
   portfolio_sale_value?: number | null;
   github_sale_value?: number | null;
+
+  // legacy fields on sales_closure (we are NOT using these for portfolio assignee anymore)
+  associates_email?: string | null;
+  associates_name?: string | null;
+  associates_tl_email?: string | null;
+  associates_tl_name?: string | null;
+
+  // joined
   leads?: { name: string; phone: string };
+
+  // resume_progress (read-only for resume build)
+  rp_status?: ResumeStatus;
+  rp_pdf_path?: string | null;
+
+  // portfolio_progress (authoritative for portfolio)
+  pp_status?: PortfolioStatus | null;
+  pp_link?: string | null;
+  pp_assigned_email?: string | null;
+  pp_assigned_name?: string | null;
 }
 
-// ✅ move columns outside the component (no hooks)
-const PORTFOLIO_COLUMNS = ["Client ID", "Name", "Email", "Phone", "Status", "Portfolio Sale", "Closed At"] as const;
-const GITHUB_COLUMNS    = ["Client ID", "Name", "Email", "Phone", "Status", "GitHub Sale", "Closed At"] as const;
+interface TeamUser {
+  full_name: string;
+  user_email: string;
+  roles: "Technical Head" | "Technical Associate";
+}
 
-export default function TechnicalPage() {
+const PORTFOLIO_COLUMNS = [
+  "Client ID",
+  "Name",
+  "Email",
+  "Phone",
+  "Status",
+  "Resume Status",
+  "Resume PDF",
+  "Portfolio Status",
+  "Assignee",
+  "Closed At",
+] as const;
+
+const GITHUB_COLUMNS = [
+  "Client ID",
+  "Name",
+  "Email",
+  "Phone",
+  "Status",
+  "GitHub Sale Value",
+  "Closed At",
+] as const;
+
+/* =========================
+   Component
+   ========================= */
+
+export default function TechnicalTeamPage() {
   const [loading, setLoading] = useState(true);
+
   const [portfolioRows, setPortfolioRows] = useState<SalesClosure[]>([]);
   const [githubRows, setGithubRows] = useState<SalesClosure[]>([]);
-  const { user, hasAccess } = useAuth();
+  const [teamMembers, setTeamMembers] = useState<TeamUser[]>([]);
+
+  // Success dialog state (for entering portfolio link)
+  const [linkDraft, setLinkDraft] = useState<Record<string, string>>({});
+  const [linkDialogOpen, setLinkDialogOpen] = useState(false);
+  const [linkTargetLeadId, setLinkTargetLeadId] = useState<string | null>(null);
+  const [linkTargetRowId, setLinkTargetRowId] = useState<string | null>(null);
+
+  // Controlled Assignee value per portfolio row (keyed by sales_closure.id)
+  const [assigneeByRow, setAssigneeByRow] = useState<
+    Record<string, string | undefined>
+  >({});
+
+  const { user } = useAuth();
   const router = useRouter();
 
-  const fetchBoth = async () => {
+  /* =========================
+     Helpers
+     ========================= */
+
+  const latestByLead = (rows: any[]) => {
+    const map = new Map<string, any>();
+    for (const r of rows ?? []) {
+      const ex = map.get(r.lead_id);
+      const ed = ex?.closed_at ?? "";
+      const cd = r?.closed_at ?? "";
+      if (!ex || new Date(cd) > new Date(ed)) map.set(r.lead_id, r);
+    }
+    return Array.from(map.values()).sort(
+      (a, b) =>
+        new Date(b.closed_at || "").getTime() -
+        new Date(a.closed_at || "").getTime()
+    );
+  };
+
+  const toNiceMoney = (v?: number | null) =>
+    typeof v === "number"
+      ? v.toLocaleString("en-IN", { maximumFractionDigits: 2 })
+      : "-";
+
+  /* =========================
+     Data Fetch
+     ========================= */
+
+  const fetchData = async () => {
     if (!user) return;
 
-    let qPortfolio = supabase
+    // portfolio rows from sales_closure (non-null and non-zero)
+    const qPortfolio = supabase
       .from("sales_closure")
-      .select("*")
+      .select(
+        "id, lead_id, email, finance_status, closed_at, portfolio_sale_value, github_sale_value, associates_email, associates_name, associates_tl_email, associates_tl_name"
+      )
       .not("portfolio_sale_value", "is", null)
       .neq("portfolio_sale_value", 0);
 
-    let qGithub = supabase
+    // github rows
+    const qGithub = supabase
       .from("sales_closure")
-      .select("*")
+      .select(
+        "id, lead_id, email, finance_status, closed_at, portfolio_sale_value, github_sale_value"
+      )
       .not("github_sale_value", "is", null)
       .neq("github_sale_value", 0);
 
-   // Associates see only their own assignments; Heads see all
-// if (user.role === "Technical Associate" ) {
-//   qPortfolio = qPortfolio.eq("associates_email", user.email);
-//   qGithub = qGithub.eq("associates_email", user.email);
-// }
-
-    const [{ data: pData, error: pErr }, { data: gData, error: gErr }] = await Promise.all([qPortfolio, qGithub]);
+    const [{ data: pData, error: pErr }, { data: gData, error: gErr }] =
+      await Promise.all([qPortfolio, qGithub]);
     if (pErr || gErr) {
       console.error("Failed to fetch sales data:", pErr || gErr);
       return;
     }
 
-    const latestByLead = (rows: SalesClosure[]) => {
-      const map = new Map<string, SalesClosure>();
-      for (const r of rows ?? []) {
-        const ex = map.get(r.lead_id);
-        const ed = ex?.closed_at ?? "";
-        const cd = r?.closed_at ?? "";
-        if (!ex || new Date(cd) > new Date(ed)) map.set(r.lead_id, r);
-      }
-      return Array.from(map.values()).sort(
-        (a, b) => new Date(b.closed_at || "").getTime() - new Date(a.closed_at || "").getTime()
-      );
-    };
+    const pLatest = latestByLead(pData || []);
+    const gLatest = latestByLead(gData || []);
+    const allLeadIds = Array.from(
+      new Set([...pLatest, ...gLatest].map((r) => r.lead_id))
+    );
 
-    const pLatest = latestByLead((pData as SalesClosure[]) ?? []);
-    const gLatest = latestByLead((gData as SalesClosure[]) ?? []);
-
-    const allLeadIds = Array.from(new Set([...pLatest, ...gLatest].map((r) => r.lead_id)));
-    const { data: leadsData, error: leadsError } = await supabase
+    // leads basics
+    const { data: leadsData, error: leadsErr } = await supabase
       .from("leads")
       .select("business_id, name, phone")
       .in("business_id", allLeadIds);
-
-    if (leadsError) {
-      console.error("Failed to fetch leads:", leadsError);
+    if (leadsErr) {
+      console.error("Failed to fetch leads:", leadsErr);
       return;
     }
-    const leadMap = new Map(leadsData?.map((l) => [l.business_id, { name: l.name, phone: l.phone }]));
+    const leadMap = new Map(
+      (leadsData ?? []).map((l) => [
+        l.business_id,
+        { name: l.name, phone: l.phone },
+      ])
+    );
 
-    setPortfolioRows(pLatest.map((r) => ({ ...r, leads: leadMap.get(r.lead_id) || { name: "-", phone: "-" } })));
-    setGithubRows(gLatest.map((r) => ({ ...r, leads: leadMap.get(r.lead_id) || { name: "-", phone: "-" } })));
+    // resume_progress (resume build only)
+    const { data: resumeProg, error: resumeErr } = await supabase
+      .from("resume_progress")
+      .select("lead_id, status, pdf_path")
+      .in("lead_id", allLeadIds);
+    if (resumeErr) {
+      console.error("Failed to fetch resume_progress:", resumeErr);
+      return;
+    }
+    const resumeMap = new Map(
+      (resumeProg ?? []).map((p) => [
+        p.lead_id,
+        { status: p.status as ResumeStatus, pdf_path: p.pdf_path ?? null },
+      ])
+    );
+
+    // NEW: portfolio_progress (authoritative portfolio data)
+    const { data: portfolioProg, error: portErr } = await supabase
+      .from("portfolio_progress")
+      .select("lead_id, status, link, assigned_email, assigned_name")
+      .in("lead_id", allLeadIds);
+    if (portErr) {
+      console.error("Failed to fetch portfolio_progress:", portErr);
+      return;
+    }
+    const portfolioMap = new Map(
+      (portfolioProg ?? []).map((p) => [
+        p.lead_id,
+        {
+          status: (p.status ?? "not_started") as PortfolioStatus,
+          link: p.link ?? null,
+          assigned_email: p.assigned_email ?? null,
+          assigned_name: p.assigned_name ?? null,
+        },
+      ])
+    );
+
+    // Merge for portfolio tab
+    const mergedPortfolio: SalesClosure[] = pLatest.map((r) => ({
+      ...r,
+      leads: leadMap.get(r.lead_id) || { name: "-", phone: "-" },
+
+      // resume (read-only)
+      rp_status: resumeMap.get(r.lead_id)?.status ?? "not_started",
+      rp_pdf_path: resumeMap.get(r.lead_id)?.pdf_path ?? null,
+
+      // portfolio (from portfolio_progress)
+      pp_status: portfolioMap.get(r.lead_id)?.status ?? "not_started",
+      pp_link: portfolioMap.get(r.lead_id)?.link ?? null,
+      pp_assigned_email: portfolioMap.get(r.lead_id)?.assigned_email ?? null,
+      pp_assigned_name: portfolioMap.get(r.lead_id)?.assigned_name ?? null,
+    }));
+
+    // Merge for github tab (no portfolio/resume extras)
+    const mergedGithub: SalesClosure[] = gLatest.map((r) => ({
+      ...r,
+      leads: leadMap.get(r.lead_id) || { name: "-", phone: "-" },
+    }));
+
+    setPortfolioRows(mergedPortfolio);
+    setGithubRows(mergedGithub);
   };
 
+  const fetchTeam = async () => {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("full_name, user_email, roles")
+      .in("roles", ["Technical Head", "Technical Associate"]);
+    if (error) {
+      console.error("Failed to fetch team users:", error);
+      return;
+    }
+    const sorted = (data as TeamUser[]).sort((a, b) =>
+      a.roles === b.roles
+        ? a.full_name.localeCompare(b.full_name)
+        : a.roles.localeCompare(b.roles)
+    );
+    setTeamMembers(sorted);
+  };
+
+  /* =========================
+     Actions
+     ========================= */
+
+  // Direct download from Supabase → auto-saves to Downloads
+  const downloadResume = async (path: string) => {
+    try {
+      const fileName = `Resume-${path.split("/")[0]}-${
+        path.split("/").pop() || "resume"
+      }.pdf`;
+      const { data, error } = await supabase.storage
+        .from("resumes")
+        .createSignedUrl(path, 60 * 60);
+      if (error) throw error;
+      if (!data?.signedUrl) throw new Error("No signed URL");
+
+      const res = await fetch(data.signedUrl);
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (e: any) {
+      alert(e.message || "Could not download PDF");
+    }
+  };
+
+  // Update portfolio status (non-success) OR open dialog for success
+  const handlePortfolioStatusChange = async (
+    sale: SalesClosure,
+    next: PortfolioStatus
+  ) => {
+    if (next === "success") {
+      setLinkTargetLeadId(sale.lead_id);
+      setLinkTargetRowId(sale.id);
+      setLinkDraft((d) => ({ ...d, [sale.lead_id]: sale.pp_link ?? "" }));
+      setLinkDialogOpen(true);
+      return;
+    }
+
+    const { error } = await supabase
+      .from("portfolio_progress")
+      .upsert(
+        {
+          lead_id: sale.lead_id,
+          status: next,
+          updated_by: user?.email ?? null,
+        },
+        { onConflict: "lead_id" }
+      );
+    if (error) return alert(error.message);
+
+    setPortfolioRows((prev) =>
+      prev.map((r) =>
+        r.id === sale.id ? { ...r, pp_status: next, pp_link: null } : r
+      )
+    );
+  };
+
+  // Save success link
+  const handleSavePortfolioSuccess = async () => {
+    const link = linkTargetLeadId
+      ? (linkDraft[linkTargetLeadId] ?? "").trim()
+      : "";
+    if (!link || !linkTargetLeadId || !linkTargetRowId)
+      return alert("Please paste a link.");
+    if (!/^https?:\/\//i.test(link))
+      return alert("Enter a valid http(s) URL.");
+
+    const { error } = await supabase
+      .from("portfolio_progress")
+      .upsert(
+        {
+          lead_id: linkTargetLeadId,
+          status: "success",
+          link,
+          updated_by: user?.email ?? null, // if you switch to UUID, write user?.id here and change DB type
+        },
+        { onConflict: "lead_id" }
+      );
+    if (error) return alert(error.message);
+
+    setPortfolioRows((prev) =>
+      prev.map((r) =>
+        r.id === linkTargetRowId
+          ? { ...r, pp_status: "success", pp_link: link }
+          : r
+      )
+    );
+    setLinkDialogOpen(false);
+    setLinkDraft({});
+    setLinkTargetLeadId(null);
+    setLinkTargetRowId(null);
+  };
+
+  // Assign portfolio owner (stored in portfolio_progress)
+  const handleAssignPortfolio = async (
+    sale: SalesClosure,
+    memberEmail: string
+  ) => {
+    // optimistic UI
+    setAssigneeByRow((p) => ({ ...p, [sale.id]: memberEmail }));
+
+    const member = teamMembers.find((m) => m.user_email === memberEmail);
+    if (!member) return;
+
+    const { error } = await supabase
+      .from("portfolio_progress")
+      .upsert(
+        {
+          lead_id: sale.lead_id,
+          assigned_email: member.user_email,
+          assigned_name: member.full_name,
+          updated_by: user?.email ?? null,
+        },
+        { onConflict: "lead_id" }
+      );
+
+    if (error) {
+      alert(error.message || "Failed to assign portfolio owner");
+      setAssigneeByRow((p) => ({
+        ...p,
+        [sale.id]: sale.pp_assigned_email ?? undefined,
+      }));
+      return;
+    }
+
+    setPortfolioRows((prev) =>
+      prev.map((r) =>
+        r.id === sale.id
+          ? {
+              ...r,
+              pp_assigned_email: member.user_email,
+              pp_assigned_name: member.full_name,
+            }
+          : r
+      )
+    );
+  };
+
+  /* =========================
+     Effects
+     ========================= */
+
+  // Role gate
   useEffect(() => {
     if (user === null) return;
-    const allowed = ["Super Admin", "Technical Head", "Technical Associate"] as const;
+    const allowed = [
+      "Super Admin",
+      "Technical Head",
+      "Technical Associate",
+    ] as const;
     if (!user || !allowed.includes(user.role as any)) {
       router.push("/unauthorized");
       return;
@@ -1343,56 +2793,227 @@ export default function TechnicalPage() {
     setLoading(false);
   }, [user, router]);
 
-useEffect(() => {
-  if (!user) return;
-  const allowed = new Set(["Super Admin", "Technical Head", "Technical Associate"]);
-  if (allowed.has(user.role as any)) fetchBoth();
-}, [user]);
+  // Initial data load
+  useEffect(() => {
+    if (user) {
+      fetchData();
+      fetchTeam();
+    }
+  }, [user]);
 
+  // Seed/stick controlled Assignee values from portfolio_progress
+  useEffect(() => {
+    setAssigneeByRow((prev) => {
+      const next = { ...prev };
+      for (const r of portfolioRows) {
+        const current = r.pp_assigned_email ?? undefined;
+        if (next[r.id] === undefined) next[r.id] = current;
+      }
+      return next;
+    });
+  }, [portfolioRows, teamMembers]);
 
-  const renderTable = (rows: SalesClosure[], which: "portfolio" | "github") => {
-    const columns = which === "portfolio" ? PORTFOLIO_COLUMNS : GITHUB_COLUMNS;
-    return (
-      <div className="rounded-md border mt-4">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              {columns.map((c) => (
-                <TableHead key={c}>{c}</TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.map((sale) => (
-              <TableRow key={sale.id}>
-                <TableCell>{sale.lead_id}</TableCell>
-                <TableCell>{sale.leads?.name || "-"}</TableCell>
-                <TableCell>{sale.email}</TableCell>
-                <TableCell>{sale.leads?.phone || "-"}</TableCell>
-                <TableCell>{sale.finance_status}</TableCell>
-                {which === "portfolio" ? (
-                  <TableCell>{sale.portfolio_sale_value ?? "-"}</TableCell>
-                ) : (
-                  <TableCell>{sale.github_sale_value ?? "-"}</TableCell>
-                )}
-                <TableCell>{sale.closed_at ? new Date(sale.closed_at).toLocaleDateString("en-GB") : "-"}</TableCell>
-              </TableRow>
+  /* =========================
+     Renderers
+     ========================= */
+
+  const renderPortfolioTable = (rows: SalesClosure[]) => (
+    <div className="rounded-md border mt-4">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            {PORTFOLIO_COLUMNS.map((c) => (
+              <TableHead key={c}>{c}</TableHead>
             ))}
-            {rows.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={columns.length} className="text-center text-sm text-muted-foreground py-10">
-                  No records found.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
-    );
-  };
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.map((sale) => (
+            <TableRow key={sale.id}>
+              <TableCell>{sale.lead_id}</TableCell>
+              <TableCell>{sale.leads?.name || "-"}</TableCell>
+              <TableCell>{sale.email}</TableCell>
+              <TableCell>{sale.leads?.phone || "-"}</TableCell>
+              <TableCell>{sale.finance_status}</TableCell>
+
+              {/* Resume Status (read-only) */}
+              <TableCell>
+                {STATUS_LABEL[(sale.rp_status ?? "not_started") as ResumeStatus]}
+              </TableCell>
+
+              {/* Resume PDF */}
+              <TableCell>
+                {sale.rp_pdf_path ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => downloadResume(sale.rp_pdf_path!)}
+                  >
+                    Download Resume
+                  </Button>
+                ) : (
+                  <span className="text-gray-400 text-sm">—</span>
+                )}
+              </TableCell>
+
+              {/* Portfolio Status (from portfolio_progress) */}
+              <TableCell className="space-y-2">
+                {sale.pp_status === "success" && sale.pp_link ? (
+                  <a
+                    href={sale.pp_link}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-blue-600 underline break-all"
+                    title="Open portfolio link"
+                  >
+                    {sale.pp_link}
+                  </a>
+                ) : (
+                  <Select
+                    onValueChange={(v) =>
+                      handlePortfolioStatusChange(sale, v as PortfolioStatus)
+                    }
+                    value={(sale.pp_status ?? "not_started") as PortfolioStatus}
+                  >
+                    <SelectTrigger className="w-[260px]">
+                      <SelectValue placeholder="Set portfolio status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PORTFOLIO_STATUS_OPTIONS.map((s) => (
+                        <SelectItem key={s} value={s}>
+                          {PORTFOLIO_STATUS_LABEL[s]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </TableCell>
+
+              {/* Assignee (stored in portfolio_progress) */}
+              <TableCell>
+                {(() => {
+                  const current =
+                    assigneeByRow[sale.id] ?? sale.pp_assigned_email ?? "";
+                  const inList = !!teamMembers.find(
+                    (m) => m.user_email === current
+                  );
+
+                  return (
+                    <Select
+                      value={current || undefined}
+                      onValueChange={(email) =>
+                        handleAssignPortfolio(sale, email)
+                      }
+                    >
+                      <SelectTrigger className="w-[240px]">
+                        <SelectValue placeholder="Assign to..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {/* fallback so Select can show current even if not in the list */}
+                        {!inList && current && (
+                          <SelectItem value={current} className="hidden">
+                            {sale.pp_assigned_name || current}
+                          </SelectItem>
+                        )}
+
+                        <div className="px-2 py-1 text-xs text-muted-foreground">
+                          Technical Heads
+                        </div>
+                        {teamMembers
+                          .filter((m) => m.roles === "Technical Head")
+                          .map((m) => (
+                            <SelectItem key={m.user_email} value={m.user_email}>
+                              {m.full_name} • Head
+                            </SelectItem>
+                          ))}
+
+                        <div className="px-2 py-1 text-xs text-muted-foreground">
+                          Technical Associates
+                        </div>
+                        {teamMembers
+                          .filter((m) => m.roles === "Technical Associate")
+                          .map((m) => (
+                            <SelectItem key={m.user_email} value={m.user_email}>
+                              {m.full_name} • Associate
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  );
+                })()}
+              </TableCell>
+
+              <TableCell>
+                {sale.closed_at
+                  ? new Date(sale.closed_at).toLocaleDateString("en-GB")
+                  : "-"}
+              </TableCell>
+            </TableRow>
+          ))}
+          {rows.length === 0 && (
+            <TableRow>
+              <TableCell
+                colSpan={PORTFOLIO_COLUMNS.length}
+                className="text-center text-sm text-muted-foreground py-10"
+              >
+                No records found.
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
+    </div>
+  );
+
+  const renderGithubTable = (rows: SalesClosure[]) => (
+    <div className="rounded-md border mt-4">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            {GITHUB_COLUMNS.map((c) => (
+              <TableHead key={c}>{c}</TableHead>
+            ))}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.map((sale) => (
+            <TableRow key={sale.id}>
+              <TableCell>{sale.lead_id}</TableCell>
+              <TableCell>{sale.leads?.name || "-"}</TableCell>
+              <TableCell>{sale.email}</TableCell>
+              <TableCell>{sale.leads?.phone || "-"}</TableCell>
+              <TableCell>{sale.finance_status}</TableCell>
+              <TableCell>{toNiceMoney(sale.github_sale_value)}</TableCell>
+              <TableCell>
+                {sale.closed_at
+                  ? new Date(sale.closed_at).toLocaleDateString("en-GB")
+                  : "-"}
+              </TableCell>
+            </TableRow>
+          ))}
+          {rows.length === 0 && (
+            <TableRow>
+              <TableCell
+                colSpan={GITHUB_COLUMNS.length}
+                className="text-center text-sm text-muted-foreground py-10"
+              >
+                No GitHub sales found.
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
+    </div>
+  );
+
+  /* =========================
+     Render
+     ========================= */
 
   return (
-    <ProtectedRoute allowedRoles={["Super Admin", "Technical Head", "Technical Associate"]}>
+    <ProtectedRoute
+      allowedRoles={["Super Admin", "Technical Head", "Technical Associate"]}
+    >
       <DashboardLayout>
         <div className="space-y-6">
           <div className="flex items-center justify-between">
@@ -1408,11 +3029,53 @@ useEffect(() => {
                 <TabsTrigger value="github">GitHub</TabsTrigger>
               </TabsList>
 
-              <TabsContent value="portfolio">{renderTable(portfolioRows, "portfolio")}</TabsContent>
-              <TabsContent value="github">{renderTable(githubRows, "github")}</TabsContent>
+              <TabsContent value="portfolio">
+                {renderPortfolioTable(portfolioRows)}
+              </TabsContent>
+              <TabsContent value="github">
+                {renderGithubTable(githubRows)}
+              </TabsContent>
             </Tabs>
           )}
         </div>
+
+        {/* Success dialog */}
+        <Dialog open={linkDialogOpen} onOpenChange={setLinkDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Mark as Success</DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-2">
+              <label className="text-sm text-muted-foreground">
+                Success link
+              </label>
+              <Input
+                placeholder="https://…"
+                value={linkTargetLeadId ? linkDraft[linkTargetLeadId] ?? "" : ""}
+                onChange={(e) =>
+                  setLinkDraft((prev) => ({
+                    ...prev,
+                    ...(linkTargetLeadId
+                      ? { [linkTargetLeadId]: e.target.value }
+                      : {}),
+                  }))
+                }
+              />
+              <p className="text-xs text-muted-foreground">
+                Paste the final portfolio link. It will be saved in{" "}
+                <code>portfolio_progress</code>.
+              </p>
+            </div>
+
+            <DialogFooter className="mt-4">
+              <Button variant="outline" onClick={() => setLinkDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSavePortfolioSuccess}>Save</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </DashboardLayout>
     </ProtectedRoute>
   );
