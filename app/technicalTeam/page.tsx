@@ -2904,8 +2904,8 @@ export default function TechnicalTeamPage() {
                       onValueChange={(email) =>
                         handleAssignPortfolio(sale, email)
                       }
-                    >
-                      <SelectTrigger className="w-[240px]">
+                   disabled={user?.role =="Technical Associate"} >
+                      <SelectTrigger className="w-[240px] !opacity-100 bg-muted/20 text-foreground">
                         <SelectValue placeholder="Assign to..." />
                       </SelectTrigger>
                       <SelectContent>
