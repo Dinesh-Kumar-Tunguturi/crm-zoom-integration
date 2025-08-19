@@ -27,10 +27,12 @@ dayjs.extend(isBetween);
 type SalesStage = "Prospect" | "DNP" | "Out of TG" | "Not Interested" | "Conversation Done" | "sale done"  | "Target";
 
 interface CallHistory {
-  date: string;
+  id: string;          // ← add id to update precisely
+  date: string;        // followup_date (YYYY-MM-DD)
   stage: SalesStage;
   notes: string;
 }
+
 
 interface Lead {
   id: string;
@@ -64,6 +66,11 @@ interface SaleClosing {
   portfolio_value: number;
   linkedin_value: number;
   github_value: number;
+   // NEW
+  courses_value: number;   // Courses/Certifications ($)
+  custom_label: string;    // Custom label
+  custom_value: number;    // Custom ($)
+  commitments: string;     // Free-text commitments
 }
 
 
@@ -89,9 +96,13 @@ const getStageColor = (stage: SalesStage) => {
   }
 };
 
+
+
 export default function SalesPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
     const [userProfile, setUserProfile] = useState<Profile | null>(null);
+    const [salesClosedTotal, setSalesClosedTotal] = useState(0);
+
 
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
@@ -165,18 +176,38 @@ useEffect(() => {
   setTotalSale(autoTotal + resume + linkedin + github + portfolio);
 }, [autoTotal, resumeValue, linkedinValue, githubValue, portfolioValue]);
 
+useEffect(() => {
+  fetchSalesClosureCount();
+}, []);
+
+useEffect(() => {
+  const run = async () => {
+    let q = supabase
+      .from("sales_closure")
+      .select("lead_id", { count: "exact", head: true });
+
+    if (startDate && endDate) {
+      q = q
+        .gte("closed_at", dayjs(startDate).format("YYYY-MM-DD"))
+        .lte("closed_at", dayjs(endDate).format("YYYY-MM-DD"));
+    }
+
+    const { count, error } = await q;
+    if (!error) setSalesClosedTotal(count ?? 0);
+  };
+  run();
+}, [startDate, endDate]);
+
 // Calculate next payment due date
 useEffect(() => {
   const days = parseInt(subscriptionCycle || "0");
-  if (days) {
-    const today = new Date();
-    today.setDate(today.getDate() + days);
-    const formatted = today.toISOString().split("T")[0];
-    setNextDueDate(formatted);
+  if (days && onboardingDate) {
+    setNextDueDate(dayjs(onboardingDate).add(days, "day").format("YYYY-MM-DD"));
   } else {
     setNextDueDate("-");
   }
-}, [subscriptionCycle]);
+}, [subscriptionCycle, onboardingDate]);
+
 
 
 
@@ -197,6 +228,11 @@ useEffect(() => {
   portfolio_value: 0,
   linkedin_value: 0,
   github_value: 0,
+   // NEW
+  courses_value: 0,
+  custom_label: "",
+  custom_value: 0,
+  commitments: "",
 });
 
 
@@ -272,13 +308,15 @@ useEffect(() => {
   const multiplier =
     saleData.subscription_cycle === 15 ? 0.5 :
     saleData.subscription_cycle === 30 ? 1   :
-    saleData.subscription_cycle === 60 ? 2   : 3;          // 90 days
+    saleData.subscription_cycle === 60 ? 2   : 3; // 90
 
   const addOns =
     saleData.resume_value +
     saleData.portfolio_value +
     saleData.linkedin_value +
-    saleData.github_value;
+    saleData.github_value +
+    saleData.courses_value +   // NEW
+    saleData.custom_value;     // NEW
 
   setTotalAmount(saleData.base_value * multiplier + addOns);
 }, [
@@ -288,7 +326,10 @@ useEffect(() => {
   saleData.portfolio_value,
   saleData.linkedin_value,
   saleData.github_value,
+  saleData.courses_value,   // NEW
+  saleData.custom_value,    // NEW
 ]);
+
 
 /* 📅  Compute subscription-end date preview */
 useEffect(() => {
@@ -489,7 +530,9 @@ const handleSort = (key: keyof Lead) => {
       phone: lead.phone,
       assigned_to: lead.assigned_to,
       current_stage: newStage,
-      followup_date: new Date().toISOString().split("T")[0],
+      // followup_date: new Date().toISOString().split("T")[0],
+      followup_date: todayLocalYMD(),
+
       notes: `Stage changed to ${newStage}`
     }]);
 
@@ -535,6 +578,8 @@ const handleSort = (key: keyof Lead) => {
       )
     );
 
+setFollowUpSubmitted(true);       // ← add this
+
     setFollowUpDialogOpen(false);
     setFollowUpData({ follow_up_date: "", notes: "" });
     setPendingStageUpdate(null);
@@ -543,20 +588,28 @@ const handleSort = (key: keyof Lead) => {
     // 👇 After updating stage and call_history
     const updatedFollowUps = await fetchFollowUps();
     setFollowUpsData(updatedFollowUps);
+    setFollowUpSubmitted(false);      // reset for next time
+
   };
 
-  const handleFollowUpDialogClose = (open: boolean) => {
-    if (!open && !followUpSubmitted && pendingStageUpdate && previousStage) {
-      setLeads((prev) =>
-        prev.map((l) =>
+const handleFollowUpDialogClose = (open: boolean) => {
+  if (!open) {
+    if (!followUpSubmitted && pendingStageUpdate && previousStage) {
+      setLeads(prev =>
+        prev.map(l =>
           l.id === pendingStageUpdate.leadId ? { ...l, current_stage: previousStage } : l
         )
       );
     }
-    setFollowUpDialogOpen(open);
+    // full reset
+    setFollowUpSubmitted(false);
     setPendingStageUpdate(null);
     setPreviousStage(null);
-  };
+    setFollowUpDialogOpen(false);
+    return;
+  }
+  setFollowUpDialogOpen(true);
+};
 
   // const handleSaleClosureSubmit = async () => {
   //   if (!selectedLead || !pendingStageUpdate) return;
@@ -611,103 +664,120 @@ const handleSort = (key: keyof Lead) => {
 
   // };
 
-  const handleSaleClosureSubmit = async () => {
+const handleSaleClosureSubmit = async () => {
   if (!selectedLead || !pendingStageUpdate) return;
 
-setFollowUpsData(prev =>
-   prev.map(f =>
-     f.id === pendingStageUpdate.leadId ? { ...f, current_stage: "sale done" } : f
-   )
- );
+  setFollowUpsData(prev =>
+    prev.map(f =>
+      f.id === pendingStageUpdate.leadId ? { ...f, current_stage: "sale done" } : f
+    )
+  );
 
   const {
     base_value, subscription_cycle, payment_mode, closed_at,
     resume_value, portfolio_value, linkedin_value, github_value,
+    // NEW
+    courses_value, custom_label, custom_value, commitments,
   } = saleData;
 
   if (!payment_mode || !subscription_cycle || !closed_at) {
     alert("Please fill all required fields."); return;
   }
 
-  /* 💰 Final total already computed */
   const saleTotal = totalAmount;
 
   try {
-    const { error: insertErr } = await supabase.from("sales_closure").insert({
+    const payload: any = {
       lead_id: selectedLead.business_id,
       lead_name: selectedLead.client_name,
       email: selectedLead.email,
       payment_mode,
       subscription_cycle,
       sale_value: saleTotal,
-         closed_at: new Date(closed_at).toISOString(),
+      closed_at: new Date(closed_at).toISOString(),
       resume_sale_value: resume_value || null,
       portfolio_sale_value: portfolio_value || null,
       linkedin_sale_value: linkedin_value || null,
       github_sale_value: github_value || null,
-    });
-    if (insertErr) throw insertErr;
+    };
 
-    
+    // Conditionally add new fields (avoid error if columns not yet created)
+    if (courses_value) payload.courses_sale_value = courses_value;
+    if (custom_label)  payload.custom_label = custom_label;
+    if (custom_value)  payload.custom_sale_value = custom_value;
+    if (commitments)   payload.commitments = commitments;
+
+    const { error: insertErr } = await supabase.from("sales_closure").insert(payload);
+    if (insertErr) throw insertErr;
 
     await supabase.from("leads")
       .update({ current_stage: "sale done" })
       .eq("id", pendingStageUpdate.leadId);
 
-    // ✅ UI clean-up
+    // reset dialog state
     setSaleClosingDialogOpen(false);
-    // setSaleData(prev => ({ ...prev, base_value: 0 }));
-      setSaleData({
-  base_value: 0,
-     subscription_cycle: "" as unknown as 15|30|60|90,
-     payment_mode: "" as unknown as SaleClosing["payment_mode"],
-     closed_at: "",
-     resume_value: 0,
-     portfolio_value: 0,
-     linkedin_value: 0,
-     github_value: 0,
-   });
-    setPendingStageUpdate(null); setPreviousStage(null);
-    const upd = await fetchFollowUps(); setFollowUpsData(upd);
+    setSaleData({
+      base_value: 0,
+      subscription_cycle: "" as unknown as 15|30|60|90,
+      payment_mode: "" as unknown as SaleClosing["payment_mode"],
+      closed_at: "",
+      resume_value: 0,
+      portfolio_value: 0,
+      linkedin_value: 0,
+      github_value: 0,
+      // NEW
+      courses_value: 0,
+      custom_label: "",
+      custom_value: 0,
+      commitments: "",
+    });
 
+    setPendingStageUpdate(null);
+    setPreviousStage(null);
+
+    const upd = await fetchFollowUps();
+    setFollowUpsData(upd);
   } catch (err: any) {
-    console.error("Sale insert failed:", err.message); alert("Failed to save sale.");
+    console.error("Sale insert failed:", err.message);
+    alert("Failed to save sale.");
   }
 };
 
 
-  const totalLeadsCount = leads.length;
-  const prospectCount = leads.filter(l => l.current_stage === "Prospect").length;
-  const dnpAndConvoCount = leads.filter(l =>
-    l.current_stage === "DNP" || l.current_stage === "Conversation Done"
-  ).length;
-  const saleDoneCount = leads.filter(l => l.current_stage === "sale done").length;
-  const othersCount = leads.filter(l =>
-    !["Prospect", "DNP", "Conversation Done", "sale done"].includes(l.current_stage)
-  ).length;
+const totalLeadsCount = filteredLeads.length;
+const prospectCount = filteredLeads.filter(l => l.current_stage === "Prospect").length;
+const dnpAndConvoCount = filteredLeads.filter(l =>
+  l.current_stage === "DNP" || l.current_stage === "Conversation Done"
+).length;
+const saleDoneCount = filteredLeads.filter(l => l.current_stage === "sale done").length;
+const othersCount = filteredLeads.filter(l =>
+  !["Prospect", "DNP", "Conversation Done", "sale done"].includes(l.current_stage)
+).length;
 
-  const fetchCallHistory = async (leadId: string) => {
-    const lead = leads.find((l) => l.id === leadId);
-    if (!lead) return [];
+const fetchCallHistory = async (leadId: string) => {
+  const lead = leads.find((l) => l.id === leadId);
+  if (!lead) return [];
 
-    const { data, error } = await supabase
-      .from("call_history")
-      .select("current_stage, followup_date, notes")
-      .eq("lead_id", lead.business_id)
-      .order("followup_date", { ascending: false });
+  const { data, error } = await supabase
+    .from("call_history")
+    .select("id, current_stage, followup_date, notes")   // ← add id
+    .eq("lead_id", lead.business_id)
+    .order("followup_date", { ascending: false });
 
-    if (error) {
-      console.error("Error fetching call history:", error);
-      return [];
-    }
+  if (error) {
+    console.error("Error fetching call history:", error);
+    return [];
+  }
 
-    const callHistoryData: CallHistory[] = data.map((record: any) => ({
-      date: record.followup_date,
-      stage: record.current_stage,
-      notes: record.notes
-    }));
-    return callHistoryData;
-  };
+  const callHistoryData: CallHistory[] = data.map((r: any) => ({
+    id: r.id,
+    date: r.followup_date,
+    stage: r.current_stage,
+    notes: r.notes,
+  }));
+  return callHistoryData;
+};
+
 
 
   // This function will go in your SalesPage component
@@ -717,7 +787,6 @@ async function handleOnboardClientSubmit() {
     const confirmed = window.confirm("Are you sure you want to onboard this client?");
     if (!confirmed) return;
 
-    // 1. Generate Lead ID
     const { data: idResult, error: idError } = await supabase.rpc('generate_custom_lead_id');
     if (idError || !idResult) {
       console.error("Failed to generate lead ID:", idError);
@@ -725,52 +794,53 @@ async function handleOnboardClientSubmit() {
     }
     const newLeadId = idResult;
 
-    // 2. Parse input values
-    const baseValue = parseInt(subscriptionSaleValue || "0");
-    const resume = parseInt(resumeValue || "0");
-    const linkedin = parseInt(linkedinValue || "0");
-    const github = parseInt(githubValue || "0");
-    const portfolio = parseInt(portfolioValue || "0");
-    const totalSale = baseValue + resume + linkedin + github + portfolio;
+    const base = Number(subscriptionSaleValue || 0);
+    const resume = Number(resumeValue || 0);
+    const linkedin = Number(linkedinValue || 0);
+    const github = Number(githubValue || 0);
+    const portfolio = Number(portfolioValue || 0);
+    const cycle = Number(subscriptionCycle || 0);
 
-    const start = new Date(onboardingDate);
-    const nextDueDate = new Date(start);
-    const durationInDays = parseInt(subscriptionCycle || "0");
-    nextDueDate.setDate(start.getDate() + durationInDays);
+    const multiplier =
+      cycle === 15 ? 0.5 :
+      cycle === 30 ? 1   :
+      cycle === 60 ? 2   :
+      cycle === 90 ? 3   : 0;
 
-    const now = new Date().toISOString();
+    const totalSaleCalc = base * multiplier + resume + linkedin + github + portfolio;
 
-    // 3. Insert into leads table
+    // use local date strings for date columns stored as DATE in PG
+    const createdAt = dayjs().toISOString();
+    const onboardDate = toYMD(onboardingDate);   // "YYYY-MM-DD"
+
     const { error: leadsInsertError } = await supabase.from("leads").insert({
       business_id: newLeadId,
       name: clientName,
       email: clientEmail,
       phone: contactNumber,
       city: city,
-      created_at: now,
+      created_at: createdAt,
       source: subscriptionSource || "Onboarded Client",
       status: "Assigned",
+      current_stage: "sale done", // optional: if you onboard only after closing
     });
     if (leadsInsertError) throw leadsInsertError;
 
-    // 4. Insert into sales_closure table
     const { error: salesInsertError } = await supabase.from("sales_closure").insert({
       lead_id: newLeadId,
       email: clientEmail,
       lead_name: clientName,
       payment_mode: paymentMode,
-      subscription_cycle: durationInDays,
-      sale_value: totalSale,
-      closed_at: onboardingDate,
-      onboarded_date: onboardingDate,
+      subscription_cycle: cycle,
+      sale_value: totalSaleCalc,
+      closed_at: onboardDate,                // if column is date
+      onboarded_date: onboardDate,          // if you store this too
       finance_status: "Paid",
-      resume_sale_value: resume,
-      linkedin_sale_value: linkedin,
-      github_sale_value: github,
-      portfolio_sale_value: portfolio,
-
-      // Optional defaulted fields (update if needed)
-      associates_email: "", 
+      resume_sale_value: resume || null,
+      linkedin_sale_value: linkedin || null,
+      github_sale_value: github || null,
+      portfolio_sale_value: portfolio || null,
+      associates_email: "",
       associates_name: "",
       associates_tl_email: "",
       associates_tl_name: "",
@@ -779,23 +849,15 @@ async function handleOnboardClientSubmit() {
     });
     if (salesInsertError) throw salesInsertError;
 
-    // 5. Reset form
-    setClientName("");
-    setClientEmail("");
-    setContactNumber("");
-    setCity("");
-    setOnboardingDate("");
-    setSubscriptionCycle("");
-    setSubscriptionSaleValue("");
-    setPaymentMode("");
-    setResumeValue("");
-    setPortfolioValue("");
-    setLinkedinValue("");
-    setGithubValue("");
+    // refresh list
+    if (userProfile) await fetchLeads(userProfile);
 
+    // reset
+    setClientName(""); setClientEmail(""); setContactNumber(""); setCity("");
+    setOnboardingDate(""); setSubscriptionCycle(""); setSubscriptionSaleValue("");
+    setPaymentMode(""); setResumeValue(""); setPortfolioValue(""); setLinkedinValue(""); setGithubValue("");
     setOnboardDialogOpen(false);
     alert("✅ Client onboarded successfully!");
-
   } catch (err: any) {
     console.error("❌ Error onboarding client:", err?.message || err);
     alert(`Failed to onboard client: ${err?.message || "Unknown error"}`);
@@ -807,14 +869,12 @@ const handleUpdateNote = async (call: CallHistory) => {
     const { error } = await supabase
       .from("call_history")
       .update({ notes: editedNote })
-      .eq("lead_id", selectedLead?.business_id)
-      .eq("followup_date", call.date); // Assuming `followup_date` is the primary way to match
+      .eq("id", call.id);                 // ← precise update
 
     if (error) throw error;
 
-    // ✅ Refresh call history and exit edit mode
     const updated = await fetchCallHistory(selectedLead!.id);
-    setSelectedLead((prev) => prev ? { ...prev, call_history: updated } : null);
+    setSelectedLead((prev) => (prev ? { ...prev, call_history: updated } : null));
     setEditingNote(false);
     alert("Note updated!");
   } catch (err) {
@@ -822,6 +882,7 @@ const handleUpdateNote = async (call: CallHistory) => {
     alert("Failed to update note.");
   }
 };
+
 
 // 📍 Place this just before rendering the table rows
 // const sortedLeads = [...filteredLeads].sort((a, b) => {
@@ -857,6 +918,10 @@ const handleUpdateNote = async (call: CallHistory) => {
 //     ? (aValue || 0) - (bValue || 0)
 //     : (bValue || 0) - (aValue || 0);
 // });
+// —— helpers (local-date safe) ——
+const toYMD = (d?: string | Date) => (d ? dayjs(d).format("YYYY-MM-DD") : "");
+const todayLocalYMD = () => dayjs().format("YYYY-MM-DD");
+
 
 const sortedLeads = [...filteredLeads].sort((a, b) => {
   const { key, direction } = sortConfig;
@@ -885,6 +950,14 @@ const sortedLeads = [...filteredLeads].sort((a, b) => {
     : (bValue || 0) - (aValue || 0);
 });
 
+const fetchSalesClosureCount = async () => {
+  const { count, error } = await supabase
+    .from("sales_closure")
+    .select("lead_id", { count: "exact", head: true });
+
+  if (!error) setSalesClosedTotal(count ?? 0);
+};
+
 
   return (
     <ProtectedRoute allowedRoles={["Sales","Sales Associate", "Super Admin"]}>
@@ -895,12 +968,12 @@ const sortedLeads = [...filteredLeads].sort((a, b) => {
             <h1 className="text-3xl font-bold">Sales CRM</h1>
 
 <div className="justify-end flex gap-2">
-            <Button
+            {/* <Button
     className="bg-green-600 hover:bg-green-700 text-white"
     onClick={() => setOnboardDialogOpen(true)}
   >
     Onboard New Client
-  </Button>
+  </Button> */}
 
             <Button onClick={async () => {
               const followUps = await fetchFollowUps();
@@ -953,7 +1026,7 @@ const sortedLeads = [...filteredLeads].sort((a, b) => {
                       {followUpsData.filter((item) => {
                         if (followUpsFilter === "all") return true;
                         if (!item.followup_date) return false;
-                        const today = new Date().toISOString().split("T")[0];
+                        const today = todayLocalYMD();
                         return item.followup_date === today;
                       }).length === 0 ? (
                         <TableRow>
@@ -968,7 +1041,7 @@ const sortedLeads = [...filteredLeads].sort((a, b) => {
                           .filter((item) => {
                             if (followUpsFilter === "all") return true;
                             if (!item.followup_date) return false;
-                            const today = new Date().toISOString().split("T")[0];
+                            const today = todayLocalYMD();
                             return item.followup_date === today;
                           })
                           .map((item, idx) => (
@@ -1045,14 +1118,19 @@ const sortedLeads = [...filteredLeads].sort((a, b) => {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Sales Done</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{saleDoneCount}</div>
-              </CardContent>
-            </Card>
+           <Card>
+  <CardHeader className="pb-2">
+    <CardTitle className="text-sm font-medium">Sales Done</CardTitle>
+  </CardHeader>
+  <CardContent>
+    {/* Absolute count from sales_closure */}
+    <div className="text-2xl font-bold">{salesClosedTotal}</div>
+
+    {/* (Optional) also show current-view count below */}
+    {/* <div className="text-xs text-muted-foreground">This view: {saleDoneCount}</div> */}
+  </CardContent>
+</Card>
+
 
             <Card>
               <CardHeader className="pb-2">
@@ -1674,7 +1752,7 @@ const sortedLeads = [...filteredLeads].sort((a, b) => {
             setSaleClosingDialogOpen(open);
           }}>
 
-            <DialogContent onPointerDownOutside={(e) => e.preventDefault()}>
+            <DialogContent className="max-w-3xl" onPointerDownOutside={(e) => e.preventDefault()}>
               <DialogHeader><DialogTitle>Close Sale</DialogTitle></DialogHeader>
               {/* <div className="space-y-4">
                 <div><Label>Sale Value</Label>
@@ -1725,7 +1803,7 @@ const sortedLeads = [...filteredLeads].sort((a, b) => {
   </div>
 
   <div>
-    <Label>Base Sale Value (1 month)</Label>
+    <Label>Applications Sale Value (1 month)</Label>
     <Input
       type="number"
       value={saleData.base_value}
@@ -1736,10 +1814,10 @@ const sortedLeads = [...filteredLeads].sort((a, b) => {
 
   <div>
     <Label>Subscription Cycle</Label>
-    <Select
-      value={saleData.subscription_cycle.toString()}
-      onValueChange={v => setSaleData(p => ({ ...p, subscription_cycle: Number(v) as 15|30|60|90 }))}
-    >
+   <Select
+  value={saleData.subscription_cycle ? saleData.subscription_cycle.toString() : ""}
+  onValueChange={v => setSaleData(p => ({ ...p, subscription_cycle: Number(v) as 15|30|60|90 }))}
+>
       <SelectTrigger><SelectValue placeholder="Choose" /></SelectTrigger>
       <SelectContent>
         <SelectItem value="15">15 days</SelectItem>
@@ -1772,6 +1850,50 @@ const sortedLeads = [...filteredLeads].sort((a, b) => {
         onChange={e => setSaleData(p => ({ ...p, github_value: Number(e.target.value) }))}/>
     </div>
   </div>
+
+  {/* EXTRA ADD-ONS + COMMITMENTS */}
+<div className="grid grid-cols-2 gap-4">
+  {/* Courses / Certifications ($) */}
+  <div>
+    <Label>Courses / Certifications ($)</Label>
+    <Input
+      type="number"
+      value={saleData.courses_value}
+      onChange={e => setSaleData(p => ({ ...p, courses_value: Number(e.target.value) }))}
+    />
+  </div>
+
+  {/* Custom add-on: label + amount */}
+  <div>
+    <Label>Custom Add-on</Label>
+    <div className="flex gap-2">
+      <Input
+        placeholder="Label (e.g., Coaching)"
+        value={saleData.custom_label}
+        onChange={e => setSaleData(p => ({ ...p, custom_label: e.target.value }))}
+        className="w-1/2"
+      />
+      <Input
+        type="number"
+        placeholder="$"
+        value={saleData.custom_value}
+        onChange={e => setSaleData(p => ({ ...p, custom_value: Number(e.target.value) }))}
+        className="w-1/2"
+      />
+    </div>
+  </div>
+
+  {/* Commitments textarea */}
+  <div className="col-span-2">
+    <Label>Commitments</Label>
+    <Textarea
+      placeholder="Enter commitments (e.g., # of applications, calls, deliverables, timelines…)"
+      value={saleData.commitments}
+      onChange={e => setSaleData(p => ({ ...p, commitments: e.target.value }))}
+    />
+  </div>
+</div>
+
 
   <div className="p-3 bg-gray-50 rounded-md text-sm">
     <p><strong>Total Amount →</strong> ${totalAmount.toLocaleString()}</p>

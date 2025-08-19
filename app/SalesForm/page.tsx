@@ -894,6 +894,8 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+
 import {
   Select,
   SelectContent,
@@ -955,6 +957,13 @@ export default function SalesFormPage() {
   const [portfolioValue, setPortfolioValue] = useState<string>("");
   const [linkedinValue, setLinkedinValue] = useState<string>("");
   const [githubValue, setGithubValue] = useState<string>("");
+
+  // NEW add-ons + notes
+const [coursesValue, setCoursesValue] = useState<string>("");
+const [customLabel, setCustomLabel] = useState<string>("");
+const [customValue, setCustomValue] = useState<string>("");
+const [commitments, setCommitments] = useState<string>("");
+
 
   // Source + referral
   const [subscriptionSource, setSubscriptionSource] = useState<string>("");
@@ -1061,8 +1070,10 @@ const fmtDate = (s?: string | null) => {
       n(resumeValue) +
       n(portfolioValue) +
       n(linkedinValue) +
-      n(githubValue),
-    [autoTotal, resumeValue, portfolioValue, linkedinValue, githubValue]
+      n(githubValue)+
+       n(coursesValue) +   // NEW
+    n(customValue),     // NEW
+    [autoTotal, resumeValue, portfolioValue, linkedinValue, githubValue, coursesValue, customValue]
   );
 
   const nextDueDate = useMemo(() => {
@@ -1209,6 +1220,12 @@ referral_id: cleanedRefId,
       linkedin_sale_value: numOrNull(linkedinValue),
       github_sale_value: numOrNull(githubValue),
       portfolio_sale_value: numOrNull(portfolioValue),
+
+      courses_sale_value: numOrNull(coursesValue),
+  custom_label: (customLabel.trim() || null),
+  custom_sale_value: numOrNull(customValue),
+  commitments: (commitments.trim() || null),
+
       checkout_date: null,
       invoice_url: "",
       associates_email: "",
@@ -1239,6 +1256,11 @@ referral_id: cleanedRefId,
     setPortfolioValue("");
     setLinkedinValue("");
     setGithubValue("");
+    setCoursesValue("");
+setCustomLabel("");
+setCustomValue("");
+setCommitments("");
+
     setSubscriptionSource("");
     setReferrerId("");
     setReferrerName("");
@@ -1572,7 +1594,50 @@ const sanitizePhone = (input: string) => {
                       value={githubValue}
                       onChange={(e) => setGithubValue(e.target.value)}
                     />
+                                      {/* Courses / Certifications ($) */}
+
+                    <Input
+  type="number"
+  inputMode="decimal"
+  min="0"
+  step="0.01"
+  placeholder="Courses / Certifications Value ($)"
+  value={coursesValue}
+  onChange={(e) => setCoursesValue(e.target.value)}
+/>
+<div className="flex gap-2">
+  <Input
+    placeholder="Custom Add-on (e.g., Courses)"
+    value={customLabel}
+    onChange={(e) => setCustomLabel(e.target.value)}
+    className="w-1/2"
+  />
+  <Input
+    type="number"
+    inputMode="decimal"
+    min="0"
+    step="0.01"
+    placeholder="Custom Add-on Value ($)"
+    value={customValue}
+    onChange={(e) => setCustomValue(e.target.value)}
+    className="w-1/2"
+  />
+</div>
                   </div>
+
+
+{/* Custom add-on: label + amount */}
+
+{/* Commitments */}
+<div className="border rounded-md p-4 space-y-2">
+  <Label className="font-semibold">Commitments</Label>
+  <Textarea
+    placeholder="Enter commitments (e.g., # of applications per week, review calls, deliverables, timelines…)"
+    value={commitments}
+    onChange={(e) => setCommitments(e.target.value)}
+  />
+</div>
+
                 </div>
 
                 {/* Auto Calculated + Submit */}
@@ -1692,7 +1757,7 @@ const sanitizePhone = (input: string) => {
   </CardContent>
 </Card>
 
-<Card className="lg:col-span-1 mt-4 h-[38vh] flex flex-col">
+<Card className="lg:col-span-1 mt-4 h-[56vh] flex flex-col">
   <CardHeader className="shrink-0">
     <CardTitle>Search Results </CardTitle>
     <p className="text-gray-400">slide to left to see complete data</p>

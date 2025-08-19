@@ -1394,9 +1394,9 @@ function calculateNextRenewal(onboarded: string | undefined, cycle: number): str
             {/* <Button onClick={() => setShowRevenueDialog(true)}>Revenue</Button> */}
             <div className="flex gap-2">
               {/* <Button onClick={() => setShowRevenueDialog(true)}>Revenue</Button> */}
-              <Button onClick={() => setShowOnboardDialog(true)} className="bg-green-600 hover:bg-green-500 text-white">
+              {/* <Button onClick={() => setShowOnboardDialog(true)} className="bg-green-600 hover:bg-green-500 text-white">
                 Onboard New Client
-              </Button>
+              </Button> */}
               <DropdownMenu>
   <DropdownMenuTrigger asChild>
     <Button variant="outline" className="flex gap-1">
