@@ -40,6 +40,7 @@ interface Lead {
   client_name: string;
   email: string;
   phone: string;
+  status?: string;     // Optional, if you want to track status
   assigned_to: string;
   current_stage: SalesStage;
   call_history: CallHistory[];
@@ -266,42 +267,46 @@ useEffect(() => {
     fetchLeads(profile);   // pass profile here
   };
 
-  const fetchLeads = async (profile: Profile) => {
-    let query = supabase.from("leads").select(
-      // "id, business_id, name, email, phone, assigned_to, current_stage, created_at"
+const fetchLeads = async (profile: Profile) => {
+  let query = supabase
+    .from("leads")
+    .select(`
+      id, business_id, name, email, phone,
+      assigned_to, current_stage, status,
+      created_at, assigned_at
+    `)
+    .eq("status", "Assigned"); // ← only Assigned
 
-        "id, business_id, name, email, phone, assigned_to, current_stage, created_at, assigned_at"
+  // Sales Associate → only their leads by assigned_to
+  if (profile.roles === "Sales Associate") {
+    query = query.eq("assigned_to", profile.full_name);
+  } else {
+    // Admin / Sales see all Assigned
+    // query = query.not("assigned_to", "is", null).neq("assigned_to", "");
+  }
 
-    );
+  const { data, error } = await query;
+  if (error) {
+    console.error("Error fetching leads:", error);
+    return;
+  }
 
-    if (profile.roles === "Sales Associate") {
-      query = query.eq("assigned_to", profile.full_name);
-    } else {
-      query = query.not("assigned_to", "is", null).neq("assigned_to", "");
-    }
+  const leadsData: Lead[] = (data ?? []).map((lead: any) => ({
+    id: lead.id,
+    business_id: lead.business_id,
+    client_name: lead.name,
+    email: lead.email,
+    phone: lead.phone,
+    assigned_to: lead.assigned_to,
+    current_stage: lead.current_stage,
+    call_history: [], // Provide an empty array for call_history
+    created_at: lead.created_at,
+    assigned_at: lead.assigned_at,
+  }));
 
-    const { data, error } = await query;
-    if (error) {
-      console.error("Error fetching leads:", error);
-      return;
-    }
+  setLeads(leadsData);
+};
 
-    const leadsData: Lead[] = data.map((lead: any) => ({
-      id: lead.id,
-      business_id: lead.business_id,
-      client_name: lead.name,
-      email: lead.email,
-      phone: lead.phone,
-      assigned_to: lead.assigned_to,
-      current_stage: lead.current_stage,
-      call_history: [],
-      created_at: lead.created_at,
-        assigned_at: lead.assigned_at,      // ⬅️ add this
-
-    }));
-
-    setLeads(leadsData);
-  };
 
   /* 🔄 Re-compute total every time a relevant field changes */
 useEffect(() => {
@@ -456,30 +461,25 @@ const handleSort = (key: keyof Lead) => {
 };
 
 
-  const filteredLeads = leads.filter((lead) => {
+const filteredLeads = leads.filter((lead) => {
+  if ((lead.status ?? "Assigned") !== "Assigned") return false;
+
   const matchesSearch =
-    lead.client_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    lead.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    lead.phone.includes(searchTerm);
+    (lead.client_name ?? "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (lead.email ?? "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (lead.phone ?? "").includes(searchTerm);
 
   const matchesStage = stageFilter === "all" || lead.current_stage === stageFilter;
 
-  // const matchesDate =
-  //   !startDate || !endDate ||
-  //   (lead.assigned_at &&
-  //     dayjs(lead.assigned_at).isAfter(dayjs(startDate).subtract(1, 'day')) &&
-  //     dayjs(lead.assigned_at).isBefore(dayjs(endDate).add(1, 'day')));
-
   const matchesDate =
-  !startDate || !endDate ||
-  (lead.assigned_at &&
-    dayjs(lead.assigned_at).isBetween(
-      dayjs(startDate).startOf("day"),
-      dayjs(endDate).endOf("day"),
-      null,
-      "[]"
-    ));
-
+    !startDate || !endDate ||
+    (lead.assigned_at &&
+      dayjs(lead.assigned_at).isBetween(
+        dayjs(startDate).startOf("day"),
+        dayjs(endDate).endOf("day"),
+        null,
+        "[]"
+      ));
 
   return matchesSearch && matchesStage && matchesDate;
 });
@@ -745,14 +745,20 @@ const handleSaleClosureSubmit = async () => {
 
 
 const totalLeadsCount = filteredLeads.length;
-const prospectCount = filteredLeads.filter(l => l.current_stage === "Prospect").length;
-const dnpAndConvoCount = filteredLeads.filter(l =>
-  l.current_stage === "DNP" || l.current_stage === "Conversation Done"
-).length;
-const saleDoneCount = filteredLeads.filter(l => l.current_stage === "sale done").length;
-const othersCount = filteredLeads.filter(l =>
-  !["Prospect", "DNP", "Conversation Done", "sale done"].includes(l.current_stage)
-).length;
+
+const stageCounts = filteredLeads.reduce((acc, l) => {
+  acc[l.current_stage] = (acc[l.current_stage] || 0) as number + 1;
+  return acc;
+}, {} as Record<SalesStage, number>);
+
+const prospectCount = stageCounts["Prospect"] ?? 0;
+const dnpCount = stageCounts["DNP"] ?? 0;
+const convoDoneCount = stageCounts["Conversation Done"] ?? 0;
+const targetCount = stageCounts["Target"] ?? 0;
+const saleDoneCount = stageCounts["sale done"] ?? 0;
+
+// If you still want an “Others” bucket using the same list:
+const othersCount = totalLeadsCount - (prospectCount + dnpCount + convoDoneCount + saleDoneCount + targetCount);
 
 const fetchCallHistory = async (leadId: string) => {
   const lead = leads.find((l) => l.id === leadId);
@@ -1110,24 +1116,21 @@ const fetchSalesClosureCount = async () => {
             </Card>
 
             <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">DNP & Conversation Done</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{dnpAndConvoCount}</div>
-              </CardContent>
-            </Card>
-
-           <Card>
   <CardHeader className="pb-2">
-    <CardTitle className="text-sm font-medium">Sales Done</CardTitle>
+    <CardTitle className="text-sm font-medium">DNP & Conversation Done</CardTitle>
   </CardHeader>
   <CardContent>
-    {/* Absolute count from sales_closure */}
-    <div className="text-2xl font-bold">{salesClosedTotal}</div>
+    <div className="text-2xl font-bold">{(dnpCount + convoDoneCount)}</div>
+  </CardContent>
+</Card>
 
-    {/* (Optional) also show current-view count below */}
-    {/* <div className="text-xs text-muted-foreground">This view: {saleDoneCount}</div> */}
+
+  <Card>
+  <CardHeader className="pb-2">
+    <CardTitle className="text-sm font-medium">Sales Done (from leads)</CardTitle>
+  </CardHeader>
+  <CardContent>
+    <div className="text-2xl font-bold">{saleDoneCount}</div>
   </CardContent>
 </Card>
 
