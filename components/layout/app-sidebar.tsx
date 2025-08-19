@@ -195,6 +195,14 @@ const navigationItems = [
     description: "Leads Management",
   },
   {
+    title: "Marketing Associates",
+    url: "/marketingAssociates",
+    icon: Users,
+    module: "marketingAssociates",
+    description: "Leads Management",
+   
+  },
+  {
     title: "Sales CRM",
     url: "/sales",
     icon: TrendingUp,

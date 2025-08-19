@@ -1410,6 +1410,7 @@ type TeamMember = {
 };
 
 const RESUME_COLUMNS = [
+    "S.No",
   "Client ID",
   "Name",
   "Email",
@@ -1763,8 +1764,9 @@ if (teamErr) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {data.map((row) => (
+          {data.map((row, index) => (
             <TableRow key={row.id}>
+              <TableCell className="text-center">{index + 1}</TableCell>
               <TableCell>{row.lead_id}</TableCell>
               <TableCell>{row.leads?.name || "-"}</TableCell>
               <TableCell>{row.email}</TableCell>

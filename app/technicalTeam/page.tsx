@@ -2424,6 +2424,7 @@ interface TeamUser {
 }
 
 const PORTFOLIO_COLUMNS = [
+  "S.No",
   "Client ID",
   "Name",
   "Email",
@@ -2437,6 +2438,7 @@ const PORTFOLIO_COLUMNS = [
 ] as const;
 
 const GITHUB_COLUMNS = [
+    "S.No",
   "Client ID",
   "Name",
   "Email",
@@ -2828,8 +2830,9 @@ export default function TechnicalTeamPage() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {rows.map((sale) => (
+          {rows.map((sale, index) => (
             <TableRow key={sale.id}>
+              <TableCell>{index+1}</TableCell>
               <TableCell>{sale.lead_id}</TableCell>
               <TableCell>{sale.leads?.name || "-"}</TableCell>
               <TableCell>{sale.email}</TableCell>
@@ -2976,8 +2979,9 @@ export default function TechnicalTeamPage() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {rows.map((sale) => (
+          {rows.map((sale, index) => (
             <TableRow key={sale.id}>
+              <TableCell>{index+1}</TableCell>
               <TableCell>{sale.lead_id}</TableCell>
               <TableCell>{sale.leads?.name || "-"}</TableCell>
               <TableCell>{sale.email}</TableCell>

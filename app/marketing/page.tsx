@@ -1,4 +1,4 @@
-
+//app/marketing/page.tsx
 "use client";
 import { useEffect, useRef, useState, useContext } from "react";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
