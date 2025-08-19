@@ -318,9 +318,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         router.push("/");
         break;
       case "Marketing":
-      case "Marketing Associate":
+      
         router.push("/marketing");
         break;
+        case "Marketing Associate":
+          router.push("/marketingAssociates");
+          break;
       case "Sales":
       case "Sales Associate":
         router.push("/sales");
@@ -367,7 +370,7 @@ case "Resume Associate":
  // hasAccess
 const accessMap: Record<UserRole, string[]> = {
   "Super Admin": [
-    "admin","marketing","sales","account-management","finance","finance-associates",
+    "admin","marketing","sales","account-management","finance","finance-associates","marketingAssociate",
     "technical","technical-associate","resume","resume-associate","onboard"
   ],
   Marketing: ["marketing","onboard"],
