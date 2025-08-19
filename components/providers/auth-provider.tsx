@@ -325,10 +325,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           router.push("/marketingAssociates");
           break;
       case "Sales":
+         router.push("/sales");
+        break;
       case "Sales Associate":
         router.push("/sales");
         break;
       case "Account Management":
+         router.push("/account-management");
+        break;
       case "Accounts Associate":
         router.push("/account-management");
         break;
@@ -345,6 +349,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         router.push("/technicalTeam");
         break;
       case "Resume Head":
+        router.push("/resumeTeam");
+  break;
 case "Resume Associate":
   router.push("/resumeTeam");
   break;
@@ -373,7 +379,7 @@ const accessMap: Record<UserRole, string[]> = {
     "admin","marketing","sales","account-management","finance","finance-associates","marketingAssociate",
     "technical","technical-associate","resume","resume-associate","onboard"
   ],
-  Marketing: ["marketing","onboard"],
+  Marketing: ["marketing","marketingAssociate","onboard"],
   Sales: ["sales","Sales Associate","onboard"],
   "Account Management": ["account-management","onboard"],
   Finance: ["finance","onboard"],                     // keep as-is unless you want Onboard here too
