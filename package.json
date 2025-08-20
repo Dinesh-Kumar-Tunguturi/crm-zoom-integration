@@ -3,9 +3,7 @@
   "version": "0.1.0",
   "private": true,
    "scripts": {
-    "dev": "concurrently \"next dev\" \"npm run cron\"",
-    "cron": "tsx scripts/auto-fetch.ts",
-    "cron:prod": "tsx scripts/auto-fetch.ts",
+    "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",

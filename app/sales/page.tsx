@@ -1053,6 +1053,41 @@ const handleUpdateNote = async (call: CallHistory) => {
 };
 
 
+const downloadResume = async (path: string) => {
+  try {
+    // lead_id is the first folder in "leadId/<timestamp>_filename.pdf"
+    const leadId = (path || "").split("/")[0] || "unknown";
+    const fileName = `resume-${leadId}.pdf`;
+
+    const { data, error } = await supabase.storage
+      .from("resumes")
+      .createSignedUrl(path, 60 * 60); // 1 hour
+
+    if (error) throw error;
+    if (!data?.signedUrl) throw new Error("No signed URL");
+
+    const res = await fetch(data.signedUrl);
+    if (!res.ok) throw new Error(`Download failed (${res.status})`);
+
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName; // 👉 always "resume-<lead_id>.pdf"
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+
+    URL.revokeObjectURL(url);
+  } catch (e: any) {
+    alert(e?.message || "Could not download PDF");
+  }
+};
+
+// 2) Replace your PR dialog cell with this (no <a> tag, just a button that calls the helper)
+
+
 // 📍 Place this just before rendering the table rows
 // const sortedLeads = [...filteredLeads].sort((a, b) => {
 //   const { key, direction } = sortConfig;
@@ -1891,20 +1926,18 @@ const LinkCell = ({ href, label }: { href?: string | null; label?: string }) =>
             {r.resumePaid === "Paid" ? <StatusBadge text={r.resumeStatus} /> : <span>—</span>}
           </TableCell>
           <TableCell className="text-center">
-          {r.resumePdf ? (
-  <a
-    href={`/api/resumes?path=${encodeURIComponent(r.resumePdf)}&name=${encodeURIComponent(
-      `Resume-${r.lead_id}.pdf`
-    )}`}
-  >
-    <Button variant="outline" size="sm">Download</Button>
-  </a>
-) : (
-  <span>—</span>
-)}
-
-
-          </TableCell>
+  {r.resumePdf ? (
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={() => downloadResume(r.resumePdf!)}
+    >
+      Download
+    </Button>
+  ) : (
+    <span>—</span>
+  )}
+</TableCell>
 
           {/* Portfolio */}
           <TableCell className="text-center">
