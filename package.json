@@ -2,7 +2,7 @@
   "name": "my-v0-project",
   "version": "0.1.0",
   "private": true,
-  "scripts": {
+   "scripts": {
     "dev": "concurrently \"next dev\" \"npm run cron\"",
     "cron": "tsx scripts/auto-fetch.ts",
     "cron:prod": "tsx scripts/auto-fetch.ts",

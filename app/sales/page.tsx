@@ -33,6 +33,29 @@ interface CallHistory {
   notes: string;
 }
 
+type PRPaidFlag = "Paid" | "Not paid";
+type PRRow = {
+  lead_id: string;
+  name: string;
+  email: string;
+  closed_at: string | null; // oldest closure date (YYYY-MM-DD or null)
+
+  resumePaid: PRPaidFlag;
+  resumeStatus: string | null;
+  resumePdf: string | null;
+
+  portfolioPaid: PRPaidFlag;
+  portfolioStatus: string | null;
+  portfolioLink: string | null;
+
+  githubPaid: PRPaidFlag; // no status/link available for github in resume_progress
+};
+
+
+
+
+
+
 
 interface Lead {
   id: string;
@@ -104,6 +127,9 @@ export default function SalesPage() {
     const [userProfile, setUserProfile] = useState<Profile | null>(null);
     const [salesClosedTotal, setSalesClosedTotal] = useState(0);
 
+  const [prDialogOpen, setPrDialogOpen] = useState(false);
+const [prLoading, setPrLoading] = useState(false);
+const [prRows, setPrRows] = useState<PRRow[]>([]);
 
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
@@ -437,6 +463,143 @@ useEffect(() => {
     notes: mostRecentMap.get(lead.business_id)?.notes ?? "N/A",
   }));
 };
+
+async function openPortfolioResumesDialog() {
+  try {
+    setPrLoading(true);
+
+    // 1) Leads owned by this salesperson, stage = 'sale done'
+    let leadsQ = supabase
+      .from("leads")
+      .select("business_id, name, email, assigned_to")
+      .eq("current_stage", "sale done");
+
+    // Scope to the logged-in Sales Associate; Admin/Sales see all
+    if (userProfile?.roles === "Sales Associate") {
+      leadsQ = leadsQ.eq("assigned_to", userProfile.full_name);
+    }
+
+    const { data: leadRows, error: leadsErr } = await leadsQ;
+    if (leadsErr) throw leadsErr;
+
+    const ids = (leadRows ?? []).map((l) => l.business_id).filter(Boolean);
+    if (ids.length === 0) {
+      setPrRows([]);
+      setPrDialogOpen(true);
+      return;
+    }
+
+    const leadMeta = new Map(
+      (leadRows ?? []).map((l) => [l.business_id, { name: l.name, email: l.email }])
+    );
+
+    // 2) sales_closure → take the OLDEST record per lead_id (by closed_at ASC)
+    const { data: scRows, error: scErr } = await supabase
+      .from("sales_closure")
+      .select("lead_id, closed_at, resume_sale_value, portfolio_sale_value, github_sale_value")
+      .in("lead_id", ids)
+      .order("closed_at", { ascending: true });
+
+    if (scErr) throw scErr;
+
+    type OldestMapVal = {
+      closed_at: string | null;
+      resume_sale_value: number | null;
+      portfolio_sale_value: number | null;
+      github_sale_value: number | null;
+    };
+    const oldestMap = new Map<string, OldestMapVal>();
+
+    for (const r of scRows ?? []) {
+      if (!oldestMap.has(r.lead_id)) {
+        oldestMap.set(r.lead_id, {
+          closed_at: r.closed_at ? dayjs(r.closed_at).format("YYYY-MM-DD") : null,
+          resume_sale_value: r.resume_sale_value ?? null,
+          portfolio_sale_value: r.portfolio_sale_value ?? null,
+          github_sale_value: r.github_sale_value ?? null,
+        });
+      }
+    }
+
+    // 3a) resume_progress → resume status + pdf_path
+    const { data: rpRows, error: rpErr } = await supabase
+      .from("resume_progress")
+      .select("lead_id, status, pdf_path")
+      .in("lead_id", ids);
+
+    if (rpErr) throw rpErr;
+
+    const rpMap = new Map<string, { status: string | null; pdf_path: string | null }>();
+    for (const r of rpRows ?? []) {
+      rpMap.set(r.lead_id, {
+        status: r.status ?? null,
+        pdf_path: r.pdf_path ?? null,
+      });
+    }
+
+    // 3b) portfolio_progress → portfolio status + link
+    const { data: ppRows, error: ppErr } = await supabase
+      .from("portfolio_progress")
+      .select("lead_id, status, link")
+      .in("lead_id", ids);
+
+    if (ppErr) throw ppErr;
+
+    const ppMap = new Map<string, { status: string | null; link: string | null }>();
+    for (const p of ppRows ?? []) {
+      ppMap.set(p.lead_id, {
+        status: p.status ?? null,
+        link: p.link ?? null,
+      });
+    }
+
+    // 4) Build dialog rows with Paid/Not paid flags and statuses/links
+    const paidFlag = (v: any): "Paid" | "Not paid" =>
+      v !== null && Number(v) !== 0 ? "Paid" : "Not paid";
+
+    const rows: PRRow[] = ids.map((id) => {
+      const meta = leadMeta.get(id) ?? { name: "-", email: "-" };
+      const o =
+        oldestMap.get(id) ?? {
+          closed_at: null,
+          resume_sale_value: null,
+          portfolio_sale_value: null,
+          github_sale_value: null,
+        };
+      const r = rpMap.get(id);
+      const p = ppMap.get(id);
+
+      return {
+        lead_id: id,
+        name: meta.name,
+        email: meta.email,
+        closed_at: o.closed_at,
+
+        // Resume
+        resumePaid: paidFlag(o.resume_sale_value),
+        resumeStatus: r?.status ?? null,
+        resumePdf: r?.pdf_path ?? null,
+
+        // Portfolio
+        portfolioPaid: paidFlag(o.portfolio_sale_value),
+        portfolioStatus: p?.status ?? null,
+        portfolioLink: p?.link ?? null,
+
+        // GitHub (sale only, per your spec)
+        githubPaid: paidFlag(o.github_sale_value),
+      };
+    });
+
+    setPrRows(rows);
+    setPrDialogOpen(true);
+  } catch (e: any) {
+    console.error("Portfolio/Resumes fetch failed:", e?.message || e);
+    alert("Failed to load Portfolio/Resumes.");
+  } finally {
+    setPrLoading(false);
+  }
+}
+
 
 
   // const filteredLeads = leads.filter((lead) => {
@@ -964,6 +1127,25 @@ const fetchSalesClosureCount = async () => {
   if (!error) setSalesClosedTotal(count ?? 0);
 };
 
+const PaidBadge = ({ paid }: { paid: "Paid" | "Not paid" }) => (
+  <Badge className={paid === "Paid" ? "bg-green-100 text-green-800" : "bg-red-500 text-white"}>
+    {paid}
+  </Badge>
+);
+
+const StatusBadge = ({ text }: { text?: string | null }) => (
+  <Badge variant="outline">{text ?? "—"}</Badge>
+);
+
+const LinkCell = ({ href, label }: { href?: string | null; label?: string }) =>
+  href ? (
+    <a href={href} target="_blank" rel="noreferrer" className="text-blue-600 underline">
+      {label ?? "Open"}
+    </a>
+  ) : (
+    <span>—</span>
+  );
+
 
   return (
     <ProtectedRoute allowedRoles={["Sales","Sales Associate", "Super Admin"]}>
@@ -974,21 +1156,21 @@ const fetchSalesClosureCount = async () => {
             <h1 className="text-3xl font-bold">Sales CRM</h1>
 
 <div className="justify-end flex gap-2">
-            {/* <Button
-    className="bg-green-600 hover:bg-green-700 text-white"
-    onClick={() => setOnboardDialogOpen(true)}
+  <Button
+    onClick={async () => {
+      const followUps = await fetchFollowUps();
+      setFollowUpsData(followUps);
+      setFollowUpsDialogOpen(true);
+    }}
   >
-    Onboard New Client
-  </Button> */}
+    Follow Ups
+  </Button>
 
-            <Button onClick={async () => {
-              const followUps = await fetchFollowUps();
-              setFollowUpsData(followUps);
-              setFollowUpsDialogOpen(true);
-            }}>
-              Follow Ups
-            </Button>
-            </div>
+  <Button onClick={openPortfolioResumesDialog}>
+    Portfolio/Resumes
+  </Button>
+</div>
+
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
             <Dialog open={followUpsDialogOpen} onOpenChange={setFollowUpsDialogOpen}>
@@ -1554,6 +1736,207 @@ const fetchSalesClosureCount = async () => {
               )}
             </DialogContent>
           </Dialog>
+
+          {/* <Dialog open={prDialogOpen} onOpenChange={setPrDialogOpen}>
+  <DialogContent className="max-w-6xl" onPointerDownOutside={(e) => e.preventDefault()}>
+    <DialogHeader>
+      <DialogTitle>Portfolio / Resumes</DialogTitle>
+      <DialogDescription>
+        Leads scoped to {userProfile?.roles === "Sales Associate" ? userProfile?.full_name : "all owners"}.
+      </DialogDescription>
+    </DialogHeader>
+
+    <div className="max-h-[70vh] overflow-auto rounded-md border">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>S.No</TableHead>
+            <TableHead>Lead ID</TableHead>
+            <TableHead>Name</TableHead>
+            <TableHead>Email</TableHead>
+            <TableHead>Closed At</TableHead>
+            <TableHead>Resume</TableHead>
+            <TableHead>Portfolio</TableHead>
+          </TableRow>
+        </TableHeader>
+
+        <TableBody>
+          {prLoading ? (
+            <TableRow>
+              <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
+                Loading…
+              </TableCell>
+            </TableRow>
+          ) : prRows.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
+                No data.
+              </TableCell>
+            </TableRow>
+          ) : (
+            prRows.map((r, i) => (
+              <TableRow key={r.lead_id}>
+                <TableCell>{i + 1}</TableCell>
+                <TableCell>{r.lead_id}</TableCell>
+                <TableCell>{r.name}</TableCell>
+                <TableCell className="w-56 truncate">{r.email}</TableCell>
+                <TableCell>{r.closed_at ?? "—"}</TableCell>
+
+             
+                <TableCell className="whitespace-nowrap">
+                  {r.resume_pdf_path ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        // reuse your existing signed URL proxy
+                        const url = `/api/resumes?path=${encodeURIComponent(r.resume_pdf_path!)}&name=${encodeURIComponent(`Resume-${r.lead_id}.pdf`)}`;
+                        window.open(url, "_blank");
+                      }}
+                    >
+                      View
+                    </Button>
+                  ) : (
+                    <Badge variant="outline">{r.resume_status}</Badge>
+                  )}
+                </TableCell>
+
+       
+                <TableCell className="whitespace-nowrap">
+                  {r.portfolio_link ? (
+                    <a
+                      href={r.portfolio_link}
+                      className="underline"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Open
+                    </a>
+                  ) : (
+                    <Badge variant="outline">{r.portfolio_status}</Badge>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))
+          )}
+        </TableBody>
+      </Table>
+    </div>
+  </DialogContent>
+</Dialog> */}
+
+<Dialog open={prDialogOpen} onOpenChange={setPrDialogOpen}>
+  <DialogContent className="max-w-max" onPointerDownOutside={(e) => e.preventDefault()}>
+    <DialogHeader>
+      <DialogTitle>Portfolio / Resumes</DialogTitle>
+      <DialogDescription>
+        Leads for <b>{userProfile?.full_name ?? "—"}</b> with stage <b>sale done</b> (oldest closure per lead).
+      </DialogDescription>
+    </DialogHeader>
+
+    <div className="max-h-[70vh] overflow-auto rounded-md border">
+      <Table>
+  <TableHeader>
+    <TableRow>
+      <TableHead>S.No</TableHead>
+      <TableHead>Lead ID</TableHead>
+      <TableHead>Name</TableHead>
+      <TableHead>Email</TableHead>
+      <TableHead>Closed At (oldest)</TableHead>
+
+      {/* Resume */}
+      <TableHead className="text-center">Resume Sale</TableHead>
+      <TableHead className="text-center">Resume Status</TableHead>
+      <TableHead className="text-center">Resume Link</TableHead>
+
+      {/* Portfolio */}
+      <TableHead className="text-center">Portfolio Sale</TableHead>
+      <TableHead className="text-center">Portfolio Status</TableHead>
+      <TableHead className="text-center">Portfolio Link</TableHead>
+
+      {/* GitHub */}
+      <TableHead className="text-center">GitHub Sale</TableHead>
+      <TableHead className="text-center">GitHub Status</TableHead>
+    </TableRow>
+  </TableHeader>
+
+  <TableBody>
+    {prLoading ? (
+      <TableRow>
+        <TableCell colSpan={13} className="py-8 text-center text-muted-foreground">
+          Loading…
+        </TableCell>
+      </TableRow>
+    ) : prRows.length === 0 ? (
+      <TableRow>
+        <TableCell colSpan={13} className="py-8 text-center text-muted-foreground">
+          No records found.
+        </TableCell>
+      </TableRow>
+    ) : (
+      prRows.map((r, i) => (
+        <TableRow key={r.lead_id}>
+          <TableCell>{i + 1}</TableCell>
+          <TableCell>{r.lead_id}</TableCell>
+          <TableCell>{r.name}</TableCell>
+          <TableCell className="w-56 truncate">{r.email}</TableCell>
+          <TableCell>{r.closed_at ?? "—"}</TableCell>
+
+          {/* Resume */}
+          <TableCell className="text-center">
+            <PaidBadge paid={r.resumePaid} />
+          </TableCell>
+          <TableCell className="text-center">
+            {/* Only show work status if they paid; else show — */}
+            {r.resumePaid === "Paid" ? <StatusBadge text={r.resumeStatus} /> : <span>—</span>}
+          </TableCell>
+          <TableCell className="text-center">
+          {r.resumePdf ? (
+  <a
+    href={`/api/resumes?path=${encodeURIComponent(r.resumePdf)}&name=${encodeURIComponent(
+      `Resume-${r.lead_id}.pdf`
+    )}`}
+  >
+    <Button variant="outline" size="sm">Download</Button>
+  </a>
+) : (
+  <span>—</span>
+)}
+
+
+          </TableCell>
+
+          {/* Portfolio */}
+          <TableCell className="text-center">
+            <PaidBadge paid={r.portfolioPaid} />
+          </TableCell>
+          <TableCell className="text-center">
+            {r.portfolioPaid === "Paid" ? <StatusBadge text={r.portfolioStatus} /> : <span>—</span>}
+          </TableCell>
+          <TableCell className="text-center">
+            {r.portfolioPaid === "Paid" ? (
+              <LinkCell href={r.portfolioLink} label="Open" />
+            ) : (
+              <span>—</span>
+            )}
+          </TableCell>
+
+          {/* GitHub */}
+          <TableCell className="text-center">
+            <PaidBadge paid={r.githubPaid} />
+          </TableCell>
+          <TableCell className="text-center">—</TableCell>
+        </TableRow>
+      ))
+    )}
+  </TableBody>
+</Table>
+
+    </div>
+  </DialogContent>
+</Dialog>
+
+
 
           <Dialog open={followUpDialogOpen} onOpenChange={handleFollowUpDialogClose}>
             <DialogContent onPointerDownOutside={(e) => e.preventDefault()}>

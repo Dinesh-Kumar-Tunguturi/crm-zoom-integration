@@ -2637,31 +2637,38 @@ export default function TechnicalTeamPage() {
 
   // Direct download from Supabase → auto-saves to Downloads
   const downloadResume = async (path: string) => {
-    try {
-      const fileName = `Resume-${path.split("/")[0]}-${
-        path.split("/").pop() || "resume"
-      }.pdf`;
-      const { data, error } = await supabase.storage
-        .from("resumes")
-        .createSignedUrl(path, 60 * 60);
-      if (error) throw error;
-      if (!data?.signedUrl) throw new Error("No signed URL");
+  try {
+    // lead_id is the first segment of the storage path: "<lead_id>/<timestamp>_file.pdf"
+    const segments = (path || "").split("/");
+    const leadId = segments[0] || "unknown";
+    const fileName = `Resume-${leadId}.pdf`;
 
-      const res = await fetch(data.signedUrl);
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
+    // Get a signed URL (works for public or RLS-protected buckets)
+    const { data, error } = await supabase.storage
+      .from("resumes")
+      .createSignedUrl(path, 60 * 60); // 1 hour
 
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = fileName;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
-    } catch (e: any) {
-      alert(e.message || "Could not download PDF");
-    }
-  };
+    if (error) throw error;
+    if (!data?.signedUrl) throw new Error("No signed URL");
+
+    // Fetch the file and trigger a client-side download with our custom filename
+    const res = await fetch(data.signedUrl);
+    if (!res.ok) throw new Error(`Download failed (${res.status})`);
+    const blob = await res.blob();
+    const objectUrl = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = objectUrl;
+    a.download = fileName; // 👈 force name = resume-<lead_id>.pdf
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(objectUrl);
+  } catch (e: any) {
+    alert(e?.message || "Could not download PDF");
+  }
+};
+
 
   // Update portfolio status (non-success) OR open dialog for success
   const handlePortfolioStatusChange = async (
