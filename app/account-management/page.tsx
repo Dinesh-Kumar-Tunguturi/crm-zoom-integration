@@ -115,7 +115,7 @@ export default function AccountManagementPage() {
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [csvData, setCsvData] = useState<any[]>([]);
   const [sortKey, setSortKey] = useState<"client_name" | "created_at" | null>(null);
-const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
 
 
   useEffect(() => {
@@ -261,26 +261,26 @@ const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   });
 
   const sortedClients = [...filteredClients].sort((a, b) => {
-  if (!sortKey) return 0;
+    if (!sortKey) return 0;
 
-  const valA = a[sortKey]?.toLowerCase?.() || a[sortKey];
-  const valB = b[sortKey]?.toLowerCase?.() || b[sortKey];
+    const valA = a[sortKey]?.toLowerCase?.() || a[sortKey];
+    const valB = b[sortKey]?.toLowerCase?.() || b[sortKey];
 
-  if (sortOrder === "asc") {
-    return valA > valB ? 1 : -1;
-  } else {
-    return valA < valB ? 1 : -1;
-  }
-});
+    if (sortOrder === "asc") {
+      return valA > valB ? 1 : -1;
+    } else {
+      return valA < valB ? 1 : -1;
+    }
+  });
 
-const handleSort = (key: "client_name" | "created_at") => {
-  if (sortKey === key) {
-    setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
-  } else {
-    setSortKey(key);
-    setSortOrder("asc");
-  }
-};
+  const handleSort = (key: "client_name" | "created_at") => {
+    if (sortKey === key) {
+      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortOrder("asc");
+    }
+  };
 
 
   // function getRenewWithinStatus(closedAt: string): string {
@@ -506,7 +506,7 @@ const handleSort = (key: "client_name" | "created_at") => {
       header: true,
       skipEmptyLines: true,
       complete: function (results) {
-        const requiredFields = ['Name', 'Rate', 'Payment Frequency','sale_done', 'Onboarded date','Phone number','email'];
+        const requiredFields = ['Name', 'Rate', 'Payment Frequency', 'sale_done', 'Onboarded date', 'Phone number', 'email'];
         const fields: string[] = Array.isArray(results.meta.fields) ? results.meta.fields as string[] : [];
         const missingFields = requiredFields.filter(field => !fields.includes(field));
 
@@ -603,181 +603,181 @@ const handleSort = (key: "client_name" | "created_at") => {
   // };
 
 
-// const handleCSVSubmit = async () => {
-//   if (csvData.length === 0) {
-//     alert("No CSV data to submit");
-//     return;
-//   }
+  // const handleCSVSubmit = async () => {
+  //   if (csvData.length === 0) {
+  //     alert("No CSV data to submit");
+  //     return;
+  //   }
 
-//   try {
-//     // Step 1: Fetch existing AWL IDs
-//     const { data: existingLeads, error: leadsError } = await supabase
-//       .from("leads")
-//       .select("business_id");
+  //   try {
+  //     // Step 1: Fetch existing AWL IDs
+  //     const { data: existingLeads, error: leadsError } = await supabase
+  //       .from("leads")
+  //       .select("business_id");
 
-//     if (leadsError) throw leadsError;
+  //     if (leadsError) throw leadsError;
 
-//     const existingIds = (existingLeads || [])
-//       .map((l) => l.business_id)
-//       .filter(Boolean)
-//       .map((id) => parseInt(id?.replace("AWL-", ""), 10))
-//       .filter((n) => !isNaN(n));
+  //     const existingIds = (existingLeads || [])
+  //       .map((l) => l.business_id)
+  //       .filter(Boolean)
+  //       .map((id) => parseInt(id?.replace("AWL-", ""), 10))
+  //       .filter((n) => !isNaN(n));
 
-//     let awlCounter = existingIds.length > 0 ? Math.max(...existingIds) + 1 : 1;
+  //     let awlCounter = existingIds.length > 0 ? Math.max(...existingIds) + 1 : 1;
 
-//     // Step 2: Prepare batch inserts
-//     const leadsToInsert = [];
-//     const salesToInsert = [];
+  //     // Step 2: Prepare batch inserts
+  //     const leadsToInsert = [];
+  //     const salesToInsert = [];
 
-//     for (const row of csvData) {
-//       const name = row["Name"]?.trim();
-//       const phone = row["Phone number"]?.trim() || null;
-//       const email = row["email"]?.trim();
-//       const sale_value = parseFloat(row["Rate"]);
-//       const subscription_cycle = parseInt(row["Payment Frequency"], 10);
-//       const date = new Date(row["Onboarded date"]);
+  //     for (const row of csvData) {
+  //       const name = row["Name"]?.trim();
+  //       const phone = row["Phone number"]?.trim() || null;
+  //       const email = row["email"]?.trim();
+  //       const sale_value = parseFloat(row["Rate"]);
+  //       const subscription_cycle = parseInt(row["Payment Frequency"], 10);
+  //       const date = new Date(row["Onboarded date"]);
 
-//       const business_id = `AWL-${awlCounter++}`;
+  //       const business_id = `AWL-${awlCounter++}`;
 
-//       leadsToInsert.push({
-//         name,
-//         email,
-//         phone,
-//         created_at: date.toISOString(),
-//         city: "Unknown",
-//         source: "Directly dumped",
-//         status: "Assigned",
-//         business_id,
-//         current_stage: "sale done",
-//       });
+  //       leadsToInsert.push({
+  //         name,
+  //         email,
+  //         phone,
+  //         created_at: date.toISOString(),
+  //         city: "Unknown",
+  //         source: "Directly dumped",
+  //         status: "Assigned",
+  //         business_id,
+  //         current_stage: "sale done",
+  //       });
 
-//       salesToInsert.push({
-//         lead_id: business_id,
-//         lead_name: name,
-//         email,
-//         sale_value,
-//         subscription_cycle,
-//         payment_mode: "UPI",
-//         finance_status: "Paid",
-//         closed_at: date.toISOString(),
-//         onboarded_date: date.toISOString().split("T")[0],
-//       });
-//     }
+  //       salesToInsert.push({
+  //         lead_id: business_id,
+  //         lead_name: name,
+  //         email,
+  //         sale_value,
+  //         subscription_cycle,
+  //         payment_mode: "UPI",
+  //         finance_status: "Paid",
+  //         closed_at: date.toISOString(),
+  //         onboarded_date: date.toISOString().split("T")[0],
+  //       });
+  //     }
 
-//     // Step 3: Insert to Supabase
-//     const { error: leadInsertError } = await supabase.from("leads").insert(leadsToInsert);
-//     if (leadInsertError) throw leadInsertError;
+  //     // Step 3: Insert to Supabase
+  //     const { error: leadInsertError } = await supabase.from("leads").insert(leadsToInsert);
+  //     if (leadInsertError) throw leadInsertError;
 
-//     const { error: saleInsertError } = await supabase.from("sales_closure").insert(salesToInsert);
-//     if (saleInsertError) throw saleInsertError;
+  //     const { error: saleInsertError } = await supabase.from("sales_closure").insert(salesToInsert);
+  //     if (saleInsertError) throw saleInsertError;
 
-//     alert(`🎉 Inserted ${leadsToInsert.length} records successfully`);
-//     setUploadDialogOpen(false);
-//     setCsvData([]);
-//     setCsvFile(null);
-//   } catch (err) {
-//     console.error("❌ Upload failed:", err);
-//     const errorMsg = err instanceof Error ? err.message : String(err);
-//     alert(`Upload failed: ${errorMsg}`);
-//   }
-// };
-
-
-const handleCSVSubmit = async () => {
-  if (csvData.length === 0) {
-    alert("No CSV data to submit");
-    return;
-  }
-
-  try {
-    const salesToInsert = [];
-
-    // for (const row of csvData) {
-    //   const lead_id = row["lead_id"]?.trim();
-    //   const name = row["Name"]?.trim();
-    //   const email = row["email"]?.trim();
-    //   // const phone = row["Phone number"]?.trim() || null;
-    //   const sale_value = parseFloat(row["Rate"]);
-    //   const subscription_cycle = parseInt(row["Payment Frequency"], 10);
-    //   const date = new Date(row["Onboarded date"]);
-    //   const sale_done = new Date(row["sale_done"]);
-
-    //   if (!lead_id || !name || !email || !sale_value || !subscription_cycle || isNaN(date.getTime())) {
-    //     console.warn("❌ Skipping invalid row:", row);
-    //     continue;
-    //   }
-
-    //   salesToInsert.push({
-    //     lead_id,
-    //     lead_name: name,
-    //     email,
-    //     // phone,
-    //     sale_value,
-    //     subscription_cycle,
-    //     payment_mode: "UPI",
-    //     finance_status: "Paid",
-    //     closed_at: sale_done.toISOString(),
-    //     onboarded_date: date.toISOString().split("T")[0],
-    //   });
-    // }
-
-    for (const row of csvData) {
-  const lead_id = row["lead_id"]?.trim();
-  const name = row["Name"]?.trim();
-  const email = row["email"]?.trim();
-  const sale_value = parseFloat(row["Rate"]);
-  const subscription_cycle = parseInt(row["Payment Frequency"], 10);
-  const date = new Date(row["Onboarded date"]);
-  const sale_done = new Date(row["sale_done"]);
-
-  if (
-    !lead_id ||
-    !name ||
-    !email ||
-    !sale_value ||
-    !subscription_cycle ||
-    isNaN(date.getTime()) ||
-    isNaN(sale_done.getTime())
-  ) {
-    console.warn("❌ Skipping invalid row:", row);
-    if (isNaN(date.getTime())) console.warn("⛔ Invalid Onboarded date:", row["Onboarded date"]);
-    if (isNaN(sale_done.getTime())) console.warn("⛔ Invalid sale_done date:", row["sale_done"]);
-    continue;
-  }
-
-  salesToInsert.push({
-    lead_id,
-    lead_name: name,
-    email,
-    sale_value,
-    subscription_cycle,
-    payment_mode: "UPI",
-    finance_status: "Paid",
-    closed_at: sale_done.toISOString(),
-    onboarded_date: date.toISOString().split("T")[0],
-  });
-}
+  //     alert(`🎉 Inserted ${leadsToInsert.length} records successfully`);
+  //     setUploadDialogOpen(false);
+  //     setCsvData([]);
+  //     setCsvFile(null);
+  //   } catch (err) {
+  //     console.error("❌ Upload failed:", err);
+  //     const errorMsg = err instanceof Error ? err.message : String(err);
+  //     alert(`Upload failed: ${errorMsg}`);
+  //   }
+  // };
 
 
-    if (salesToInsert.length === 0) {
-      alert("No valid rows to upload.");
+  const handleCSVSubmit = async () => {
+    if (csvData.length === 0) {
+      alert("No CSV data to submit");
       return;
     }
 
-    const { error } = await supabase.from("sales_closure").insert(salesToInsert);
+    try {
+      const salesToInsert = [];
 
-    if (error) throw error;
+      // for (const row of csvData) {
+      //   const lead_id = row["lead_id"]?.trim();
+      //   const name = row["Name"]?.trim();
+      //   const email = row["email"]?.trim();
+      //   // const phone = row["Phone number"]?.trim() || null;
+      //   const sale_value = parseFloat(row["Rate"]);
+      //   const subscription_cycle = parseInt(row["Payment Frequency"], 10);
+      //   const date = new Date(row["Onboarded date"]);
+      //   const sale_done = new Date(row["sale_done"]);
 
-    alert(`🎉 Successfully inserted ${salesToInsert.length} renewal records into sales_closure`);
-    setUploadDialogOpen(false);
-    setCsvData([]);
-    setCsvFile(null);
-  } catch (err) {
-    console.error("❌ Upload failed:", err);
-    const errorMsg = err instanceof Error ? err.message : String(err);
-    alert(`Upload failed: ${errorMsg}`);
-  }
-};
+      //   if (!lead_id || !name || !email || !sale_value || !subscription_cycle || isNaN(date.getTime())) {
+      //     console.warn("❌ Skipping invalid row:", row);
+      //     continue;
+      //   }
+
+      //   salesToInsert.push({
+      //     lead_id,
+      //     lead_name: name,
+      //     email,
+      //     // phone,
+      //     sale_value,
+      //     subscription_cycle,
+      //     payment_mode: "UPI",
+      //     finance_status: "Paid",
+      //     closed_at: sale_done.toISOString(),
+      //     onboarded_date: date.toISOString().split("T")[0],
+      //   });
+      // }
+
+      for (const row of csvData) {
+        const lead_id = row["lead_id"]?.trim();
+        const name = row["Name"]?.trim();
+        const email = row["email"]?.trim();
+        const sale_value = parseFloat(row["Rate"]);
+        const subscription_cycle = parseInt(row["Payment Frequency"], 10);
+        const date = new Date(row["Onboarded date"]);
+        const sale_done = new Date(row["sale_done"]);
+
+        if (
+          !lead_id ||
+          !name ||
+          !email ||
+          !sale_value ||
+          !subscription_cycle ||
+          isNaN(date.getTime()) ||
+          isNaN(sale_done.getTime())
+        ) {
+          console.warn("❌ Skipping invalid row:", row);
+          if (isNaN(date.getTime())) console.warn("⛔ Invalid Onboarded date:", row["Onboarded date"]);
+          if (isNaN(sale_done.getTime())) console.warn("⛔ Invalid sale_done date:", row["sale_done"]);
+          continue;
+        }
+
+        salesToInsert.push({
+          lead_id,
+          lead_name: name,
+          email,
+          sale_value,
+          subscription_cycle,
+          payment_mode: "UPI",
+          finance_status: "Paid",
+          closed_at: sale_done.toISOString(),
+          onboarded_date: date.toISOString().split("T")[0],
+        });
+      }
+
+
+      if (salesToInsert.length === 0) {
+        alert("No valid rows to upload.");
+        return;
+      }
+
+      const { error } = await supabase.from("sales_closure").insert(salesToInsert);
+
+      if (error) throw error;
+
+      alert(`🎉 Successfully inserted ${salesToInsert.length} renewal records into sales_closure`);
+      setUploadDialogOpen(false);
+      setCsvData([]);
+      setCsvFile(null);
+    } catch (err) {
+      console.error("❌ Upload failed:", err);
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      alert(`Upload failed: ${errorMsg}`);
+    }
+  };
 
   return (
     <>
@@ -790,7 +790,7 @@ const handleCSVSubmit = async () => {
               <div>
                 <h1 className="text-3xl font-bold text-gray-900">Account Management CRM</h1>
                 <p className="text-gray-600 mt-2">Manage client relationships and feedback</p>
-                </div>
+              </div>
               <div className="flex justify-end mb-4">
                 <Button onClick={() => setUploadDialogOpen(true)}>Upload Sale Done CSV</Button>
               </div>
@@ -870,68 +870,64 @@ const handleCSVSubmit = async () => {
                       <TableRow>
                         <TableHead>S.No</TableHead>
                         {/* <TableHead>Client Name</TableHead> */}
-                       <TableHead className="flex items-center gap-1 select-none">
-                        <div className="flex flex-center gap-1">
-  Client Name
-  
-    <span
-      className={`cursor-pointer text-lg leading-none ${
-        sortKey === "client_name" && sortOrder === "desc" ? "text-blue-500" : "text-gray-400"
-      }`}
-      onClick={() => {
-        setSortKey("client_name");
-        setSortOrder("desc");
-      }}
-    >
-      ↑
-    </span>
-    <span
-      className={`cursor-pointer text-lg leading-none ${
-        sortKey === "client_name" && sortOrder === "asc" ? "text-blue-500" : "text-gray-400"
-      }`}
-      onClick={() => {
-        setSortKey("client_name");
-        setSortOrder("asc");
-      }}
-    >
-      ↓
-    </span>
-  </div>
-</TableHead>
+                        <TableHead className="flex items-center gap-1 select-none">
+                          <div className="flex flex-center gap-1">
+                            Client Name
+
+                            <span
+                              className={`cursor-pointer text-lg leading-none ${sortKey === "client_name" && sortOrder === "desc" ? "text-blue-500" : "text-gray-400"
+                                }`}
+                              onClick={() => {
+                                setSortKey("client_name");
+                                setSortOrder("desc");
+                              }}
+                            >
+                              ↑
+                            </span>
+                            <span
+                              className={`cursor-pointer text-lg leading-none ${sortKey === "client_name" && sortOrder === "asc" ? "text-blue-500" : "text-gray-400"
+                                }`}
+                              onClick={() => {
+                                setSortKey("client_name");
+                                setSortOrder("asc");
+                              }}
+                            >
+                              ↓
+                            </span>
+                          </div>
+                        </TableHead>
 
                         <TableHead>Email</TableHead>
                         <TableHead>Phone</TableHead>
                         <TableHead>Assigned To</TableHead>
                         <TableHead>Stage</TableHead>
                         {/* <TableHead>Closed At</TableHead> */}
-                       <TableHead className="flex items-center gap-1 select-none">
-                        <div className="flex flex-center gap-1">
-  Closed At
-  
-    <span
-      className={`cursor-pointer text-lg leading-none ${
-        sortKey === "created_at" && sortOrder === "desc" ? "text-blue-500" : "text-gray-400"
-      }`}
-      onClick={() => {
-        setSortKey("created_at");
-        setSortOrder("desc");
-      }}
-    >
-      ↑
-    </span>
-    <span
-      className={`cursor-pointer text-lg leading-none ${
-        sortKey === "created_at" && sortOrder === "asc" ? "text-blue-500" : "text-gray-400"
-      }`}
-      onClick={() => {
-        setSortKey("created_at");
-        setSortOrder("asc");
-      }}
-    >
-      ↓
-    </span>
-  </div>
-</TableHead>
+                        <TableHead className="flex items-center gap-1 select-none">
+                          <div className="flex flex-center gap-1">
+                            Closed At
+
+                            <span
+                              className={`cursor-pointer text-lg leading-none ${sortKey === "created_at" && sortOrder === "desc" ? "text-blue-500" : "text-gray-400"
+                                }`}
+                              onClick={() => {
+                                setSortKey("created_at");
+                                setSortOrder("desc");
+                              }}
+                            >
+                              ↑
+                            </span>
+                            <span
+                              className={`cursor-pointer text-lg leading-none ${sortKey === "created_at" && sortOrder === "asc" ? "text-blue-500" : "text-gray-400"
+                                }`}
+                              onClick={() => {
+                                setSortKey("created_at");
+                                setSortOrder("asc");
+                              }}
+                            >
+                              ↓
+                            </span>
+                          </div>
+                        </TableHead>
 
                         <TableHead>Deadline</TableHead>
                         <TableHead>Actions</TableHead>
@@ -941,8 +937,15 @@ const handleCSVSubmit = async () => {
                       {sortedClients.map((client, idx) => (
                         <TableRow key={client.id}>
                           <TableCell>{idx + 1}</TableCell>
-                          <TableCell className="font-medium">{client.client_name}</TableCell>
+                          {/* <TableCell className="font-medium">{client.client_name}</TableCell> */}
+                          <TableCell
+                            className="font-medium max-w-[150px] break-words whitespace-normal cursor-pointer text-blue-600 hover:underline"
+                            onClick={() => window.open(`/leads/${client.id}`, "_blank")}
+                          >
+                            {client.client_name}
+                          </TableCell>
                           <TableCell>{client.email}</TableCell>
+                          
                           <TableCell>{client.phone || "-"}</TableCell>
                           <TableCell>{client.assigned_to}</TableCell>
                           <TableCell>
@@ -1209,9 +1212,9 @@ const handleCSVSubmit = async () => {
                   <DialogDescription>
                     Upload your sales CSV. We'll parse and show the number of entries.<br></br>
                     The csv file must contain columns like below:<br></br>
-                "lead_id, Name, Rate, Payment Frequency, sale_done, Onboarded date, Phone number, email"<br></br>
-                sale_done and Onboarded date date format like 👉 (yyyy-mm-dd)
-              
+                    "lead_id, Name, Rate, Payment Frequency, sale_done, Onboarded date, Phone number, email"<br></br>
+                    sale_done and Onboarded date date format like 👉 (yyyy-mm-dd)
+
                   </DialogDescription>
                 </DialogHeader>
 

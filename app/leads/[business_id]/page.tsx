@@ -7,6 +7,9 @@ import { supabase } from "@/utils/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
+import { useAuth } from "@/components/providers/auth-provider";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import { DashboardLayout } from "@/components/layout/dashboard-layout";
 
 interface Lead {
   id: string;
@@ -22,6 +25,25 @@ interface Lead {
   paid_amount?: number;
 }
 
+interface ResumeProgress {
+  lead_id: string;
+  status: string;            // enum on DB, string in TS
+  pdf_path: string | null;
+  pdf_uploaded_at: string | null;
+  updated_at: string | null;
+  assigned_to_email: string | null;
+  assigned_to_name: string | null;
+}
+
+interface PortfolioProgress {
+  lead_id: string;
+  status: string;            // 'not_started' | 'pending' | ...
+  link: string | null;
+  assigned_email: string | null;
+  assigned_name: string | null;
+  updated_at: string | null;
+}
+
 export default function LeadProfilePage() {
   const { business_id } = useParams();
   const [lead, setLead] = useState<Lead | null>(null);
@@ -31,93 +53,178 @@ export default function LeadProfilePage() {
   const [feedbackList, setFeedbackList] = useState<any[]>([]);
     const [renewal, setRenewal] = useState<Lead | null>(null);
 
+const [resumeProg, setResumeProg] = useState<ResumeProgress | null>(null);
+const [portfolioProg, setPortfolioProg] = useState<PortfolioProgress | null>(null);
+
+const { user }= useAuth();
 
 
-
-  useEffect(() => {
-    const fetchLead = async () => {
-      const { data, error } = await supabase
-        .from("leads")
-        .select("*")
-        .eq("business_id", business_id)
-        .single();
-
-      if (error) {
-        console.error("Error fetching lead:", error.message);
-        setLead(null);
-      } else {
-        setLead(data);
-      }
-
-      setLoading(false);
-    };
-
-    const fetchSalesHistory = async () => {
-  const { data, error } = await supabase
-    .from("sales_closure")
-    .select("*")
-    .eq("lead_id", business_id)
-    .order("onboarded_date", { ascending: true });
-
-  if (error) {
-    console.error("Error fetching sales history:", error.message);
-    return;
-  }
-
-  setSaleHistory(data);
-};
-
-const fetchCallHistory = async () => {
-  const { data, error } = await supabase
-    .from("call_history")
-    .select("*")
-    .eq("lead_id", business_id)
-    .order("followup_date", { ascending: false });
-
-  if (error) {
-    console.error("Error fetching call history:", error.message);
-    return;
-  }
-
-  setCallHistory(data);
-};
-const fetchClientFeedback = async () => {
-  const { data, error } = await supabase
-    .from("client_feedback")
-    .select("*")
-    .eq("lead_id", business_id)
-    .order("id", { ascending: false });
-
-  if (error) {
-    console.error("Error fetching client feedback:", error.message);
-    return;
-  }
-
-  setFeedbackList(data);
-};
-
-if (business_id) {
-  fetchLead();
-  fetchSalesHistory();
-  fetchCallHistory();
-  fetchClientFeedback(); // ✅ New
-}
+const allowedRoles = [
+  "Marketing",
+  "Sales",
+  "Super Admin",
+  "Finance",
+  "Accounts",
+  "Resume Head",
+  "Technical Head",
+  "Sales Associate",
+];
 
 
-if (business_id) {
-  fetchLead();
-  fetchSalesHistory();
-  fetchCallHistory(); // ✅
-}
+//   useEffect(() => {
+//     const fetchLead = async () => {
+//       const { data, error } = await supabase
+//         .from("leads")
+//         .select("*")
+//         .eq("business_id", business_id)
+//         .single();
+
+//       if (error) {
+//         console.error("Error fetching lead:", error.message);
+//         setLead(null);
+//       } else {
+//         setLead(data);
+//       }
+
+//       setLoading(false);
+//     };
+
+//     const fetchSalesHistory = async () => {
+//   const { data, error } = await supabase
+//     .from("sales_closure")
+//     .select("*")
+//     .eq("lead_id", business_id)
+//     .order("onboarded_date", { ascending: true });
+
+//   if (error) {
+//     console.error("Error fetching sales history:", error.message);
+//     return;
+//   }
+
+//   setSaleHistory(data);
+// };
+
+// const fetchCallHistory = async () => {
+//   const { data, error } = await supabase
+//     .from("call_history")
+//     .select("*")
+//     .eq("lead_id", business_id)
+//     .order("followup_date", { ascending: false });
+
+//   if (error) {
+//     console.error("Error fetching call history:", error.message);
+//     return;
+//   }
+
+//   setCallHistory(data);
+// };
+// const fetchClientFeedback = async () => {
+//   const { data, error } = await supabase
+//     .from("client_feedback")
+//     .select("*")
+//     .eq("lead_id", business_id)
+//     .order("id", { ascending: false });
+
+//   if (error) {
+//     console.error("Error fetching client feedback:", error.message);
+//     return;
+//   }
+
+//   setFeedbackList(data);
+// };
+
+// if (business_id) {
+//   fetchLead();
+//   fetchSalesHistory();
+//   fetchCallHistory();
+//   fetchClientFeedback(); // ✅ New
+// }
 
 
-if (business_id) {
-  fetchLead();
-  fetchSalesHistory(); // 🔥
-}
+// if (business_id) {
+//   fetchLead();
+//   fetchSalesHistory();
+//   fetchCallHistory(); // ✅
+// }
 
-    if (business_id) fetchLead();
-  }, [business_id]);
+
+// if (business_id) {
+//   fetchLead();
+//   fetchSalesHistory(); // 🔥
+// }
+
+//     if (business_id) fetchLead();
+//   }, [business_id]);
+
+useEffect(() => {
+  if (!business_id) return;
+
+  const fetchAll = async () => {
+    // Lead
+    const { data: leadRow, error: leadErr } = await supabase
+      .from("leads")
+      .select("*")
+      .eq("business_id", business_id)
+      .single();
+    if (leadErr) {
+      console.error("Error fetching lead:", leadErr.message);
+      setLead(null);
+    } else {
+      setLead(leadRow as Lead);
+    }
+
+    // Sales history (ascending by onboarded_date -> latest is last)
+    const { data: salesRows, error: salesErr } = await supabase
+      .from("sales_closure")
+      .select("*")
+      .eq("lead_id", business_id)
+      .order("onboarded_date", { ascending: true });
+    if (salesErr) console.error("Error fetching sales history:", salesErr.message);
+    setSaleHistory(salesRows ?? []);
+
+    // Call history
+    const { data: callRows, error: callErr } = await supabase
+      .from("call_history")
+      .select("*")
+      .eq("lead_id", business_id)
+      .order("followup_date", { ascending: false });
+    if (callErr) console.error("Error fetching call history:", callErr.message);
+    setCallHistory(callRows ?? []);
+
+    // Client feedback
+    const { data: fbRows, error: fbErr } = await supabase
+      .from("client_feedback")
+      .select("*")
+      .eq("lead_id", business_id)
+      .order("id", { ascending: false });
+    if (fbErr) console.error("Error fetching client feedback:", fbErr.message);
+    setFeedbackList(fbRows ?? []);
+
+    // Resume Progress (unique per lead, per your schema)
+    const { data: rpRow, error: rpErr } = await supabase
+      .from("resume_progress")
+      .select("lead_id,status,pdf_path,pdf_uploaded_at,updated_at,assigned_to_email,assigned_to_name")
+      .eq("lead_id", business_id)
+      .maybeSingle();
+    if (rpErr) console.error("Error fetching resume_progress:", rpErr.message);
+    setResumeProg(rpRow ?? null);
+
+    // Portfolio Progress (PK = lead_id)
+    const { data: ppRow, error: ppErr } = await supabase
+      .from("portfolio_progress")
+      .select("lead_id,status,link,assigned_email,assigned_name,updated_at")
+      .eq("lead_id", business_id)
+      .maybeSingle();
+    if (ppErr) console.error("Error fetching portfolio_progress:", ppErr.message);
+    setPortfolioProg(ppRow ?? null);
+
+    setLoading(false);
+  };
+
+  setLoading(true);
+  fetchAll();
+}, [business_id]);
+
 
   if (loading) {
     return (
@@ -134,14 +241,57 @@ if (business_id) {
       </div>
     );
   }
-  
+const money = (v: any) => {
+  const n = Number(v);
+  return Number.isFinite(n) && n > 0 ? `$${n.toLocaleString()}` : "—";
+};
+
+const fmt = (d?: string | null) =>
+  d ? new Date(d).toLocaleString() : "—";
+
+// Download resume PDF with fixed filename: "resume-<lead_id>.pdf"
+const downloadResume = async (leadId: string, path?: string | null) => {
+  try {
+    if (!path) {
+      alert("No resume PDF found."); return;
+    }
+    // Bucket name is assumed "resumes" — change if different
+    const { data, error } = await supabase
+      .storage.from("resumes")
+      .createSignedUrl(path, 60 * 10); // 10 minutes
+
+    if (error || !data?.signedUrl) throw error || new Error("No signed URL");
+
+    const res = await fetch(data.signedUrl);
+    if (!res.ok) throw new Error(`Download failed (${res.status})`);
+
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `resume-${leadId}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  } catch (e: any) {
+    console.error(e);
+    alert(e?.message || "Could not download PDF");
+  }
+};
+    // console.log(user?.name, user?.role);
+
+
 
   return (
+
+    //  <ProtectedRoute allowedRoles={["Sales","Sales Associate","Super Admin"]}>
+      <DashboardLayout>
     <div className="min-h-screen h-screen w-full bg-gray-50 p-6">
 
-<div className="grid grid-cols-1 md:grid-cols-3 grid-rows-2 gap-6 h-full">
+<div className="grid grid-cols-1 md:grid-cols-4 grid-rows-2 gap-6 h-full">
   {/* 1️⃣ Lead Profile (Left, Top) */}
-  <Card className="h-full col-span-1 row-span-1">
+  <Card className="h-full col-span-1 row-span-1 overflow-auto">
     <CardHeader>
       <CardTitle className="text-2xl font-bold">Lead Profile</CardTitle>
     </CardHeader>
@@ -158,10 +308,173 @@ if (business_id) {
     </CardContent>
   </Card>
 
-  {/* 2️⃣ Call History (Right, Top) */}
+{/* Addons and Requireemnts */}
+  
+{/* Add-ons & Requirements */}
+<Card className="h-full col-span-1 row-span-1 overflow-auto">
+  <CardHeader>
+    <CardTitle className="text-2xl font-bold">Add-ons & Requirements</CardTitle>
+  </CardHeader>
+  <CardContent className="space-y-3 text-sm">
+    {saleHistory.length === 0 ? (
+      <div className="text-gray-500 italic">No add-ons or commitments recorded yet.</div>
+    ) : (() => {
+        // Use the latest sale (your saleHistory is ASC by onboarded_date)
+        const latest = saleHistory[saleHistory.length - 1];
+
+        return (
+          
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-2">
+              <div className="flex items-center justify-between border rounded-md px-3 py-2">
+                <span className="font-medium">Resume</span>
+                {/* <span className="text-gray-700">{money(latest?.resume_sale_value)}</span> */}
+                {allowedRoles.includes(user?.role || "") ? (
+  <span className="text-gray-700">{money(latest?.resume_sale_value)}</span>
+) : (
+  <Badge className="bg-green-100 text-green-700 border-green-200">Paid</Badge>
+)}
+
+              </div>
+              <div className="flex items-center justify-between border rounded-md px-3 py-2">
+                <span className="font-medium">LinkedIn</span>
+                {/* <span className="text-gray-700">{money(latest?.linkedin_sale_value)}</span> */}
+                {allowedRoles.includes(user?.role || "") ? (
+  <span className="text-gray-700">{money(latest?.linkedin_sale_value)}</span>
+) : (
+  <Badge className="bg-green-100 text-green-700 border-green-200">Paid</Badge>
+)}
+
+              </div>
+              <div className="flex items-center justify-between border rounded-md px-3 py-2">
+                <span className="font-medium">Portfolio</span>
+                {/* <span className="text-gray-700">{money(latest?.portfolio_sale_value)}</span> */}
+                  {allowedRoles.includes(user?.role || "") ? (
+  <span className="text-gray-700">{money(latest?.portfolio_sale_value)}</span>
+) : (
+  <Badge className="bg-green-100 text-green-700 border-green-200">Paid</Badge>
+)}
+              </div>
+              <div className="flex items-center justify-between border rounded-md px-3 py-2">
+                <span className="font-medium">GitHub</span>
+                {/* <span className="text-gray-700">{money(latest?.github_sale_value)}</span> */}
+                 {allowedRoles.includes(user?.role || "") ? (
+  <span className="text-gray-700">{money(latest?.github_sale_value)}</span>
+) : (
+  <Badge className="bg-green-100 text-green-700 border-green-200">Paid</Badge>
+)}
+              </div>
+               <div className="flex items-center justify-between border rounded-md px-3 py-2">
+                <span className="font-medium">Courses</span>
+                {/* <span className="text-gray-700">{money(latest?.courses_sale_value)}</span> */}
+                {allowedRoles.includes(user?.role || "") ? (
+  <span className="text-gray-700">{money(latest?.courses_sale_value)}</span>
+) : (
+  <Badge className="bg-green-100 text-green-700 border-green-200">Paid</Badge>
+)}
+              </div>
+             
+              <div className="flex items-center justify-between border rounded-md px-3 py-2">
+                {/* <span className="font-medium">Custom Label</span> */}
+                <span className="text-gray-700">{latest?.custom_label || "Custom add on sales"}</span>
+                 {/* <span className="text-gray-700">{money(latest?.custom_sale_value)}</span> */}
+
+                  {allowedRoles.includes(user?.role || "") ? (
+  <span className="text-gray-700">{money(latest?.custom_sale_value)}</span>
+) : (
+  <Badge className="bg-green-100 text-green-700 border-green-200">Paid</Badge>
+)}
+              </div>
+              {/* <div className="flex items-center justify-between border rounded-md px-3 py-2">
+                <span className="font-medium">Custom Value</span>
+                <span className="text-gray-700">{money(latest?.custom_sale_value)}</span>
+              </div> */}
+              
+            </div>
+
+            <div className="border rounded-md p-3">
+              <div className="font-medium mb-1">Commitments</div>
+              <div className="text-gray-700 whitespace-pre-wrap">
+                {latest?.commitments?.trim() ? latest.commitments : "—"}
+              </div>
+            </div>
+
+            <div className="text-xs text-gray-500">
+              Showing latest sale/renewal add-ons.
+            </div>
+          </div>
+        );
+    })()}
+
+      {/* Work Artifacts */}
+    <div className="space-y-2">
+      <div className="font-semibold">Work Artifacts</div>
+
+      {/* Resume PDF */}
+      <div className="flex items-center justify-between border rounded-md px-3 py-2">
+        <div className="flex items-center gap-2">
+          <span>Resume PDF</span>
+          <Badge variant="outline">{resumeProg?.status ?? "Not started"}</Badge>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-gray-500">Updated: {fmt(resumeProg?.updated_at)}</span>
+          {resumeProg?.pdf_path ? (
+            <button
+              className="underline text-blue-600"
+              onClick={() => downloadResume(String(business_id), resumeProg.pdf_path!)}
+            >
+              Download
+            </button>
+          ) : (
+            <span className="text-gray-400">—</span>
+          )}
+        </div>
+      </div>
+
+      {/* Portfolio Link */}
+      <div className="flex items-center justify-between border rounded-md px-3 py-2">
+        <div className="flex items-center gap-2">
+          <span>Portfolio</span>
+          <Badge variant="outline">{portfolioProg?.status ?? "Not started"}</Badge>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-gray-500">Updated: {fmt(portfolioProg?.updated_at)}</span>
+          {portfolioProg?.link ? (
+            <a
+              href={portfolioProg.link}
+              target="_blank"
+              rel="noreferrer"
+              className="underline text-blue-600"
+            >
+              Open
+            </a>
+          ) : (
+            <span className="text-gray-400">—</span>
+          )}
+        </div>
+      </div>
+
+      {/* Assignees (optional display) */}
+      <div className="text-xs text-gray-500">
+        {resumeProg?.assigned_to_name && (
+          <div>Resume Owner: {resumeProg.assigned_to_name} ({resumeProg.assigned_to_email || "—"})</div>
+        )}
+        {portfolioProg?.assigned_name && (
+          <div>Portfolio Owner: {portfolioProg.assigned_name} ({portfolioProg.assigned_email || "—"})</div>
+        )}
+      </div>
+    </div>
+
+
+
+  </CardContent>
+</Card>
+
+
+  {/*  Call History (Right, Top) */}
   <Card className="h-full col-span-2 row-span-1">
   <CardHeader>
-    <CardTitle className="text-2xl font-bold">Call History</CardTitle>
+    <CardTitle className="text-2xl font-bold">Call History, {user?.name}</CardTitle>
   </CardHeader>
   <CardContent>
     {callHistory.length === 0 ? (
@@ -202,7 +515,7 @@ if (business_id) {
 </Card>
 
 
-  {/* 3️⃣ Client Feedback (Left, Bottom) */}
+  {/*  Client Feedback (Left, Bottom) */}
   <Card className="h-full col-span-1 row-span-1">
   <CardHeader>
     <CardTitle className="text-2xl font-bold">Client Feedback</CardTitle>
@@ -240,7 +553,7 @@ if (business_id) {
 </Card>
 
 
-  {/* 4️⃣ Sale Done History (Right, Bottom) */}
+  {/*  Sale Done History (Right, Bottom) */}
   <Card className="h-full col-span-2 row-span-1">
   <CardHeader>
     <CardTitle className="text-2xl font-bold">Sale Done History</CardTitle>
@@ -320,6 +633,8 @@ if (business_id) {
 </div>
 
     </div>
+    </DashboardLayout>
+    //  </ProtectedRoute>
 
 
 

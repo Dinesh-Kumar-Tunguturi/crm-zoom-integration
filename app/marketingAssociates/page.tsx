@@ -453,7 +453,7 @@
 //       ❌ Clear Filter
 //     </Button>
 //   </DropdownMenuContent>
- 
+
 
 // </DropdownMenu>
 
@@ -904,25 +904,25 @@ export default function MarketingAssociatesPage() {
   // Sorting (per view)
   const [sortConfig, setSortConfig] = useState<{
     key:
-      | "business_id"
-      | "name"
-      | "city"
-      | "source"
-      | "created_at"
-      | "lead_age";
+    | "business_id"
+    | "name"
+    | "city"
+    | "source"
+    | "created_at"
+    | "lead_age";
     direction: "asc" | "desc";
   } | null>(null);
 
   const [salesSort, setSalesSort] = useState<{
     key:
-      | "lead_id"
-      | "lead_name"
-      | "email"
-      | "source"
-      | "assigned_to"
-      | "phone"
-      | "city"
-      | "closed_at";
+    | "lead_id"
+    | "lead_name"
+    | "email"
+    | "source"
+    | "assigned_to"
+    | "phone"
+    | "city"
+    | "closed_at";
     direction: "asc" | "desc";
   } | null>(null);
 
@@ -930,11 +930,11 @@ export default function MarketingAssociatesPage() {
     pageSize === "all"
       ? 1
       : Math.max(
-          1,
-          Math.ceil(
-            (view === "marketing" ? mkTotalCount : salesTotalCount) / pageSize
-          )
-        );
+        1,
+        Math.ceil(
+          (view === "marketing" ? mkTotalCount : salesTotalCount) / pageSize
+        )
+      );
 
   const handleSort = (
     key:
@@ -1076,98 +1076,98 @@ export default function MarketingAssociatesPage() {
 
   /* ======= Sales fetch ======= */
 
-const fetchSales = async () => {
-  setLoading(true);
-  try {
-    // 1) salesQuery = pull from sales_closure with date/search/pagination
-    let salesQuery = supabase
-      .from("sales_closure")
-      .select(
-        "id, lead_id, sale_value, subscription_cycle, payment_mode, closed_at, email, finance_status, lead_name"
-      )
-      .order("closed_at", { ascending: false });
+  const fetchSales = async () => {
+    setLoading(true);
+    try {
+      // 1) salesQuery = pull from sales_closure with date/search/pagination
+      let salesQuery = supabase
+        .from("sales_closure")
+        .select(
+          "id, lead_id, sale_value, subscription_cycle, payment_mode, closed_at, email, finance_status, lead_name"
+        )
+        .order("closed_at", { ascending: false });
 
-    // date range on closed_at (use your IST helper)
-    if (salesStartDate && salesEndDate) {
-      salesQuery = salesQuery
-        .gte("closed_at", getUTCRange(salesStartDate, true))
-        .lte("closed_at", getUTCRange(salesEndDate, false));
-    }
+      // date range on closed_at (use your IST helper)
+      if (salesStartDate && salesEndDate) {
+        salesQuery = salesQuery
+          .gte("closed_at", getUTCRange(salesStartDate, true))
+          .lte("closed_at", getUTCRange(salesEndDate, false));
+      }
 
-    // text search
-    if (searchTerm) {
-      salesQuery = salesQuery.or(
-        `lead_name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,lead_id.ilike.%${searchTerm}%`
+      // text search
+      if (searchTerm) {
+        salesQuery = salesQuery.or(
+          `lead_name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,lead_id.ilike.%${searchTerm}%`
+        );
+      }
+
+      // pagination (omit if "All")
+      if (pageSize !== "all") {
+        const from = (currentPage - 1) * pageSize;
+        const to = from + pageSize - 1;
+        salesQuery = salesQuery.range(from, to);
+      }
+
+      const { data: closures, error: scErr } = await salesQuery;
+      if (scErr) throw scErr;
+
+      const leadIds = [...new Set((closures ?? []).map((c) => c.lead_id))];
+
+      // 2) Pull matching leads with your sales filters
+      let leadsQuery = supabase
+        .from("leads")
+        .select(
+          "business_id, source, assigned_to, phone, city, incentives, referral_id, current_stage"
+        )
+        .in("business_id", leadIds)
+        .in("current_stage", ["sale done", "sales done"]); // ensure we only show true sales
+
+      if (salesSourceFilter !== "all") {
+        leadsQuery = leadsQuery.eq("source", salesSourceFilter);
+      }
+      if (salesPersonFilter !== "all") {
+        leadsQuery = leadsQuery.eq("assigned_to", salesPersonFilter);
+      }
+
+      const { data: leadRows, error: lErr } = await leadsQuery;
+      if (lErr) throw lErr;
+
+      const byBizId = new Map((leadRows ?? []).map((l) => [l.business_id, l]));
+
+      // 3) Merge, keep ONLY rows that have a matching lead
+      const merged = (closures ?? []).flatMap((s) => {
+        const L = byBizId.get(s.lead_id);
+        if (!L) return [];
+        return [{
+          // sales_closure fields:
+          lead_id: s.lead_id,
+          lead_name: s.lead_name ?? null,
+          email: s.email,
+          closed_at: s.closed_at,
+          // leads fields:
+          source: L?.source ?? null,
+          assigned_to: L?.assigned_to ?? null,
+          phone: L?.phone ?? null,
+          city: L?.city ?? null,
+          incentives: (L as any)?.incentives ?? null,
+          referral_id: (L as any)?.referral_id ?? null,
+        }];
+      }) as SalesRow[];
+
+      // 4) Optional de-dupe by lead_id (in case multiple closures exist per lead)
+      const mergedUnique = Array.from(
+        new Map(merged.map((r) => [r.lead_id, r])).values()
       );
+
+      setSalesRows(mergedUnique);
+      // ✅ Card shows EXACTLY what table shows
+      setSalesTotalCount(mergedUnique.length);
+    } catch (e) {
+      console.error("Error fetching sales:", e);
+    } finally {
+      setLoading(false);
     }
-
-    // pagination (omit if "All")
-    if (pageSize !== "all") {
-      const from = (currentPage - 1) * pageSize;
-      const to = from + pageSize - 1;
-      salesQuery = salesQuery.range(from, to);
-    }
-
-    const { data: closures, error: scErr } = await salesQuery;
-    if (scErr) throw scErr;
-
-    const leadIds = [...new Set((closures ?? []).map((c) => c.lead_id))];
-
-    // 2) Pull matching leads with your sales filters
-    let leadsQuery = supabase
-      .from("leads")
-      .select(
-        "business_id, source, assigned_to, phone, city, incentives, referral_id, current_stage"
-      )
-      .in("business_id", leadIds)
-      .in("current_stage", ["sale done", "sales done"]); // ensure we only show true sales
-
-    if (salesSourceFilter !== "all") {
-      leadsQuery = leadsQuery.eq("source", salesSourceFilter);
-    }
-    if (salesPersonFilter !== "all") {
-      leadsQuery = leadsQuery.eq("assigned_to", salesPersonFilter);
-    }
-
-    const { data: leadRows, error: lErr } = await leadsQuery;
-    if (lErr) throw lErr;
-
-    const byBizId = new Map((leadRows ?? []).map((l) => [l.business_id, l]));
-
-    // 3) Merge, keep ONLY rows that have a matching lead
-    const merged = (closures ?? []).flatMap((s) => {
-      const L = byBizId.get(s.lead_id);
-      if (!L) return [];
-      return [{
-        // sales_closure fields:
-        lead_id: s.lead_id,
-        lead_name: s.lead_name ?? null,
-        email: s.email,
-        closed_at: s.closed_at,
-        // leads fields:
-        source: L?.source ?? null,
-        assigned_to: L?.assigned_to ?? null,
-        phone: L?.phone ?? null,
-        city: L?.city ?? null,
-        incentives: (L as any)?.incentives ?? null,
-        referral_id: (L as any)?.referral_id ?? null,
-      }];
-    }) as SalesRow[];
-
-    // 4) Optional de-dupe by lead_id (in case multiple closures exist per lead)
-    const mergedUnique = Array.from(
-      new Map(merged.map((r) => [r.lead_id, r])).values()
-    );
-
-    setSalesRows(mergedUnique);
-    // ✅ Card shows EXACTLY what table shows
-    setSalesTotalCount(mergedUnique.length);
-  } catch (e) {
-    console.error("Error fetching sales:", e);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   /* ======= Effects ======= */
 
@@ -1471,9 +1471,9 @@ const fetchSales = async () => {
                           <Button variant="outline" className="min-w-[200px]">
                             {startDate && endDate
                               ? `📅 ${startDate
-                                  .split("-")
-                                  .reverse()
-                                  .join("-")} → ${endDate
+                                .split("-")
+                                .reverse()
+                                .join("-")} → ${endDate
                                   .split("-")
                                   .reverse()
                                   .join("-")}`
@@ -1572,9 +1572,9 @@ const fetchSales = async () => {
                           <Button variant="outline" className="min-w-[200px]">
                             {salesStartDate && salesEndDate
                               ? `📅 ${salesStartDate
-                                  .split("-")
-                                  .reverse()
-                                  .join("-")} → ${salesEndDate
+                                .split("-")
+                                .reverse()
+                                .join("-")} → ${salesEndDate
                                   .split("-")
                                   .reverse()
                                   .join("-")}`
@@ -1645,12 +1645,11 @@ const fetchSales = async () => {
                                   onClick={() =>
                                     handleSort("business_id", "asc")
                                   }
-                                  className={`cursor-pointer ${
-                                    sortConfig?.key === "business_id" &&
-                                    sortConfig.direction === "asc"
+                                  className={`cursor-pointer ${sortConfig?.key === "business_id" &&
+                                      sortConfig.direction === "asc"
                                       ? "text-blue-700 font-bold"
                                       : "text-gray-500"
-                                  }`}
+                                    }`}
                                 >
                                   ↑
                                 </span>
@@ -1658,12 +1657,11 @@ const fetchSales = async () => {
                                   onClick={() =>
                                     handleSort("business_id", "desc")
                                   }
-                                  className={`cursor-pointer ${
-                                    sortConfig?.key === "business_id" &&
-                                    sortConfig.direction === "desc"
+                                  className={`cursor-pointer ${sortConfig?.key === "business_id" &&
+                                      sortConfig.direction === "desc"
                                       ? "text-blue-700 font-bold"
                                       : "text-gray-500"
-                                  }`}
+                                    }`}
                                 >
                                   ↓
                                 </span>
@@ -1675,23 +1673,21 @@ const fetchSales = async () => {
                                 Name
                                 <span
                                   onClick={() => handleSort("name", "asc")}
-                                  className={`cursor-pointer ${
-                                    sortConfig?.key === "name" &&
-                                    sortConfig.direction === "asc"
+                                  className={`cursor-pointer ${sortConfig?.key === "name" &&
+                                      sortConfig.direction === "asc"
                                       ? "text-blue-700 font-semibold"
                                       : "text-gray-500"
-                                  }`}
+                                    }`}
                                 >
                                   ↑
                                 </span>
                                 <span
                                   onClick={() => handleSort("name", "desc")}
-                                  className={`cursor-pointer ${
-                                    sortConfig?.key === "name" &&
-                                    sortConfig.direction === "desc"
+                                  className={`cursor-pointer ${sortConfig?.key === "name" &&
+                                      sortConfig.direction === "desc"
                                       ? "text-blue-700 font-semibold"
                                       : "text-gray-500"
-                                  }`}
+                                    }`}
                                 >
                                   ↓
                                 </span>
@@ -1706,23 +1702,21 @@ const fetchSales = async () => {
                                 City
                                 <span
                                   onClick={() => handleSort("city", "asc")}
-                                  className={`cursor-pointer ${
-                                    sortConfig?.key === "city" &&
-                                    sortConfig.direction === "asc"
+                                  className={`cursor-pointer ${sortConfig?.key === "city" &&
+                                      sortConfig.direction === "asc"
                                       ? "text-blue-700 font-semibold"
                                       : "text-gray-500"
-                                  }`}
+                                    }`}
                                 >
                                   ↑
                                 </span>
                                 <span
                                   onClick={() => handleSort("city", "desc")}
-                                  className={`cursor-pointer ${
-                                    sortConfig?.key === "city" &&
-                                    sortConfig.direction === "desc"
+                                  className={`cursor-pointer ${sortConfig?.key === "city" &&
+                                      sortConfig.direction === "desc"
                                       ? "text-blue-700 font-semibold"
                                       : "text-gray-500"
-                                  }`}
+                                    }`}
                                 >
                                   ↓
                                 </span>
@@ -1740,12 +1734,11 @@ const fetchSales = async () => {
                                   onClick={() =>
                                     handleSort("created_at", "asc")
                                   }
-                                  className={`cursor-pointer ${
-                                    sortConfig?.key === "created_at" &&
-                                    sortConfig.direction === "asc"
+                                  className={`cursor-pointer ${sortConfig?.key === "created_at" &&
+                                      sortConfig.direction === "asc"
                                       ? "text-blue-700 font-semibold"
                                       : "text-gray-500"
-                                  }`}
+                                    }`}
                                 >
                                   ↑
                                 </span>
@@ -1753,12 +1746,11 @@ const fetchSales = async () => {
                                   onClick={() =>
                                     handleSort("created_at", "desc")
                                   }
-                                  className={`cursor-pointer ${
-                                    sortConfig?.key === "created_at" &&
-                                    sortConfig.direction === "desc"
+                                  className={`cursor-pointer ${sortConfig?.key === "created_at" &&
+                                      sortConfig.direction === "desc"
                                       ? "text-blue-700 font-semibold"
                                       : "text-gray-500"
-                                  }`}
+                                    }`}
                                 >
                                   ↓
                                 </span>
@@ -1770,23 +1762,21 @@ const fetchSales = async () => {
                                 Lead Age
                                 <span
                                   onClick={() => handleSort("lead_age", "asc")}
-                                  className={`cursor-pointer ${
-                                    sortConfig?.key === "lead_age" &&
-                                    sortConfig.direction === "asc"
+                                  className={`cursor-pointer ${sortConfig?.key === "lead_age" &&
+                                      sortConfig.direction === "asc"
                                       ? "text-blue-700 font-semibold"
                                       : "text-gray-500"
-                                  }`}
+                                    }`}
                                 >
                                   ↑
                                 </span>
                                 <span
                                   onClick={() => handleSort("lead_age", "desc")}
-                                  className={`cursor-pointer ${
-                                    sortConfig?.key === "lead_age" &&
-                                    sortConfig.direction === "desc"
+                                  className={`cursor-pointer ${sortConfig?.key === "lead_age" &&
+                                      sortConfig.direction === "desc"
                                       ? "text-blue-700 font-semibold"
                                       : "text-gray-500"
-                                  }`}
+                                    }`}
                                 >
                                   ↓
                                 </span>
@@ -1808,9 +1798,17 @@ const fetchSales = async () => {
                                 {lead.business_id}
                               </TableCell>
 
-                              <TableCell className="font-medium max-w-[160px] whitespace-normal">
-                                {lead.name}
+                              
+<TableCell
+                                className="font-medium max-w-[150px] break-words whitespace-normal cursor-pointer text-blue-600 hover:underline"
+                                onClick={() => window.open(`/leads/${lead.business_id}`, "_blank")}
+                              >
+                                {lead.name ?? "-"}
                               </TableCell>
+
+                              {/* <TableCell className="font-medium max-w-[160px] whitespace-normal">
+                                {lead.name}
+                              </TableCell> */}
 
                               <TableCell className="max-w-[120px] whitespace-normal">
                                 {lead.phone}
@@ -1849,17 +1847,17 @@ const fetchSales = async () => {
                               <TableCell className="max-w-[140px] whitespace-normal">
                                 {lead.created_at
                                   ? new Date(lead.created_at).toLocaleString(
-                                      "en-IN",
-                                      {
-                                        timeZone: "Asia/Kolkata",
-                                        year: "numeric",
-                                        month: "2-digit",
-                                        day: "2-digit",
-                                        hour: "2-digit",
-                                        minute: "2-digit",
-                                        hour12: true,
-                                      }
-                                    )
+                                    "en-IN",
+                                    {
+                                      timeZone: "Asia/Kolkata",
+                                      year: "numeric",
+                                      month: "2-digit",
+                                      day: "2-digit",
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                      hour12: true,
+                                    }
+                                  )
                                   : ""}
                               </TableCell>
 
@@ -1869,7 +1867,7 @@ const fetchSales = async () => {
                                   const createdAt = new Date(lead.created_at);
                                   const diffDays = Math.floor(
                                     (Date.now() - createdAt.getTime()) /
-                                      (1000 * 60 * 60 * 24)
+                                    (1000 * 60 * 60 * 24)
                                   );
                                   return `${diffDays} days`;
                                 })()}
@@ -1895,12 +1893,11 @@ const fetchSales = async () => {
                                   onClick={() =>
                                     handleSalesSort("lead_id", "asc")
                                   }
-                                  className={`cursor-pointer ${
-                                    salesSort?.key === "lead_id" &&
-                                    salesSort.direction === "asc"
+                                  className={`cursor-pointer ${salesSort?.key === "lead_id" &&
+                                      salesSort.direction === "asc"
                                       ? "text-blue-700 font-bold"
                                       : "text-gray-500"
-                                  }`}
+                                    }`}
                                 >
                                   ↑
                                 </span>
@@ -1908,12 +1905,11 @@ const fetchSales = async () => {
                                   onClick={() =>
                                     handleSalesSort("lead_id", "desc")
                                   }
-                                  className={`cursor-pointer ${
-                                    salesSort?.key === "lead_id" &&
-                                    salesSort.direction === "desc"
+                                  className={`cursor-pointer ${salesSort?.key === "lead_id" &&
+                                      salesSort.direction === "desc"
                                       ? "text-blue-700 font-bold"
                                       : "text-gray-500"
-                                  }`}
+                                    }`}
                                 >
                                   ↓
                                 </span>
@@ -1927,12 +1923,11 @@ const fetchSales = async () => {
                                   onClick={() =>
                                     handleSalesSort("lead_name", "asc")
                                   }
-                                  className={`cursor-pointer ${
-                                    salesSort?.key === "lead_name" &&
-                                    salesSort.direction === "asc"
+                                  className={`cursor-pointer ${salesSort?.key === "lead_name" &&
+                                      salesSort.direction === "asc"
                                       ? "text-blue-700 font-bold"
                                       : "text-gray-500"
-                                  }`}
+                                    }`}
                                 >
                                   ↑
                                 </span>
@@ -1940,12 +1935,11 @@ const fetchSales = async () => {
                                   onClick={() =>
                                     handleSalesSort("lead_name", "desc")
                                   }
-                                  className={`cursor-pointer ${
-                                    salesSort?.key === "lead_name" &&
-                                    salesSort.direction === "desc"
+                                  className={`cursor-pointer ${salesSort?.key === "lead_name" &&
+                                      salesSort.direction === "desc"
                                       ? "text-blue-700 font-bold"
                                       : "text-gray-500"
-                                  }`}
+                                    }`}
                                 >
                                   ↓
                                 </span>
@@ -1960,12 +1954,11 @@ const fetchSales = async () => {
                                   onClick={() =>
                                     handleSalesSort("source", "asc")
                                   }
-                                  className={`cursor-pointer ${
-                                    salesSort?.key === "source" &&
-                                    salesSort.direction === "asc"
+                                  className={`cursor-pointer ${salesSort?.key === "source" &&
+                                      salesSort.direction === "asc"
                                       ? "text-blue-700 font-bold"
                                       : "text-gray-500"
-                                  }`}
+                                    }`}
                                 >
                                   ↑
                                 </span>
@@ -1973,12 +1966,11 @@ const fetchSales = async () => {
                                   onClick={() =>
                                     handleSalesSort("source", "desc")
                                   }
-                                  className={`cursor-pointer ${
-                                    salesSort?.key === "source" &&
-                                    salesSort.direction === "desc"
+                                  className={`cursor-pointer ${salesSort?.key === "source" &&
+                                      salesSort.direction === "desc"
                                       ? "text-blue-700 font-bold"
                                       : "text-gray-500"
-                                  }`}
+                                    }`}
                                 >
                                   ↓
                                 </span>
@@ -1991,12 +1983,11 @@ const fetchSales = async () => {
                                   onClick={() =>
                                     handleSalesSort("assigned_to", "asc")
                                   }
-                                  className={`cursor-pointer ${
-                                    salesSort?.key === "assigned_to" &&
-                                    salesSort.direction === "asc"
+                                  className={`cursor-pointer ${salesSort?.key === "assigned_to" &&
+                                      salesSort.direction === "asc"
                                       ? "text-blue-700 font-bold"
                                       : "text-gray-500"
-                                  }`}
+                                    }`}
                                 >
                                   ↑
                                 </span>
@@ -2004,12 +1995,11 @@ const fetchSales = async () => {
                                   onClick={() =>
                                     handleSalesSort("assigned_to", "desc")
                                   }
-                                  className={`cursor-pointer ${
-                                    salesSort?.key === "assigned_to" &&
-                                    salesSort.direction === "desc"
+                                  className={`cursor-pointer ${salesSort?.key === "assigned_to" &&
+                                      salesSort.direction === "desc"
                                       ? "text-blue-700 font-bold"
                                       : "text-gray-500"
-                                  }`}
+                                    }`}
                                 >
                                   ↓
                                 </span>
@@ -2027,12 +2017,11 @@ const fetchSales = async () => {
                                   onClick={() =>
                                     handleSalesSort("closed_at", "asc")
                                   }
-                                  className={`cursor-pointer ${
-                                    salesSort?.key === "closed_at" &&
-                                    salesSort.direction === "asc"
+                                  className={`cursor-pointer ${salesSort?.key === "closed_at" &&
+                                      salesSort.direction === "asc"
                                       ? "text-blue-700 font-bold"
                                       : "text-gray-500"
-                                  }`}
+                                    }`}
                                 >
                                   ↑
                                 </span>
@@ -2040,12 +2029,11 @@ const fetchSales = async () => {
                                   onClick={() =>
                                     handleSalesSort("closed_at", "desc")
                                   }
-                                  className={`cursor-pointer ${
-                                    salesSort?.key === "closed_at" &&
-                                    salesSort.direction === "desc"
+                                  className={`cursor-pointer ${salesSort?.key === "closed_at" &&
+                                      salesSort.direction === "desc"
                                       ? "text-blue-700 font-bold"
                                       : "text-gray-500"
-                                  }`}
+                                    }`}
                                 >
                                   ↓
                                 </span>
@@ -2066,9 +2054,17 @@ const fetchSales = async () => {
                               <TableCell className="font-medium">
                                 {row.lead_id}
                               </TableCell>
-                              <TableCell className="font-medium max-w-[160px] whitespace-normal">
+
+                              <TableCell
+                                className="font-medium max-w-[150px] break-words whitespace-normal cursor-pointer text-blue-600 hover:underline"
+                                onClick={() => window.open(`/leads/${row.lead_id}`, "_blank")}
+                              >
                                 {row.lead_name ?? "-"}
                               </TableCell>
+
+                              {/* <TableCell className="font-medium max-w-[160px] whitespace-normal">
+                                {row.lead_name ?? "-"}
+                              </TableCell> */}
                               <TableCell className="max-w-[160px] whitespace-normal">
                                 {row.email}
                               </TableCell>
@@ -2101,17 +2097,17 @@ const fetchSales = async () => {
                               <TableCell className="max-w-[140px] whitespace-normal">
                                 {row.closed_at
                                   ? new Date(row.closed_at).toLocaleString(
-                                      "en-IN",
-                                      {
-                                        timeZone: "Asia/Kolkata",
-                                        year: "numeric",
-                                        month: "2-digit",
-                                        day: "2-digit",
-                                        hour: "2-digit",
-                                        minute: "2-digit",
-                                        hour12: true,
-                                      }
-                                    )
+                                    "en-IN",
+                                    {
+                                      timeZone: "Asia/Kolkata",
+                                      year: "numeric",
+                                      month: "2-digit",
+                                      day: "2-digit",
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                      hour12: true,
+                                    }
+                                  )
                                   : "-"}
                               </TableCell>
                             </TableRow>
@@ -2154,9 +2150,9 @@ const fetchSales = async () => {
                     </Button>
                   </div>
                 </div>
-                </CardContent>
-              </Card>
-            </div>
+              </CardContent>
+            </Card>
+          </div>
           {/* </div> */}
         </DashboardLayout>
       </ProtectedRoute>
