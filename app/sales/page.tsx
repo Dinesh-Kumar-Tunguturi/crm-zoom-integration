@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Eye, Search } from "lucide-react";
+import { EditIcon, Eye, Search } from "lucide-react";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { createAndUploadInvoice } from '@/lib/createInvoice';
 import dayjs from 'dayjs';
@@ -95,6 +95,7 @@ interface SaleClosing {
   custom_label: string;    // Custom label
   custom_value: number;    // Custom ($)
   commitments: string;     // Free-text commitments
+  company_application_email:string;
 }
 
 
@@ -260,6 +261,8 @@ useEffect(() => {
   custom_label: "",
   custom_value: 0,
   commitments: "",
+    company_application_email: ""  // Add this field
+
 });
 
 
@@ -623,6 +626,80 @@ const handleSort = (key: keyof Lead) => {
   }));
 };
 
+const handleSaleClosureUpdate = async () => {
+  if (!selectedLead || !pendingStageUpdate) return;
+
+  const {
+    base_value, subscription_cycle, payment_mode, closed_at,
+    resume_value, portfolio_value, linkedin_value, github_value,
+    courses_value, custom_label, custom_value, commitments, company_application_email
+  } = saleData;
+
+  if (!payment_mode || !subscription_cycle || !closed_at || !company_application_email || !commitments) {
+    alert("Please fill all required fields.");
+    return;
+  }
+
+  const saleTotal = totalAmount;
+
+  try {
+    const payload: any = {
+      lead_id: selectedLead.business_id,
+      lead_name: selectedLead.client_name,
+      email: selectedLead.email,
+      payment_mode,
+      subscription_cycle,
+      sale_value: saleTotal,
+      closed_at: new Date(closed_at).toISOString(),
+      resume_sale_value: resume_value || null,
+      portfolio_sale_value: portfolio_value || null,
+      linkedin_sale_value: linkedin_value || null,
+      github_sale_value: github_value || null,
+      company_application_email, // Add this field to the payload
+    };
+
+    // Conditionally add new fields (avoid error if columns not yet created)
+    if (courses_value) payload.courses_sale_value = courses_value;
+    if (custom_label)  payload.custom_label = custom_label;
+    if (custom_value)  payload.custom_sale_value = custom_value;
+    if (commitments)   payload.commitments = commitments;
+
+    const { error: updateErr } = await supabase.from("sales_closure").upsert(payload, { onConflict: "lead_id,closed_at" });
+    if (updateErr) throw updateErr;
+
+    await supabase.from("leads")
+      .update({ current_stage: "sale done" })
+      .eq("id", pendingStageUpdate.leadId);
+
+    // Reset dialog state
+    setSaleClosingDialogOpen(false);
+    setSaleData({
+      base_value: 0,
+      subscription_cycle: "" as unknown as 15|30|60|90,
+      payment_mode: "" as unknown as SaleClosing["payment_mode"],
+      closed_at: "",
+      resume_value: 0,
+      portfolio_value: 0,
+      linkedin_value: 0,
+      github_value: 0,
+      courses_value: 0,
+      custom_label: "",
+      custom_value: 0,
+      commitments: "",
+      company_application_email: "" // Reset the email field
+    });
+
+    setPendingStageUpdate(null);
+    setPreviousStage(null);
+
+    const updatedFollowUps = await fetchFollowUps();
+    setFollowUpsData(updatedFollowUps);
+  } catch (err: any) {
+    console.error("Sale update failed:", err.message);
+    alert("Failed to save sale.");
+  }
+};
+
 
 const filteredLeads = leads.filter((lead) => {
   if ((lead.status ?? "Assigned") !== "Assigned") return false;
@@ -647,6 +724,49 @@ const filteredLeads = leads.filter((lead) => {
   return matchesSearch && matchesStage && matchesDate;
 });
 
+const fetchLatestSaleClosure = async (leadId: string) => {
+  try {
+    const { data, error } = await supabase
+      .from("sales_closure")
+      .select("*")
+      .eq("lead_id", leadId)
+      .order("closed_at", { ascending: false })  // Get the most recent sale
+      .limit(1);  // Fetch only the most recent record
+
+    if (error) throw error;
+
+    // If a record is found, populate the fields
+    if (data?.length > 0) {
+      const latestSale = data[0];
+
+      setSaleData({
+        base_value: latestSale.sale_value ?? 0,
+        subscription_cycle: latestSale.subscription_cycle ?? 30,  // Default to 30 if undefined
+        payment_mode: latestSale.payment_mode ?? "UPI",
+        closed_at: latestSale.closed_at ?? "",
+        resume_value: latestSale.resume_sale_value ?? 0,
+        portfolio_value: latestSale.portfolio_sale_value ?? 0,
+        linkedin_value: latestSale.linkedin_sale_value ?? 0,
+        github_value: latestSale.github_sale_value ?? 0,
+        courses_value: latestSale.courses_sale_value ?? 0,
+        custom_label: latestSale.custom_label ?? "",
+        custom_value: latestSale.custom_sale_value ?? 0,
+        commitments: latestSale.commitments ?? "",
+        company_application_email: latestSale.company_application_email ?? "",
+      });
+
+      // Optionally, update the stage if it's being used in the dialog (you can skip if unnecessary)
+      setPendingStageUpdate({ leadId, stage: "sale done" });
+
+      // Open the dialog for editing
+      setSaleClosingDialogOpen(true);
+    } else {
+      console.log("No sale records found for this lead.");
+    }
+  } catch (error) {
+    console.error("Error fetching sale closure:", error);
+  }
+};
 
 
 
@@ -840,7 +960,7 @@ const handleSaleClosureSubmit = async () => {
     base_value, subscription_cycle, payment_mode, closed_at,
     resume_value, portfolio_value, linkedin_value, github_value,
     // NEW
-    courses_value, custom_label, custom_value, commitments,
+    courses_value, custom_label, custom_value, commitments, company_application_email 
   } = saleData;
 
   if (!payment_mode || !subscription_cycle || !closed_at) {
@@ -862,6 +982,8 @@ const handleSaleClosureSubmit = async () => {
       portfolio_sale_value: portfolio_value || null,
       linkedin_sale_value: linkedin_value || null,
       github_sale_value: github_value || null,
+            company_application_email, // Add this field to the payload
+
     };
 
     // Conditionally add new fields (avoid error if columns not yet created)
@@ -893,6 +1015,8 @@ const handleSaleClosureSubmit = async () => {
       custom_label: "",
       custom_value: 0,
       commitments: "",
+            company_application_email: "" // Reset the email field
+
     });
 
     setPendingStageUpdate(null);
@@ -1271,7 +1395,15 @@ const LinkCell = ({ href, label }: { href?: string | null; label?: string }) =>
                             <TableRow key={idx}>
                               <TableCell>{idx + 1}</TableCell>
                               <TableCell>{item.business_id}</TableCell>
-                              <TableCell>{item.name}</TableCell>
+                              {/* <TableCell>{item.name}</TableCell> */}
+
+                               <TableCell
+                                                            className="font-medium max-w-[150px] break-words whitespace-normal cursor-pointer text-blue-600 hover:underline"
+                                                            onClick={() => window.open(`/leads/${item.business_id}`, "_blank")}
+                                                          >
+                                                            {item.name}
+                                                          </TableCell>
+
                               <TableCell>{item.email}</TableCell>
                               <TableCell>{item.phone}</TableCell>
                               <TableCell>{item.assigned_to}</TableCell>
@@ -1304,6 +1436,7 @@ const LinkCell = ({ href, label }: { href?: string | null; label?: string }) =>
                                   </SelectContent>
                                 </Select>
                               </TableCell>
+                              
                               <TableCell>{item.followup_date}</TableCell>
                               <TableCell>{item.notes}</TableCell>
                             </TableRow>
@@ -1626,7 +1759,13 @@ const LinkCell = ({ href, label }: { href?: string | null; label?: string }) =>
             <TableRow key={lead.id}>
               <TableCell>{idx + 1}</TableCell>
               <TableCell>{lead.business_id}</TableCell>
-              <TableCell>{lead.client_name}</TableCell>
+              {/* <TableCell>{lead.client_name}</TableCell> */}
+               <TableCell
+                                                            className="font-medium max-w-[150px] break-words whitespace-normal cursor-pointer text-blue-600 hover:underline"
+                                                            onClick={() => window.open(`/leads/${lead.business_id}`, "_blank")}
+                                                          >
+                                                            {lead.client_name}
+                                                          </TableCell>
               <TableCell className="w-32 truncate">{lead.email}</TableCell>
               <TableCell>{lead.phone}</TableCell>
 
@@ -1642,9 +1781,9 @@ const LinkCell = ({ href, label }: { href?: string | null; label?: string }) =>
                 {lead.assigned_at ? dayjs(lead.assigned_at).format("DD MMM YYYY") : "N/A"}
               </TableCell>
 
-              <TableCell>{lead.assigned_to}</TableCell>
+              <TableCell >{lead.assigned_to}</TableCell>
 
-              <TableCell>
+              <TableCell className="flex items-center gap-4">
                 <Select
                   value={lead.current_stage}
                   onValueChange={(value: SalesStage) => handleStageUpdate(lead.id, value)}
@@ -1668,7 +1807,21 @@ const LinkCell = ({ href, label }: { href?: string | null; label?: string }) =>
                       ))}
                   </SelectContent>
                 </Select>
+               {lead.current_stage === "sale done" && (
+    <Button
+      size="icon"
+      variant="outline"
+      onClick={async () => {
+        const leadId = lead.business_id;  // or use `lead.id` based on your schema
+        await fetchLatestSaleClosure(leadId); // Fetch the most recent sale record
+      }}
+    >
+      <EditIcon className="h-5 w-5" /> {/* This represents the pen icon */}
+    </Button>
+  )}
               </TableCell>
+
+
 
               <TableCell>
                 <Button
@@ -2211,6 +2364,7 @@ const LinkCell = ({ href, label }: { href?: string | null; label?: string }) =>
 
 <div className="space-y-4">
 
+<div className="grid grid-cols-2 gap-4">
   <div>
     <Label>Sale Closed On</Label>
     <Input
@@ -2220,18 +2374,20 @@ const LinkCell = ({ href, label }: { href?: string | null; label?: string }) =>
       required
     />
   </div>
-
-  <div>
-    <Label>Applications Sale Value (1 month)</Label>
+<div>
+    <Label>Company Application Email</Label>
     <Input
-      type="number"
-      value={saleData.base_value}
-      onChange={e => setSaleData(p => ({ ...p, base_value: Number(e.target.value) }))}
+      type="email"
+      value={saleData.company_application_email}
+      onChange={e => setSaleData(p => ({ ...p, company_application_email: e.target.value }))}
+      placeholder="The email password needs to 'Created@123'"
       required
     />
   </div>
-
-  <div>
+  
+</div>
+  <div className="grid grid-cols-2 gap-4">
+   <div>
     <Label>Subscription Cycle</Label>
    <Select
   value={saleData.subscription_cycle ? saleData.subscription_cycle.toString() : ""}
@@ -2246,6 +2402,20 @@ const LinkCell = ({ href, label }: { href?: string | null; label?: string }) =>
       </SelectContent>
     </Select>
   </div>
+
+  <div >
+    <Label>Applications Sale Value (1 month)</Label>
+    <Input
+      type="number"
+      value={saleData.base_value}
+      onChange={e => setSaleData(p => ({ ...p, base_value: Number(e.target.value) }))}
+      required
+    />
+  </div>
+  </div>
+  
+
+ 
 
   <div className="grid grid-cols-2 gap-4">
     <div>
@@ -2309,6 +2479,7 @@ const LinkCell = ({ href, label }: { href?: string | null; label?: string }) =>
       placeholder="Enter commitments (e.g., # of applications, calls, deliverables, timelines…)"
       value={saleData.commitments}
       onChange={e => setSaleData(p => ({ ...p, commitments: e.target.value }))}
+      required
     />
   </div>
 </div>
@@ -2335,6 +2506,7 @@ const LinkCell = ({ href, label }: { href?: string | null; label?: string }) =>
         <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
         <SelectItem value="Stripe">Stripe</SelectItem>
         <SelectItem value="Credit/Debit Card">Credit/Debit Card</SelectItem>
+        <SelectItem value="Razorpay">Razorpay</SelectItem>
         <SelectItem value="Other">Other</SelectItem>
       </SelectContent>
     </Select>

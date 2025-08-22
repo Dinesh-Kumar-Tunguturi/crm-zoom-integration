@@ -942,6 +942,8 @@ export default function SalesFormPage() {
   // Client details (MAIN FORM)
   const [clientName, setClientName] = useState("");
   const [clientEmail, setClientEmail] = useState("");
+  const [companyApplicationEmail, setCompanyApplicationEmail] = useState(""); // NEW
+
   const [contactNumber, setContactNumber] = useState("");
   const [city, setCity] = useState("");
   const [onboardingDate, setOnboardingDate] = useState(""); // YYYY-MM-DD
@@ -1164,7 +1166,8 @@ if (cleanedRefId) {
 const incentivesValue = subscriptionSource === "Referral" ? 1.5 : 0;
 
 
-
+const normalizedCompanyAppEmail =
+  (companyApplicationEmail || "").trim().toLowerCase() || null;
 
     // 1) Insert into leads first
    const leadsPayload: any = {
@@ -1172,6 +1175,7 @@ const incentivesValue = subscriptionSource === "Referral" ? 1.5 : 0;
   name: clientName.trim(),
   phone: contactNumber.trim() || null,
   email: normalizedEmail,
+
   city: city.trim() || null,
   source: referrerSourceValue || null,     // "Referral" or "NEW"
   created_at: createdAt,
@@ -1210,6 +1214,8 @@ referral_id: cleanedRefId,
       lead_id: finalLeadId,                       // text NOT NULL
       email: normalizedEmail,
       lead_name: clientName.trim(),
+          company_application_email: normalizedCompanyAppEmail,
+
       payment_mode: paymentMode,
       subscription_cycle: durationInDays,
       sale_value: totalSale,
@@ -1246,6 +1252,8 @@ referral_id: cleanedRefId,
     // Reset the form
     setClientName("");
     setClientEmail("");
+    setCompanyApplicationEmail("");
+
     setContactNumber("");
     setCity("");
     setOnboardingDate("");
@@ -1402,6 +1410,11 @@ const sanitizePhone = (input: string) => {
                       value={clientEmail}
                       onChange={(e) => setClientEmail(e.target.value)}
                     />
+                    <Input
+  placeholder="Company Application Email PWD: Created@123"
+  value={companyApplicationEmail}
+  onChange={(e) => setCompanyApplicationEmail(e.target.value)}
+/>
 
                     <Input
   placeholder="Contact Number with country code"
@@ -1448,6 +1461,8 @@ const sanitizePhone = (input: string) => {
                             <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
                             <SelectItem value="Credit/Debit Card">Credit/Debit Card</SelectItem>
                             <SelectItem value="Stripe">Stripe</SelectItem>
+                              <SelectItem value="Razorpay">Razorpay</SelectItem> {/* NEW */}
+
                             <SelectItem value="Other">Other</SelectItem>
                           </SelectContent>
                         </Select>
@@ -1635,6 +1650,7 @@ const sanitizePhone = (input: string) => {
     placeholder="Enter commitments (e.g., # of applications per week, review calls, deliverables, timelines…)"
     value={commitments}
     onChange={(e) => setCommitments(e.target.value)}
+    required
   />
 </div>
 
