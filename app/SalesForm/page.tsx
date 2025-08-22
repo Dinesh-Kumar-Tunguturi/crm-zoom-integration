@@ -1175,7 +1175,8 @@ const normalizedCompanyAppEmail =
   name: clientName.trim(),
   phone: contactNumber.trim() || null,
   email: normalizedEmail,
-
+    status:"Assigned",
+    current_stage:"sale done",
   city: city.trim() || null,
   source: referrerSourceValue || null,     // "Referral" or "NEW"
   created_at: createdAt,
@@ -1196,7 +1197,7 @@ referral_id: cleanedRefId,
       .insert(leadsPayload)
       .select("business_id")
       .single();
-
+console.log("Lead insert result:", leadInsert);
     // 1b) Rare race: if duplicate key, generate a new ID and retry once
     if (leadInsert.error && (leadInsert.error as any).code === "23505") {
       finalLeadId = await getUniqueLeadId(); // force RPC
