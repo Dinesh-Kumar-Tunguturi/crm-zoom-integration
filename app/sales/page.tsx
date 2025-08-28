@@ -1807,7 +1807,7 @@ const LinkCell = ({ href, label }: { href?: string | null; label?: string }) =>
                       ))}
                   </SelectContent>
                 </Select>
-               {lead.current_stage === "sale done" && (
+               {/* {lead.current_stage === "sale done" && (
     <Button
       size="icon"
       variant="outline"
@@ -1816,9 +1816,21 @@ const LinkCell = ({ href, label }: { href?: string | null; label?: string }) =>
         await fetchLatestSaleClosure(leadId); // Fetch the most recent sale record
       }}
     >
-      <EditIcon className="h-5 w-5" /> {/* This represents the pen icon */}
+      <EditIcon className="h-5 w-5" /> 
     </Button>
-  )}
+  )} */}
+
+  {lead.current_stage === "sale done" && (
+  <Button
+    size="icon"
+    variant="outline"
+    onClick={() => window.open(`/SaleUpdate/${lead.business_id}`, "_blank")}
+    title="Edit sale close"
+  >
+    <EditIcon className="h-5 w-5" />
+  </Button>
+)}
+
               </TableCell>
 
 
