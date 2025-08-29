@@ -668,6 +668,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
+import { DashboardLayout } from "@/components/layout/dashboard-layout";
+
 
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -1010,12 +1012,13 @@ export default function SaleUpdatePage() {
 
   // ---------- UI ----------
   return (
-    <div className="p-6">
-      <div className="mb-4 flex items-center justify-between">
+      <DashboardLayout>
+    <div className="p-6 pt-0">
+      <div className="mb-2 flex items-center justify-between">
         <h1 className="text-2xl font-bold">Edit Sale Close — {leadId}</h1>
-        <Button variant="outline" onClick={() => router.back()}>
+        {/* <Button variant="outline" onClick={() => router.back()}>
           Back
-        </Button>
+        </Button> */}
       </div>
 
       {loading ? (
@@ -1289,7 +1292,7 @@ export default function SaleUpdatePage() {
           </Card>
 
           {/* RIGHT: Quick Lead Info (placeholder) */}
-          <Card className="lg:col-span-1">
+          {/* <Card className="lg:col-span-1">
             <CardHeader>
               <CardTitle>Quick Lead Info</CardTitle>
             </CardHeader>
@@ -1298,9 +1301,10 @@ export default function SaleUpdatePage() {
                 (Optional) Keep your quick search widget here.
               </p>
             </CardContent>
-          </Card>
+          </Card> */}
         </div>
       )}
     </div>
+    </DashboardLayout>
   );
 }
