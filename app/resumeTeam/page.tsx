@@ -876,6 +876,8 @@ export default function ResumeTeamPage() {
 
   // NEW: team members (Resume Head + Resume Associate)
   const [resumeTeamMembers, setResumeTeamMembers] = useState<TeamMember[]>([]);
+  const [assigneeFilter, setAssigneeFilter] = useState<string>("__all__"); 
+
 
   const fileRef = useRef<HTMLInputElement | null>(null);
   const router = useRouter();
@@ -916,16 +918,16 @@ export default function ResumeTeamPage() {
     try {
       const { data, error } = await supabase
         .from("profiles")
-        .select("id,full_name:name,email,role")
-        .in("role", ["Resume Head", "Resume Associate"]);
+        .select("user_id,full_name,user_email,roles")
+        .in("roles", ["Resume Head", "Resume Associate"]);
 
       if (!error && data) {
         // Map to TeamMember shape
         members = data.map((d: any) => ({
-          id: d.id,
+          id: d.user_id,
           name: d.full_name ?? d.name ?? null,
-          email: d.email ?? null,
-          role: d.role ?? null,
+          email: d.user_email ?? null,
+          role: d.roles ?? null,
         }));
       }
     } catch {
@@ -1021,84 +1023,126 @@ const SortIcon = ({ active, dir }: { active: boolean; dir: SortDir }) =>
   );
 
 
-const fetchData = async () => {
-  // sales_closure base
-const { data: sales, error: salesErr } = await supabase
-  .from("sales_closure")
-  .select(
-    "id, lead_id, email, finance_status, closed_at, resume_sale_value, portfolio_sale_value, commitments, company_application_email, onboarded_date"
-  )
-  .not("resume_sale_value", "is", null)
-  .neq("resume_sale_value", 0);
+const fetchData = async (opts?: { assigneeEmail?: string | null; unassigned?: boolean }) => {
+  // 0) Resolve filter → get allowed lead_ids from resume_progress if needed
+  let allowLeadIds: string[] | null = null;
 
+  try {
+   if (opts?.unassigned) {
+  // Get all leads from sales_closure
+  const { data: allSales, error: scErr } = await supabase
+    .from("sales_closure")
+    .select("lead_id");
+
+  if (scErr) throw scErr;
+
+  const allLeadIds = (allSales ?? []).map((x) => x.lead_id);
+
+  // Get all leads that already have an assignee
+  const { data: assigned, error: rpErr } = await supabase
+    .from("resume_progress")
+    .select("lead_id")
+    .not("assigned_to_email", "is", null); // assigned rows
+
+  if (rpErr) throw rpErr;
+
+  const assignedIds = new Set((assigned ?? []).map((x) => x.lead_id));
+
+  // Filter: keep only those NOT in assignedIds
+  const unassignedIds = allLeadIds.filter((id) => !assignedIds.has(id));
+
+  allowLeadIds = unassignedIds;
+}
+
+    else if (opts?.assigneeEmail) {
+      const { data: rp, error: rpErr } = await supabase
+        .from("resume_progress")
+        .select("lead_id")
+        .eq("assigned_to_email", opts.assigneeEmail);
+
+      if (rpErr) throw rpErr;
+      const ids = (rp ?? []).map((x) => x.lead_id).filter(Boolean);
+      allowLeadIds = ids.length ? ids : [];
+    }
+  } catch (e) {
+    console.error("resume_progress filter fetch error:", e);
+    allowLeadIds = []; // safest fallback
+  }
+
+  // If the filter produced 0 allowed lead ids, short-circuit
+  if (allowLeadIds && allowLeadIds.length === 0) {
+    setRows([]);
+    return;
+  }
+
+  // 1) sales_closure base (optionally constrained)
+  let salesQuery = supabase
+    .from("sales_closure")
+    .select(
+      "id, lead_id, email, finance_status, closed_at, resume_sale_value, portfolio_sale_value, commitments, company_application_email, onboarded_date"
+    )
+    .not("resume_sale_value", "is", null)
+    .neq("resume_sale_value", 0);
+
+  if (allowLeadIds && allowLeadIds.length > 0) {
+    salesQuery = salesQuery.in("lead_id", allowLeadIds);
+  }
+
+  const { data: sales, error: salesErr } = await salesQuery;
   if (salesErr) {
     console.error("sales_closure fetch error:", salesErr?.message ?? salesErr);
     setRows([]);
     return;
   }
 
-// Build per-lead latest row + portfolio_paid flag
-type LeadAgg = { latest: any | null; portfolio_paid: boolean };
+  // 2) Build per-lead latest row + portfolio_paid
+  type LeadAgg = { latest: any | null; portfolio_paid: boolean };
+  const byLead = new Map<string, LeadAgg>();
 
-const byLead = new Map<string, LeadAgg>();
+  for (const r of sales ?? []) {
+    const leadId: string = r.lead_id;
+    const current = byLead.get(leadId) ?? { latest: null, portfolio_paid: false };
 
-for (const r of sales ?? []) {
-  const leadId: string = r.lead_id;
-  const current = byLead.get(leadId) ?? { latest: null, portfolio_paid: false };
+    const prev = current.latest;
+    const prevClosed = prev?.closed_at ? new Date(prev.closed_at).getTime() : -Infinity;
+    const thisClosed = r?.closed_at ? new Date(r.closed_at).getTime() : -Infinity;
+    if (!prev || thisClosed > prevClosed) current.latest = r;
 
-  // Pick latest by closed_at
-  const prev = current.latest;
-  const prevClosed = prev?.closed_at ? new Date(prev.closed_at).getTime() : -Infinity;
-  const thisClosed = r?.closed_at ? new Date(r.closed_at).getTime() : -Infinity;
-  if (!prev || thisClosed > prevClosed) current.latest = r;
+    const val = r.portfolio_sale_value;
+    const num = val === null || val === undefined || val === "" ? 0 : Number(val);
+    if (!Number.isNaN(num) && num > 0) current.portfolio_paid = true;
 
-  // If any row has portfolio_sale_value > 0 → mark as paid
-  const val = r.portfolio_sale_value;
-  const num = val === null || val === undefined || val === "" ? 0 : Number(val);
-  if (!Number.isNaN(num) && num > 0) current.portfolio_paid = true;
+    byLead.set(leadId, current);
+  }
 
-  byLead.set(leadId, current);
-}
+  const latest = Array.from(byLead.values())
+    .map((v) => v.latest)
+    .filter(Boolean) as any[];
 
-// Arrays for later
-const latest = Array.from(byLead.values())
-  .map((v) => v.latest)
-  .filter(Boolean);
-const portfolioPaidMap = new Map(
-  Array.from(byLead.entries()).map(([leadId, agg]) => [leadId, agg.portfolio_paid])
-);
+  const portfolioPaidMap = new Map(
+    Array.from(byLead.entries()).map(([leadId, agg]) => [leadId, agg.portfolio_paid])
+  );
 
-
-
-  // const latest = latestByLead(sales || []);
   const leadIds = latest.map((r) => r.lead_id);
-
-  // ✅ If nothing to join, short-circuit cleanly (prevents .in([]) errors)
   if (!leadIds || leadIds.length === 0) {
     setRows([]);
     return;
   }
 
-  // Join leads
+  // 3) Join leads
   const { data: leadsData, error: leadsErr } = await supabase
     .from("leads")
     .select("business_id, name, phone")
     .in("business_id", leadIds);
-
-  if (leadsErr) {
-    console.error("leads fetch error:", leadsErr?.message ?? leadsErr);
-  }
+  if (leadsErr) console.error("leads fetch error:", leadsErr?.message ?? leadsErr);
   const leadMap = new Map((leadsData ?? []).map((l) => [l.business_id, { name: l.name, phone: l.phone }]));
 
-  // Join resume_progress
+  // 4) Join resume_progress (we still need status/pdf/assignee)
   const { data: progress, error: progErr } = await supabase
     .from("resume_progress")
     .select("lead_id, status, pdf_path, assigned_to_email, assigned_to_name")
     .in("lead_id", leadIds);
-
-  if (progErr) {
-    console.error("resume_progress fetch error:", progErr?.message ?? progErr);
-  }
+  if (progErr) console.error("resume_progress fetch error:", progErr?.message ?? progErr);
   const progMap = new Map(
     (progress ?? []).map((p) => [
       p.lead_id,
@@ -1111,8 +1155,7 @@ const portfolioPaidMap = new Map(
     ])
   );
 
-  // Join portfolio_progress (read-only here), but **don’t** log if the table is missing or RLS blocks it.
-  // Instead, just leave portfolio columns empty.
+  // 5) Join portfolio_progress (optional)
   let portMap = new Map<
     string,
     { status: PortfolioStatus | null; assigned_to_email: string | null; assigned_to_name: string | null; link: string | null }
@@ -1136,11 +1179,11 @@ const portfolioPaidMap = new Map(
         ])
       );
     }
-    // If there’s an error (table missing / RLS), just keep portMap empty and don’t spam console.
-  } catch (_) {
+  } catch {
     // ignore
   }
 
+  // 6) Merge
   const merged: SalesClosure[] = latest.map((r) => {
     const lead = leadMap.get(r.lead_id) || { name: "-", phone: "-" };
     const rp = progMap.get(r.lead_id) || {
@@ -1157,38 +1200,38 @@ const portfolioPaidMap = new Map(
     };
 
     const onboardRaw: string | null = r.onboarded_date ?? null;
-return {
-  id: r.id,
-  lead_id: r.lead_id,
-  email: r.email,
-  company_application_email: r.company_application_email ?? null,
-  finance_status: r.finance_status,
-  closed_at: r.closed_at,
-  onboarded_date_raw: onboardRaw,
-  onboarded_date_label: formatOnboardLabel(onboardRaw),
-  resume_sale_value: r.resume_sale_value ?? null,
-  commitments: r.commitments ?? null,
+    return {
+      id: r.id,
+      lead_id: r.lead_id,
+      email: r.email,
+      company_application_email: r.company_application_email ?? null,
+      finance_status: r.finance_status,
+      closed_at: r.closed_at,
+      onboarded_date_raw: onboardRaw,
+      onboarded_date_label: formatOnboardLabel(onboardRaw),
+      resume_sale_value: r.resume_sale_value ?? null,
+      commitments: r.commitments ?? null,
 
-  leads: lead,
+      leads: lead,
 
-  rp_status: rp.status,
-  rp_pdf_path: rp.pdf_path,
-  assigned_to_email: rp.assigned_to_email,
-  assigned_to_name: rp.assigned_to_name,
+      rp_status: rp.status,
+      rp_pdf_path: rp.pdf_path,
+      assigned_to_email: rp.assigned_to_email,
+      assigned_to_name: rp.assigned_to_name,
 
-  pp_status: pp.status,
-  pp_assigned_email: pp.assigned_to_email,
-  pp_assigned_name: pp.assigned_to_name,
-  pp_link: pp.link,
+      pp_status: pp.status,
+      pp_assigned_email: pp.assigned_to_email,
+      pp_assigned_name: pp.assigned_to_name,
+      pp_link: pp.link,
 
-  portfolio_sale_value: r.portfolio_sale_value ?? null,      // optional raw value
-  portfolio_paid: portfolioPaidMap.get(r.lead_id) === true,  // 👈 new field
-};
-
+      portfolio_sale_value: r.portfolio_sale_value ?? null,
+      portfolio_paid: portfolioPaidMap.get(r.lead_id) === true,
+    };
   });
 
   setRows(merged);
 };
+
 
 
   /* =========================
@@ -1253,6 +1296,12 @@ return {
     if (file.size > 20 * 1024 * 1024) throw new Error("Max file size is 20MB.");
   };
 
+  const ensurePdfFilename = (name: string) => {
+  const cleaned = cleanName(name);
+  return /\.pdf$/i.test(cleaned) ? cleaned : `${cleaned}.pdf`;
+};
+
+
   const cleanName = (name: string) => name.replace(/[^\w.\-]+/g, "_");
 
   const fileToHexBytea = async (file: File) => {
@@ -1263,93 +1312,80 @@ return {
     return "\\x" + hex;
   };
 
-  const uploadOrReplaceResume = async (leadId: string, file: File, previousPath?: string | null) => {
-    ensurePdf(file);
+const uploadOrReplaceResume = async (leadId: string, file: File, previousPath?: string | null) => {
+  ensurePdf(file);
 
-    const path = `${leadId}/${Date.now()}_${cleanName(file.name)}`.replace(/^\/+/, "");
+  // keep the original filename (sanitized), ensure it ends with .pdf
+  const fileName = ensurePdfFilename(file.name);
+  const path = `${leadId}/${fileName}`.replace(/^\/+/, "");
 
-    // 1) Storage upload
-    const up = await supabase.storage.from(BUCKET).upload(path, file, {
-      cacheControl: "3600",
-      upsert: true,
-      contentType: "application/pdf",
-    });
-    if (up.error) {
-      console.error("STORAGE UPLOAD ERROR:", up.error);
-      throw new Error(up.error.message || "Upload to Storage failed");
-    }
+  // 1) Storage upload (upsert true will overwrite if same name exists)
+  const up = await supabase.storage.from(BUCKET).upload(path, file, {
+    cacheControl: "3600",
+    upsert: true,
+    contentType: "application/pdf",
+  });
+  if (up.error) {
+    console.error("STORAGE UPLOAD ERROR:", up.error);
+    throw new Error(up.error.message || "Upload to Storage failed");
+  }
 
-    // 2) Remove old blob if it was under same lead folder
-    if (previousPath && previousPath.startsWith(`${leadId}/`)) {
-      const del = await supabase.storage.from(BUCKET).remove([previousPath]);
-      if (del.error) console.warn("STORAGE REMOVE WARNING:", del.error);
-    }
+  // 2) If the previous path exists and is different from the new path, remove it
+  if (previousPath && previousPath !== path) {
+    const del = await supabase.storage.from(BUCKET).remove([previousPath]);
+    if (del.error) console.warn("STORAGE REMOVE WARNING:", del.error);
+  }
 
-    // 3) Upsert progress row
-    const db = await supabase
-      .from("resume_progress")
-      .upsert(
-        {
-          lead_id: leadId,
-          status: "completed",
-          pdf_path: path,
-          pdf_uploaded_at: new Date().toISOString(),
-        },
-        { onConflict: "lead_id" }
-      );
-    if (db.error) {
-      console.error("DB UPSERT ERROR resume_progress:", db.error);
-      throw new Error(db.error.message || "DB upsert failed");
-    }
+  // 3) Upsert progress row
+  const db = await supabase
+    .from("resume_progress")
+    .upsert(
+      {
+        lead_id: leadId,
+        status: "completed",
+        pdf_path: path,
+        pdf_uploaded_at: new Date().toISOString(),
+      },
+      { onConflict: "lead_id" }
+    );
+  if (db.error) {
+    console.error("DB UPSERT ERROR resume_progress:", db.error);
+    throw new Error(db.error.message || "DB upsert failed");
+  }
 
-    // 4) (Optional) persist file bytes in a table
-    if (ENABLE_DB_COPY) {
-      try {
-        const bytea = await fileToHexBytea(file);
-        const ins = await supabase.from("resume_files").insert({
-          lead_id: leadId,
-          filename: cleanName(file.name),
-          mime: "application/pdf",
-          size_bytes: file.size,
-          content: bytea,
-        });
-        if (ins.error) console.error("DB COPY INSERT ERROR resume_files:", ins.error);
-      } catch (e) {
-        console.error("DB COPY CONVERSION ERROR:", e);
-      }
-    }
+  const publicUrl = supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
+  return { path, publicUrl };
+};
 
-    const publicUrl = supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
-    return { path, publicUrl };
-  };
 
   // Always download as "Resume-<lead_id>.pdf"
-  const downloadResume = async (path: string) => {
-    try {
-      const segments = (path || "").split("/");
-      const leadId = segments[0] || "unknown";
-      const fileName = `Resume-${leadId}.pdf`;
+  // Always download with the original uploaded name (last segment of the path)
+const downloadResume = async (path: string) => {
+  try {
+    const segments = (path || "").split("/");
+    const fileName = segments[segments.length - 1] || "resume.pdf";
 
-      const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, 60 * 60);
-      if (error) throw error;
-      if (!data?.signedUrl) throw new Error("No signed URL");
+    const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, 60 * 60);
+    if (error) throw error;
+    if (!data?.signedUrl) throw new Error("No signed URL");
 
-      const res = await fetch(data.signedUrl);
-      if (!res.ok) throw new Error(`Download failed (${res.status})`);
-      const blob = await res.blob();
-      const objectUrl = URL.createObjectURL(blob);
+    const res = await fetch(data.signedUrl);
+    if (!res.ok) throw new Error(`Download failed (${res.status})`);
+    const blob = await res.blob();
+    const objectUrl = URL.createObjectURL(blob);
 
-      const a = document.createElement("a");
-      a.href = objectUrl;
-      a.download = fileName;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(objectUrl);
-    } catch (e: any) {
-      alert(e?.message || "Could not download PDF");
-    }
-  };
+    const a = document.createElement("a");
+    a.href = objectUrl;
+    a.download = fileName; // <- use stored filename
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(objectUrl);
+  } catch (e: any) {
+    alert(e?.message || "Could not download PDF");
+  }
+};
+
 
   /* =========================
      Resume status & assignment
@@ -1573,22 +1609,35 @@ return {
                 <Select
                   value={row.assigned_to_email ?? "__none__"}
                   onValueChange={async (value) => {
-                    try {
-                      const chosen = value === "__none__" ? null : value;
-                      const member = resumeTeamMembers.find((u) => u.email === chosen) || null;
-                      await updateAssignedTo(row.lead_id, chosen, member?.name ?? null);
-                      setRows((rs) =>
-                        rs.map((r) =>
-                          r.lead_id === row.lead_id
-                            ? { ...r, assigned_to_email: chosen, assigned_to_name: member?.name ?? null }
-                            : r
-                        )
-                      );
-                    } catch (e: any) {
-                      console.error("Assign failed:", e);
-                      alert(e.message || "Failed to assign");
-                    }
-                  }}
+  try {
+    const chosen = value === "__none__" ? null : value;
+    const member = resumeTeamMembers.find((u) => u.email === chosen) || null;
+
+    await updateAssignedTo(row.lead_id, chosen, member?.name ?? null);
+
+    // (optional) optimistic UI
+    setRows((rs) =>
+      rs.map((r) =>
+        r.lead_id === row.lead_id
+          ? { ...r, assigned_to_email: chosen, assigned_to_name: member?.name ?? null }
+          : r
+      )
+    );
+
+    // 🔁 KEEP FILTER AFTER CHANGE (Point #5)
+    if (assigneeFilter === "__all__") {
+      await fetchData();
+    } else if (assigneeFilter === "__unassigned__") {
+      await fetchData({ unassigned: true });
+    } else {
+      await fetchData({ assigneeEmail: assigneeFilter });
+    }
+  } catch (e: any) {
+    console.error("Assign failed:", e);
+    alert(e.message || "Failed to assign");
+  }
+}}
+
                   disabled={user?.role === "Resume Associate"}
                 >
                   <SelectTrigger className="!opacity-100 bg-muted/20 text-foreground">
@@ -1670,39 +1719,43 @@ return {
 
 
               {/* Portfolio Link */}
-              <TableCell className="max-w-[220px] truncate">
-                {row.pp_link ? (
-                  <a
-                    href={row.pp_link}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-blue-600 underline block truncate"
-                    title={row.pp_link}
-                  >
-                    {row.pp_link}
-                  </a>
-                ) : row.leads?.name ? (
-                  // fallback: your original pattern based on sanitized name
-                  <a
-                    href={`https://${(row.leads?.name || "")
-                      .toLowerCase()
-                      .replace(/[^a-z0-9]/g, "")}-applywizz.vercel.app/`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-blue-600 underline block truncate"
-                    title={`https://${(row.leads?.name || "")
-                      .toLowerCase()
-                      .replace(/[^a-z0-9]/g, "")}-applywizz.vercel.app/`}
-                  >
-                    https://{(row.leads?.name || "")
-                      .toLowerCase()
-                      .replace(/[^a-z0-9]/g, "")}
-                    -applywizz.vercel.app/
-                  </a>
-                ) : (
-                  <span className="text-gray-400 text-sm">—</span>
-                )}
-              </TableCell>
+              {/* Portfolio Link */}
+<TableCell className="max-w-[220px] truncate">
+  {row.portfolio_paid ? (
+    row.pp_link ? (
+      <a
+        href={row.pp_link}
+        target="_blank"
+        rel="noreferrer"
+        className="text-blue-600 underline block truncate"
+        title={row.pp_link}
+      >
+        {row.pp_link}
+      </a>
+    ) : row.leads?.name ? (
+      // fallback: generate from name
+      <a
+        href={`https://${(row.leads?.name || "")
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, "")}-applywizz.vercel.app/`}
+        target="_blank"
+        rel="noreferrer"
+        className="text-blue-600 underline block truncate"
+        title={`https://${(row.leads?.name || "")
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, "")}-applywizz.vercel.app/`}
+      >
+        https://{(row.leads?.name || "").toLowerCase().replace(/[^a-z0-9]/g, "")}
+        -applywizz.vercel.app/
+      </a>
+    ) : (
+      <span className="text-gray-400 text-sm">—</span>
+    )
+  ) : (
+    <span className="text-gray-400 text-sm">—</span>
+  )}
+</TableCell>
+
 
               {/* Portfolio Assignee */}
               <TableCell>
@@ -1732,16 +1785,27 @@ return {
 
               {/* Onboard Client Button */}
               <TableCell>
-                <Button
-                  onClick={() => handleOnboardClick(row.lead_id)}
-                  variant="outline"
-                  size="sm"
-                  className="bg-blue-400 text-white hover:bg-blue-600 hover:text-white"
-                  disabled={!!row.onboarded_date_raw} // disable if already set
-                >
-                  Onboard Client
-                </Button>
-              </TableCell>
+  {row.onboarded_date_raw ? (
+    <Button
+      variant="outline"
+      size="sm"
+      className="bg-green-600 text-white hover:bg-green-600 hover:text-white cursor-not-allowed"
+      
+    >
+      Onboarded
+    </Button>
+  ) : (
+    <Button
+      onClick={() => handleOnboardClick(row.lead_id)}
+      variant="outline"
+      size="sm"
+      className="bg-blue-400 text-white hover:bg-blue-600 hover:text-white"
+    >
+      Onboard Client
+    </Button>
+  )}
+</TableCell>
+
             </TableRow>
           ))}
           {sortedRows.length === 0 && (
@@ -1763,6 +1827,52 @@ return {
           <div className="flex items-center justify-between">
             <h1 className="text-3xl font-bold text-gray-900">Resume Page</h1>
           </div>
+          {/* Filter row */}
+<div className="flex items-center gap-3">
+  <div className="text-sm font-medium">Assigned To:</div>
+  <Select
+    value={assigneeFilter}
+    onValueChange={async (val) => {
+      setAssigneeFilter(val);
+      setLoading(true);
+      try {
+        if (val === "__all__") {
+          await fetchData();
+        } else if (val === "__unassigned__") {
+          await fetchData({ unassigned: true });
+        } else {
+          await fetchData({ assigneeEmail: val });
+        }
+      } finally {
+        setLoading(false);
+      }
+    }}
+  >
+    <SelectTrigger className="w-[260px]">
+      <SelectValue placeholder="All team members" />
+    </SelectTrigger>
+    <SelectContent>
+      <SelectItem value="__all__">All</SelectItem>
+      <SelectItem value="__unassigned__">Unassigned</SelectItem>
+      {resumeTeamMembers.length === 0 ? (
+        <SelectItem value="__none__" disabled>
+          No team members found
+        </SelectItem>
+      ) : (
+        resumeTeamMembers.map((u) => (
+          <SelectItem
+            key={u.id}
+            value={(u.email ?? "").trim() || "__none__"}
+            disabled={!u.email}
+          >
+            {u.name} — {u.role}
+          </SelectItem>
+        ))
+      )}
+    </SelectContent>
+  </Select>
+</div>
+
 
           {loading ? (
             <p className="p-6 text-gray-600">Loading...</p>

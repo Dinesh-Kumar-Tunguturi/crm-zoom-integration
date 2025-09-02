@@ -1379,7 +1379,7 @@ const sanitizePhone = (input: string) => {
             {/* LEFT: Main Onboarding Form */}
             <Card className="lg:col-span-2">
               <CardHeader>
-                <CardTitle>🧾 Onboard New Client</CardTitle>
+                <CardTitle>🧾 Sale Closing Form</CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
                 {/* Lead ID (optional) */}

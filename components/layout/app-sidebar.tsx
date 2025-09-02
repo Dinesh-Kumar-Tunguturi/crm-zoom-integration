@@ -225,7 +225,7 @@ const navigationItems = [
   },
  // Onboard Client
 {
-  title: "Onboard Client",
+  title: "Sale Done Form",
   url: "/SalesForm",
   icon: FileText,
   module: "onboard",            // ← was "sales"
