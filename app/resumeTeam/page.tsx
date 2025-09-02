@@ -1,8 +1,766 @@
 
+// // app/resumeTeam/page.tsx
+// "use client";
+
+// import { useEffect, useRef, useState } from "react";
+// import { useRouter } from "next/navigation";
+// import { supabase } from "@/utils/supabase/client";
+
+// import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+// import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+// import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+// import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+// import { Button } from "@/components/ui/button";
+
+// import ProtectedRoute from "@/components/auth/ProtectedRoute";
+// import { DashboardLayout } from "@/components/layout/dashboard-layout";
+// import { useAuth } from "@/components/providers/auth-provider";
+
+// /* =========================
+//    Types & Labels
+//    ========================= */
+
+// type FinanceStatus = "Paid" | "Unpaid" | "Paused" | "Closed" | "Got Placed";
+
+// type ResumeStatus = "not_started" | "pending" | "waiting_client_approval" | "completed";
+// const STATUS_LABEL: Record<ResumeStatus, string> = {
+//   not_started: "Not started",
+//   pending: "Pending",
+//   waiting_client_approval: "Waiting for Client approval",
+//   completed: "Completed",
+// };
+
+// /** Portfolio status from the technical team (read-only here) */
+// type PortfolioStatus = "not_started" | "pending" | "waiting_client_approval" | "success";
+// const PORTFOLIO_STATUS_LABEL: Record<PortfolioStatus, string> = {
+//   not_started: "Not started",
+//   pending: "Pending",
+//   waiting_client_approval: "Waiting for Client approval",
+//   success: "Success",
+// };
+
+// interface SalesClosure {
+//   id: string;
+//   lead_id: string; // TEXT in DB
+//   email: string;
+//   company_application_email: string,
+//   finance_status: FinanceStatus;
+//   closed_at: string | null;
+//   onboarded_date: string | null;
+//   resume_sale_value?: number | null;
+//   commitments?: string | null;
+
+//   // joined
+//   leads?: { name: string; phone: string };
+
+//   // resume_progress
+//   rp_status?: ResumeStatus;
+//   rp_pdf_path?: string | null;
+//   assigned_to_email?: string | null;
+//   assigned_to_name?: string | null;
+
+//   // portfolio_progress (read-only here)
+//   pp_status?: PortfolioStatus | null;
+//   pp_assigned_email?: string | null;
+//   pp_assigned_name?: string | null;
+//   pp_link?: string | null;
+// }
+
+// type TeamMember = {
+//   id: string;
+//   name: string | null;
+//   email: string | null;
+//   role: string | null;
+// };
+
+// const RESUME_COLUMNS = [
+//   "S.No",
+//   "Client ID",
+//   "Name",
+//   "Email",
+//   "Application email",
+//   "Phone",
+//   "Status",
+//   "Resume Status",
+//   "Assigned to",
+//   "Resume PDF",
+//   "Closed At",
+//   "Onboarded Date", 
+// // Added Onboarded Date column
+//   "Portfolio Status",
+//   "portfolio link",
+//   "Portfolio Assignee",
+//   "client requirements",
+// ] as const;
+
+// /* =========================
+//    Component
+//    ========================= */
+
+// export default function ResumeTeamPage() {
+//   const [loading, setLoading] = useState(true);
+//   const [rows, setRows] = useState<SalesClosure[]>([]);
+//   const [uploadForLead, setUploadForLead] = useState<string | null>(null);
+//   const [replacingOldPath, setReplacingOldPath] = useState<string | null>(null);
+//   const [reqDialogOpen, setReqDialogOpen] = useState(false);
+//   const [reqRow, setReqRow] = useState<SalesClosure | null>(null);
+//    const [showDatePicker, setShowDatePicker] = useState(false);  // Show date picker
+//   const [selectedDate, setSelectedDate] = useState<string | null>(null);  // Selected date for onboarding
+//   const [currentLeadId, setCurrentLeadId] = useState<string | null>(null);  // Store current lead ID for onboarding
+
+  
+
+//   // NEW: team members (Resume Head + Resume Associate)
+//   const [resumeTeamMembers, setResumeTeamMembers] = useState<TeamMember[]>([]);
+
+//   const fileRef = useRef<HTMLInputElement | null>(null);
+//   const router = useRouter();
+//   const { user } = useAuth();
+
+//   /* =========================
+//      Fetch
+//      ========================= */
+
+//   const fetchData = async () => {
+//   const { data: sales, error: salesErr } = await supabase
+//     .from("sales_closure")
+//     .select("id, lead_id, email, finance_status, closed_at, resume_sale_value, commitments, company_application_email, onboarded_date")
+//     .not("resume_sale_value", "is", null)
+//     .neq("resume_sale_value", 0);
+
+//   if (salesErr) {
+//     console.error(salesErr);
+//     return;
+//   }
+
+//   console.log("Fetched sales_closure rows:", sales);
+//   // Ensure onboarded_date is correctly processed
+//   const latestByLead = (rs: any[]) => {
+//     const map = new Map<string, any>();
+//     for (const r of rs ?? []) {
+//       const ex = map.get(r.lead_id);
+//       const ed = ex?.closed_at ?? "";
+//       const cd = r?.closed_at ?? "";
+//       if (!ex || new Date(cd) > new Date(ed)) map.set(r.lead_id, r);
+//     }
+//     return Array.from(map.values()).sort(
+//       (a, b) => new Date(b.closed_at || "").getTime() - new Date(a.closed_at || "").getTime()
+//     );
+//   };
+
+//   const latest = latestByLead(sales || []);
+//   const leadIds = latest.map((r) => r.lead_id);
+
+//   // Join leads data
+//   const { data: leadsData, error: leadsErr } = await supabase
+//     .from("leads")
+//     .select("business_id, name, phone")
+//     .in("business_id", leadIds);
+
+//   if (leadsErr) {
+//     console.error(leadsErr);
+//     return;
+//   }
+
+//   const leadMap = new Map(leadsData?.map((l) => [l.business_id, { name: l.name, phone: l.phone }]));
+
+//   // Join resume progress
+//   const { data: progress, error: progErr } = await supabase
+//     .from("resume_progress")
+//     .select("lead_id, status, pdf_path, assigned_to_email, assigned_to_name")
+//     .in("lead_id", leadIds);
+
+//   if (progErr) {
+//     console.error(progErr);
+//     return;
+//   }
+
+//   const progMap = new Map(
+//     (progress ?? []).map((p) => [
+//       p.lead_id,
+//       {
+//         status: p.status as ResumeStatus,
+//         pdf_path: p.pdf_path ?? null,
+//         assigned_to_email: p.assigned_to_email ?? null,
+//         assigned_to_name: p.assigned_to_name ?? null,
+//       },
+//     ])
+//   );
+
+//   // Merge final rows
+//   setRows(
+//     latest.map((r) => ({
+//       ...r,
+//       leads: leadMap.get(r.lead_id) || { name: "-", phone: "-" },
+//       rp_status: progMap.get(r.lead_id)?.status ?? "not_started",
+//       rp_pdf_path: progMap.get(r.lead_id)?.pdf_path ?? null,
+//       assigned_to_email: progMap.get(r.lead_id)?.assigned_to_email ?? null,
+//       assigned_to_name: progMap.get(r.lead_id)?.assigned_to_name ?? null,
+//       onboarded_date: r.onboarded_date ? new Date(r.onboarded_date).toLocaleDateString("en-GB") : "Not Started",
+//     }))
+//   );
+// };
+
+
+//   /* =========================
+//      Gate
+//      ========================= */
+
+//   useEffect(() => {
+//     if (user === null) return;
+//     const allowed = ["Super Admin", "Resume Head", "Resume Associate"] as const;
+//     if (!user || !allowed.includes(user.role as any)) {
+//       router.push("/unauthorized");
+//       return;
+//     }
+//     setLoading(false);
+//   }, [user, router]);
+
+//   useEffect(() => {
+//     if (user) fetchData();
+//   }, [user]);
+
+  
+//   const updateOnboardedDate = async (leadId: string, date: string) => {
+//     const { error } = await supabase
+//       .from("sales_closure")
+//       .update({ onboarded_date: date })
+//       .eq("lead_id", leadId);
+
+//     if (error) {
+//       console.error("Error updating onboarded_date", error);
+//     } else {
+//       alert("Onboarded date updated successfully!");
+//       setShowDatePicker(false);
+//       fetchData();  // Refresh the data
+//     }
+//   };
+
+//   const handleOnboardClick = (leadId: string) => {
+//     setCurrentLeadId(leadId);  // Set the lead ID
+//     setShowDatePicker(true);
+//   };
+
+//   const handleSubmitDate = () => {
+//     if (selectedDate && currentLeadId) {
+//       updateOnboardedDate(currentLeadId, selectedDate);
+//     } else {
+//       alert("Please select a date.");
+//     }
+//   };
+
+//   /* =========================
+//      PDF store helpers (Bucket + Optional DB copy)
+//      ========================= */
+
+//   const BUCKET = "resumes"; // must match your bucket name exactly
+//   const ENABLE_DB_COPY = false; // set true ONLY if you've created public.resume_files (see helper below)
+
+//   const ensurePdf = (file: File) => {
+//     if (file.type !== "application/pdf") throw new Error("Please select a PDF file.");
+//     if (file.size > 20 * 1024 * 1024) throw new Error("Max file size is 20MB.");
+//   };
+
+//   const cleanName = (name: string) => name.replace(/[^\w.\-]+/g, "_");
+
+//   const fileToHexBytea = async (file: File) => {
+//     const buf = await file.arrayBuffer();
+//     const bytes = new Uint8Array(buf);
+//     let hex = "";
+//     for (let i = 0; i < bytes.length; i++) hex += bytes[i].toString(16).padStart(2, "0");
+//     return "\\x" + hex;
+//   };
+
+//   // Upload or replace: Storage -> (optional) delete old -> upsert resume_progress -> (optional) DB copy
+//   const uploadOrReplaceResume = async (leadId: string, file: File, previousPath?: string | null) => {
+//     ensurePdf(file);
+
+//     const path = `${leadId}/${Date.now()}_${cleanName(file.name)}`.replace(/^\/+/, "");
+
+//     // 1) Storage upload
+//     const up = await supabase.storage.from(BUCKET).upload(path, file, {
+//       cacheControl: "3600",
+//       upsert: true,
+//       contentType: "application/pdf",
+//     });
+//     if (up.error) {
+//       console.error("STORAGE UPLOAD ERROR:", up.error);
+//       throw new Error(up.error.message || "Upload to Storage failed");
+//     }
+
+//     // 2) Remove old blob if it was under same lead folder
+//     if (previousPath && previousPath.startsWith(`${leadId}/`)) {
+//       const del = await supabase.storage.from(BUCKET).remove([previousPath]);
+//       if (del.error) console.warn("STORAGE REMOVE WARNING:", del.error);
+//     }
+
+//     // 3) Upsert progress row (this is where table RLS could fail)
+//     const db = await supabase
+//       .from("resume_progress")
+//       .upsert(
+//         {
+//           lead_id: leadId,
+//           status: "completed",
+//           pdf_path: path,
+//           pdf_uploaded_at: new Date().toISOString(),
+//         },
+//         { onConflict: "lead_id" }
+//       );
+//     if (db.error) {
+//       console.error("DB UPSERT ERROR resume_progress:", db.error);
+//       throw new Error(db.error.message || "DB upsert failed");
+//     }
+
+//     // 4) (Optional) also persist file bytes in a table for backup/audit
+//     if (ENABLE_DB_COPY) {
+//       try {
+//         const bytea = await fileToHexBytea(file);
+//         const ins = await supabase.from("resume_files").insert({
+//           lead_id: leadId,
+//           filename: cleanName(file.name),
+//           mime: "application/pdf",
+//           size_bytes: file.size,
+//           content: bytea,
+//         });
+//         if (ins.error) console.error("DB COPY INSERT ERROR resume_files:", ins.error);
+//       } catch (e) {
+//         console.error("DB COPY CONVERSION ERROR:", e);
+//       }
+//     }
+
+//     const publicUrl = supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
+//     return { path, publicUrl };
+//   };
+
+//    // Always download as "resume-<lead_id>.pdf"
+// const downloadResume = async (path: string) => {
+//   try {
+//     // lead_id is the first segment of the storage path: "<lead_id>/<timestamp>_file.pdf"
+//     const segments = (path || "").split("/");
+//     const leadId = segments[0] || "unknown";
+//     const fileName = `Resume-${leadId}.pdf`;
+
+//     // Get a signed URL (works for public or RLS-protected buckets)
+//     const { data, error } = await supabase.storage
+//       .from("resumes")
+//       .createSignedUrl(path, 60 * 60); // 1 hour
+
+//     if (error) throw error;
+//     if (!data?.signedUrl) throw new Error("No signed URL");
+
+//     // Fetch the file and trigger a client-side download with our custom filename
+//     const res = await fetch(data.signedUrl);
+//     if (!res.ok) throw new Error(`Download failed (${res.status})`);
+//     const blob = await res.blob();
+//     const objectUrl = URL.createObjectURL(blob);
+
+//     const a = document.createElement("a");
+//     a.href = objectUrl;
+//     a.download = fileName; // 👈 force name = resume-<lead_id>.pdf
+//     document.body.appendChild(a);
+//     a.click();
+//     a.remove();
+//     URL.revokeObjectURL(objectUrl);
+//   } catch (e: any) {
+//     alert(e?.message || "Could not download PDF");
+//   }
+// };
+
+//   /* =========================
+//      Resume status & assignment
+//      ========================= */
+
+//   const updateStatus = async (leadId: string, status: ResumeStatus) => {
+//     const { error } = await supabase.from("resume_progress").upsert({ lead_id: leadId, status }, { onConflict: "lead_id" });
+//     if (error) throw error;
+//   };
+
+//   const updateAssignedTo = async (leadId: string, email: string | null, name?: string | null) => {
+//     // does a row exist?
+//     const { data: existingRows, error: findErr } = await supabase.from("resume_progress").select("id").eq("lead_id", leadId);
+//     if (findErr) throw findErr;
+
+//     if (existingRows && existingRows.length > 0) {
+//       const { error: updErr } = await supabase
+//         .from("resume_progress")
+//         .update({ assigned_to_email: email, assigned_to_name: name ?? null })
+//         .eq("lead_id", leadId);
+//       if (updErr) throw updErr;
+//     } else {
+//       const { error: insErr } = await supabase
+//         .from("resume_progress")
+//         .insert({ lead_id: leadId, assigned_to_email: email, assigned_to_name: name ?? null });
+//       if (insErr) throw insErr;
+//     }
+//   };
+
+//   // Handle change in status select
+//   const onChangeStatus = async (row: SalesClosure, newStatus: ResumeStatus) => {
+//     try {
+//       await updateStatus(row.lead_id, newStatus);
+
+//       if (newStatus === "completed" && !row.rp_pdf_path) {
+//         // Ask for a file only if there's no PDF yet
+//         setUploadForLead(row.lead_id);
+//         setReplacingOldPath(null);
+//         fileRef.current?.click();
+//       } else {
+//         setRows((rs) => rs.map((r) => (r.lead_id === row.lead_id ? { ...r, rp_status: newStatus } : r)));
+//       }
+//     } catch (e: any) {
+//       alert(e.message || "Failed to update status");
+//     }
+//   };
+
+//   // Handle click on Replace button
+//   const onReplacePdf = (row: SalesClosure) => {
+//     setUploadForLead(row.lead_id);
+//     setReplacingOldPath(row.rp_pdf_path ?? null);
+//     fileRef.current?.click();
+//   };
+
+//   // Single hidden file input shared by all rows
+//   const onFilePicked = async (e: React.ChangeEvent<HTMLInputElement>) => {
+//     const file = e.target.files?.[0] || null;
+//     const leadId = uploadForLead;
+//     const oldPath = replacingOldPath;
+//     e.target.value = "";
+//     setUploadForLead(null);
+//     setReplacingOldPath(null);
+
+//     if (!file || !leadId) return;
+
+//     try {
+//       const { path } = await uploadOrReplaceResume(leadId, file, oldPath || undefined);
+//       // reflect in UI
+//       await fetchData();
+//       // or optimistic:
+//       // setRows(rs => rs.map(r => r.lead_id === leadId ? ({ ...r, rp_status: "completed", rp_pdf_path: path }) : r));
+//       alert("PDF uploaded.");
+//     } catch (err: any) {
+//       alert(err.message || "Upload failed");
+//     }
+//   };
+
+//   /* =========================
+//      UI
+//      ========================= */
+
+//   const renderTable = (data: SalesClosure[]) => (
+//     <div className="rounded-md border mt-4">
+//       <input ref={fileRef} type="file" accept="application/pdf" className="hidden" onChange={onFilePicked} />
+
+//       <Table>
+//         <TableHeader>
+//           <TableRow>
+//             {RESUME_COLUMNS.map((c) => (
+//               <TableHead key={c}>{c}</TableHead>
+//             ))}
+//           </TableRow>
+//         </TableHeader>
+//         <TableBody>
+//           {data.map((row, index) => (
+//             <TableRow key={row.id}>
+//               <TableCell className="text-center">{index + 1}</TableCell>
+//               <TableCell>{row.lead_id}</TableCell>
+//               {/* <TableCell>{row.leads?.name || "-"}</TableCell> */}
+//               <TableCell
+//                                 className="font-medium max-w-[150px] break-words whitespace-normal cursor-pointer text-blue-600 hover:underline"
+//                                 onClick={() => window.open(`/leads/${row.lead_id}`, "_blank")}
+//                               >
+//                                 {row.leads?.name || "-"}
+//                               </TableCell>
+
+//               <TableCell>{row.email}</TableCell>
+//               <TableCell>{row.company_application_email || "not given"}</TableCell>
+//               <TableCell>{row.leads?.phone || "-"}</TableCell>
+//               <TableCell>{row.finance_status}</TableCell>
+
+//               {/* Resume Status */}
+//               <TableCell className="min-w-[220px]">
+//                 <Select value={row.rp_status || "not_started"} onValueChange={(v) => onChangeStatus(row, v as ResumeStatus)}>
+//                   <SelectTrigger>
+//                     <SelectValue placeholder="Select status" />
+//                   </SelectTrigger>
+//                   <SelectContent>
+//                     {(["not_started", "pending", "waiting_client_approval", "completed"] as ResumeStatus[]).map((s) => (
+//                       <SelectItem key={s} value={s}>
+//                         {STATUS_LABEL[s]}
+//                       </SelectItem>
+//                     ))}
+//                   </SelectContent>
+//                 </Select>
+//               </TableCell>
+
+//               {/* Assigned to */}
+//               <TableCell className="min-w-[260px]">
+//                 <Select
+//                   value={row.assigned_to_email ?? "__none__"}
+//                   onValueChange={async (value) => {
+//                     try {
+//                       const chosen = value === "__none__" ? null : value;
+//                       const member = resumeTeamMembers.find((u) => u.email === chosen) || null;
+//                       await updateAssignedTo(row.lead_id, chosen, member?.name ?? null);
+//                       setRows((rs) =>
+//                         rs.map((r) =>
+//                           r.lead_id === row.lead_id
+//                             ? { ...r, assigned_to_email: chosen, assigned_to_name: member?.name ?? null }
+//                             : r
+//                         )
+//                       );
+//                     } catch (e: any) {
+//                       console.error("Assign failed:", e);
+//                       alert(e.message || "Failed to assign");
+//                     }
+//                   }}
+//                   disabled={user?.role == "Resume Associate"}
+//                 >
+//                   <SelectTrigger className="!opacity-100 bg-muted/20 text-foreground">
+//                     <SelectValue placeholder="Assign to…" />
+//                   </SelectTrigger>
+//                   <SelectContent className="max-h-72">
+//                     <SelectItem value="__none__">Unassigned</SelectItem>
+//                     {resumeTeamMembers.length === 0 ? (
+//                       <SelectItem value="__disabled__" disabled>
+//                         No team members found
+//                       </SelectItem>
+//                     ) : (
+//                       resumeTeamMembers.map((u) => (
+//                         <SelectItem key={u.id} value={u.email ?? ""} disabled={!u.email}>
+//                           {u.name} — {u.role}
+//                         </SelectItem>
+//                       ))
+//                     )}
+//                   </SelectContent>
+//                 </Select>
+//               </TableCell>
+
+//               {/* Resume PDF */}
+//               <TableCell className="space-x-2 min-w-[220px]">
+//                 {row.rp_pdf_path ? (
+//                   <>
+                  
+//                   <Button variant="outline" size="sm" onClick={() => downloadResume(row.rp_pdf_path!)}>
+//   Download
+// </Button>
+
+//                     <Button variant="secondary" size="sm" onClick={() => onReplacePdf(row)}>
+//                       Replace
+//                     </Button>
+//                   </>
+//                 ) : row.rp_status === "completed" ? (
+//                   <Button
+//                     size="sm"
+//                     onClick={() => {
+//                       setUploadForLead(row.lead_id);
+//                       setReplacingOldPath(null);
+//                       fileRef.current?.click();
+//                     }}
+//                   >
+//                     Upload PDF
+//                   </Button>
+//                 ) : (
+//                   <span className="text-gray-400 text-sm">—</span>
+//                 )}
+//               </TableCell>
+
+
+//               {/* Closed At */}
+//               <TableCell>{row.closed_at ? new Date(row.closed_at).toLocaleDateString("en-GB") : "-"}</TableCell>
+// {/* Onboarded Date */}
+//             <TableCell>
+//   {row.onboarded_date === "Not Started" ? (
+//     <span className="bg-red-500 text-white text-sm py-1 px-3 rounded-full">{row.onboarded_date}</span>
+//   ) : (
+//     <span className="bg-green-500 text-white text-sm py-1 px-3 rounded-full">
+//       {row.onboarded_date}
+//     </span>
+//   )}
+// </TableCell>
+
+
+
+             
+//              <TableCell className="max-w-[220px] truncate">
+//   {row.leads?.name && (
+//     <a
+//       href={`https://${row.leads?.name
+//         .toLowerCase()
+//         .replace(/[^a-z0-9]/g, "")}-applywizz.vercel.app/`}
+//       target="_blank"
+//       rel="noreferrer"
+//       className="text-blue-600 underline block truncate"
+//       title={`https://${row.leads?.name
+//         .toLowerCase()
+//         .replace(/[^a-z0-9]/g, "")}-applywizz.vercel.app/`} // tooltip shows full URL
+//     >
+//       https://{row.leads?.name
+//         .toLowerCase()
+//         .replace(/[^a-z0-9]/g, "")}-applywizz.vercel.app/
+//     </a>
+//   )}
+// </TableCell>
+
+
+//               {/* Portfolio Assignee */}
+//               <TableCell>
+//                 {row.pp_assigned_name
+//                   ? `${row.pp_assigned_name}${row.pp_assigned_email ? ` • ${row.pp_assigned_email}` : ""}`
+//                   : row.pp_assigned_email || <span className="text-gray-400 text-sm">—</span>}
+//               </TableCell>
+
+//               {/* Commitments */}
+//               <TableCell className="min-w-[140px] text-center">
+//                 {row.commitments?.trim() ? (
+//                   <Button
+//                     className="bg-gray-900 hover:bg-gray-400 text-white"
+//                     size="sm"
+//                     variant="outline"
+//                     onClick={() => {
+//                       setReqRow(row);
+//                       setReqDialogOpen(true);
+//                     }}
+//                   >
+//                     Requirements
+//                   </Button>
+//                 ) : (
+//                   <span className="text-gray-400 text-sm">—</span>
+//                 )}
+//               </TableCell>
+//                {/* Onboard Client Button */}
+//              <TableCell>
+//   <Button
+//     onClick={() => handleOnboardClick(row.lead_id)}
+//     variant="outline"
+//     size="sm"
+//     className="bg-blue-400 text-white hover:bg-blue-600 hover:text-white"
+//     disabled={row.onboarded_date !== "Not Started"} // Disable button if onboarded_date is not "Not Started"
+//   >
+//     Onboard Client
+//   </Button>
+// </TableCell>
+
+//             </TableRow>
+//           ))}
+//           {data.length === 0 && (
+//             <TableRow>
+//               <TableCell colSpan={RESUME_COLUMNS.length} className="text-center text-sm text-muted-foreground py-10">
+//                 No records found.
+//               </TableCell>
+//             </TableRow>
+//           )}
+//         </TableBody>
+//       </Table>
+//     </div>
+//   );
+
+//   return (
+//     <ProtectedRoute allowedRoles={["Super Admin", "Resume Head", "Resume Associate"]}>
+//       <DashboardLayout>
+//         <div className="space-y-6">
+//           <div className="flex items-center justify-between">
+//             <h1 className="text-3xl font-bold text-gray-900">Resume Page</h1>
+//           </div>
+
+//           {loading ? (
+//             <p className="p-6 text-gray-600">Loading...</p>
+//           ) : (
+//             <Tabs defaultValue="resume" className="w-full">
+//               <TabsList className="grid grid-cols-1 w-full sm:w-auto">
+//                 <TabsTrigger value="resume">Resumes</TabsTrigger>
+//               </TabsList>
+//               <TabsContent value="resume">{renderTable(rows)}</TabsContent>
+//             </Tabs>
+//           )}
+//         </div>
+
+//          {/* Date Picker Modal for Onboarding */}
+//         {showDatePicker && (
+//           <Dialog open={showDatePicker} onOpenChange={setShowDatePicker}>
+//             <DialogContent className="max-w-sm">
+//               <DialogHeader>
+//                 <DialogTitle>Select Onboard Date</DialogTitle>
+//                 <DialogDescription>Please select the date to onboard the client.</DialogDescription>
+//               </DialogHeader>
+//               <input
+//                 type="date"
+//                 value={selectedDate || ""}
+//                 onChange={(e) => setSelectedDate(e.target.value)}
+//                 className="w-full p-2 border rounded-md"
+//               />
+//               <DialogFooter>
+//                 <Button  onClick={() => setShowDatePicker(false)}>
+//                   Cancel
+//                 </Button>
+//                 <Button onClick={handleSubmitDate}>Submit</Button>
+//               </DialogFooter>
+//             </DialogContent>
+//           </Dialog>
+//         )}
+    
+
+//         <Dialog open={reqDialogOpen} onOpenChange={setReqDialogOpen}>
+//           <DialogContent className="max-w-3xl" onPointerDownOutside={(e) => e.preventDefault()}>
+//             <DialogHeader>
+//               <DialogTitle>Requirements — {reqRow?.lead_id ?? ""}</DialogTitle>
+//               <DialogDescription>Commitment details captured at sale closure.</DialogDescription>
+//             </DialogHeader>
+
+//             <div className="space-y-4">
+//               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+//                 <div>
+//                   <div className="text-xs text-muted-foreground">Lead ID</div>
+//                   <div className="font-medium">{reqRow?.lead_id ?? "—"}</div>
+//                 </div>
+//                 <div>
+//                   <div className="text-xs text-muted-foreground">Name</div>
+//                   <div className="font-medium">{reqRow?.leads?.name ?? "—"}</div>
+//                 </div>
+//                 <div>
+//                   <div className="text-xs text-muted-foreground">Email</div>
+//                   <div className="font-medium break-all">{reqRow?.email ?? "—"}</div>
+//                 </div>
+//                 <div>
+//                   <div className="text-xs text-muted-foreground">Closed At</div>
+//                   <div className="font-medium">
+//                     {reqRow?.closed_at ? new Date(reqRow.closed_at).toLocaleDateString("en-GB") : "—"}
+//                   </div>
+//                 </div>
+//               </div>
+
+//               <div>
+//                 <div className="text-xs text-muted-foreground mb-1">Commitments</div>
+//                 <div className="rounded-md border bg-muted/30 p-3 max-h-[50vh] overflow-y-auto whitespace-pre-wrap">
+//                   {reqRow?.commitments?.trim() ? reqRow.commitments : "—"}
+//                 </div>
+//               </div>
+//             </div>
+
+//             <DialogFooter className="gap-2">
+//               <Button
+//                 variant="outline"
+//                 onClick={async () => {
+//                   try {
+//                     await navigator.clipboard.writeText(reqRow?.commitments ?? "");
+//                   } catch {}
+//                 }}
+//               >
+//                 Copy Text
+//               </Button>
+//               <Button onClick={() => setReqDialogOpen(false)}>Close</Button>
+//             </DialogFooter>
+//           </DialogContent>
+//         </Dialog>
+//       </DashboardLayout>
+//     </ProtectedRoute>
+//   );
+// }
+
+
 // app/resumeTeam/page.tsx
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
 
@@ -11,6 +769,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react"; // top of file with other imports
+
 
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
@@ -39,31 +799,36 @@ const PORTFOLIO_STATUS_LABEL: Record<PortfolioStatus, string> = {
   success: "Success",
 };
 
+
+
 interface SalesClosure {
   id: string;
-  lead_id: string; // TEXT in DB
+  lead_id: string; // TEXT in DB (business_id from leads)
   email: string;
-  company_application_email: string,
+  company_application_email: string | null;
   finance_status: FinanceStatus;
   closed_at: string | null;
-  onboarded_date: string | null;
+  onboarded_date_raw: string | null;     // <- keep raw
+  onboarded_date_label: string;          // <- formatted for UI
   resume_sale_value?: number | null;
+ portfolio_sale_value?: number | string | null; // keep raw if you still want it
+  portfolio_paid: boolean;    
   commitments?: string | null;
 
   // joined
   leads?: { name: string; phone: string };
 
   // resume_progress
-  rp_status?: ResumeStatus;
-  rp_pdf_path?: string | null;
-  assigned_to_email?: string | null;
-  assigned_to_name?: string | null;
+  rp_status: ResumeStatus;
+  rp_pdf_path: string | null;
+  assigned_to_email: string | null;
+  assigned_to_name: string | null;
 
   // portfolio_progress (read-only here)
-  pp_status?: PortfolioStatus | null;
-  pp_assigned_email?: string | null;
-  pp_assigned_name?: string | null;
-  pp_link?: string | null;
+  pp_status: PortfolioStatus | null;
+  pp_assigned_email: string | null;
+  pp_assigned_name: string | null;
+  pp_link: string | null;
 }
 
 type TeamMember = {
@@ -85,10 +850,12 @@ const RESUME_COLUMNS = [
   "Assigned to",
   "Resume PDF",
   "Closed At",
-  "Onboarded Date", // Added Onboarded Date column
+  "Onboarded Date",
   "Portfolio Status",
+  "Portfolio Link",
   "Portfolio Assignee",
-  "client requirements",
+  "Client Requirements",
+  "Onboard", // <- added to match the extra cell
 ] as const;
 
 /* =========================
@@ -102,11 +869,10 @@ export default function ResumeTeamPage() {
   const [replacingOldPath, setReplacingOldPath] = useState<string | null>(null);
   const [reqDialogOpen, setReqDialogOpen] = useState(false);
   const [reqRow, setReqRow] = useState<SalesClosure | null>(null);
-   const [showDatePicker, setShowDatePicker] = useState(false);  // Show date picker
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);  // Selected date for onboarding
-  const [currentLeadId, setCurrentLeadId] = useState<string | null>(null);  // Store current lead ID for onboarding
 
-  
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [currentLeadId, setCurrentLeadId] = useState<string | null>(null);
 
   // NEW: team members (Resume Head + Resume Associate)
   const [resumeTeamMembers, setResumeTeamMembers] = useState<TeamMember[]>([]);
@@ -116,68 +882,228 @@ export default function ResumeTeamPage() {
   const { user } = useAuth();
 
   /* =========================
-     Fetch
+     Fetch helpers
      ========================= */
 
-  const fetchData = async () => {
-  const { data: sales, error: salesErr } = await supabase
-    .from("sales_closure")
-    .select("id, lead_id, email, finance_status, closed_at, resume_sale_value, commitments, company_application_email, onboarded_date")
-    .not("resume_sale_value", "is", null)
-    .neq("resume_sale_value", 0);
+  const formatDateLabel = (d: string | null) =>
+    d ? new Date(d).toLocaleDateString("en-GB") : "-";
+
+  const formatOnboardLabel = (d: string | null) =>
+    d ? new Date(d).toLocaleDateString("en-GB") : "Not Started";
+
+  const fetchTeamMembers = async () => {
+  // Try users first
+  let members: TeamMember[] = [];
+  let errMsg: string | null = null;
+
+  try {
+    const { data, error } = await supabase
+      .from("users")
+      .select("id,name,email,role")
+      .in("role", ["Resume Head", "Resume Associate"]);
+
+    if (error) {
+      errMsg = error?.message ?? String(error);
+    } else if (data) {
+      members = data;
+    }
+  } catch (e: any) {
+    errMsg = e?.message ?? String(e);
+  }
+
+  // Fallback to profiles if users failed or returned empty
+  if (members.length === 0) {
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id,full_name:name,email,role")
+        .in("role", ["Resume Head", "Resume Associate"]);
+
+      if (!error && data) {
+        // Map to TeamMember shape
+        members = data.map((d: any) => ({
+          id: d.id,
+          name: d.full_name ?? d.name ?? null,
+          email: d.email ?? null,
+          role: d.role ?? null,
+        }));
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  // If still empty, don’t spam console — just set empty list.
+  setResumeTeamMembers(members);
+  // Optional: only log a single concise message if we truly got nothing and had an error.
+  // (Prevents `{}` noise)
+  // if (members.length === 0 && errMsg) console.warn("No resume team members available:", errMsg);
+};
+
+// ---- Sorting ----
+type SortKey = "clientId" | "name" | "email" | "closedAt" | "onboarded" | "portfolio";
+type SortDir = "asc" | "desc";
+
+const [sort, setSort] = useState<{ key: SortKey | null; dir: SortDir }>({ key: null, dir: "asc" });
+
+const toggleSort = (key: SortKey) => {
+  setSort((s) => (s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }));
+};
+
+// Extract numeric part from "AWL-1604" → 1604
+const parseClientIdNum = (id?: string | null) => {
+  if (!id) return -Infinity;
+  const m = id.match(/(\d+)$/);
+  return m ? Number(m[1]) : -Infinity;
+};
+
+const dateToMs = (d?: string | null) => (d ? new Date(d).getTime() : -Infinity);
+
+const safeStr = (s?: string | null) => (s ?? "").toLowerCase();
+
+// Paid first when sorting desc (true > false). When asc, false > true.
+const boolToNum = (b: boolean) => (b ? 1 : 0);
+
+// Generic comparator with nulls pushed to the end (for asc).
+const cmp = (a: number | string, b: number | string) => (a < b ? -1 : a > b ? 1 : 0);
+
+// Build a sorted view of rows
+const sortedRows = React.useMemo(() => {
+  const arr = [...rows];
+  if (!sort.key) return arr;
+
+  arr.sort((A, B) => {
+    let vA: number | string;
+    let vB: number | string;
+
+    switch (sort.key) {
+      case "clientId":
+        vA = parseClientIdNum(A.lead_id);
+        vB = parseClientIdNum(B.lead_id);
+        break;
+      case "name":
+        vA = safeStr(A.leads?.name);
+        vB = safeStr(B.leads?.name);
+        break;
+      case "email":
+        vA = safeStr(A.email);
+        vB = safeStr(B.email);
+        break;
+      case "closedAt":
+        vA = dateToMs(A.closed_at);
+        vB = dateToMs(B.closed_at);
+        break;
+      case "onboarded":
+        vA = dateToMs(A.onboarded_date_raw);
+        vB = dateToMs(B.onboarded_date_raw);
+        break;
+      case "portfolio":
+        // use your computed boolean
+        vA = boolToNum(A.portfolio_paid);
+        vB = boolToNum(B.portfolio_paid);
+        break;
+      default:
+        vA = 0;
+        vB = 0;
+    }
+
+    const base = cmp(vA, vB);
+    return sort.dir === "asc" ? base : -base;
+  });
+
+  return arr;
+}, [rows, sort]);
+
+// Small icon component for header arrows
+const SortIcon = ({ active, dir }: { active: boolean; dir: SortDir }) =>
+  active ? (dir === "asc" ? <ArrowUp className="ml-1 h-6 w-6" /> : <ArrowDown className="ml-1 h-6 w-6" />) : (
+    <ArrowUpDown className="ml-1 h-4 w-4 opacity-60" />
+  );
+
+
+const fetchData = async () => {
+  // sales_closure base
+const { data: sales, error: salesErr } = await supabase
+  .from("sales_closure")
+  .select(
+    "id, lead_id, email, finance_status, closed_at, resume_sale_value, portfolio_sale_value, commitments, company_application_email, onboarded_date"
+  )
+  .not("resume_sale_value", "is", null)
+  .neq("resume_sale_value", 0);
 
   if (salesErr) {
-    console.error(salesErr);
+    console.error("sales_closure fetch error:", salesErr?.message ?? salesErr);
+    setRows([]);
     return;
   }
 
-  console.log("Fetched sales_closure rows:", sales);
-  // Ensure onboarded_date is correctly processed
-  const latestByLead = (rs: any[]) => {
-    const map = new Map<string, any>();
-    for (const r of rs ?? []) {
-      const ex = map.get(r.lead_id);
-      const ed = ex?.closed_at ?? "";
-      const cd = r?.closed_at ?? "";
-      if (!ex || new Date(cd) > new Date(ed)) map.set(r.lead_id, r);
-    }
-    return Array.from(map.values()).sort(
-      (a, b) => new Date(b.closed_at || "").getTime() - new Date(a.closed_at || "").getTime()
-    );
-  };
+// Build per-lead latest row + portfolio_paid flag
+type LeadAgg = { latest: any | null; portfolio_paid: boolean };
 
-  const latest = latestByLead(sales || []);
+const byLead = new Map<string, LeadAgg>();
+
+for (const r of sales ?? []) {
+  const leadId: string = r.lead_id;
+  const current = byLead.get(leadId) ?? { latest: null, portfolio_paid: false };
+
+  // Pick latest by closed_at
+  const prev = current.latest;
+  const prevClosed = prev?.closed_at ? new Date(prev.closed_at).getTime() : -Infinity;
+  const thisClosed = r?.closed_at ? new Date(r.closed_at).getTime() : -Infinity;
+  if (!prev || thisClosed > prevClosed) current.latest = r;
+
+  // If any row has portfolio_sale_value > 0 → mark as paid
+  const val = r.portfolio_sale_value;
+  const num = val === null || val === undefined || val === "" ? 0 : Number(val);
+  if (!Number.isNaN(num) && num > 0) current.portfolio_paid = true;
+
+  byLead.set(leadId, current);
+}
+
+// Arrays for later
+const latest = Array.from(byLead.values())
+  .map((v) => v.latest)
+  .filter(Boolean);
+const portfolioPaidMap = new Map(
+  Array.from(byLead.entries()).map(([leadId, agg]) => [leadId, agg.portfolio_paid])
+);
+
+
+
+  // const latest = latestByLead(sales || []);
   const leadIds = latest.map((r) => r.lead_id);
 
-  // Join leads data
+  // ✅ If nothing to join, short-circuit cleanly (prevents .in([]) errors)
+  if (!leadIds || leadIds.length === 0) {
+    setRows([]);
+    return;
+  }
+
+  // Join leads
   const { data: leadsData, error: leadsErr } = await supabase
     .from("leads")
     .select("business_id, name, phone")
     .in("business_id", leadIds);
 
   if (leadsErr) {
-    console.error(leadsErr);
-    return;
+    console.error("leads fetch error:", leadsErr?.message ?? leadsErr);
   }
+  const leadMap = new Map((leadsData ?? []).map((l) => [l.business_id, { name: l.name, phone: l.phone }]));
 
-  const leadMap = new Map(leadsData?.map((l) => [l.business_id, { name: l.name, phone: l.phone }]));
-
-  // Join resume progress
+  // Join resume_progress
   const { data: progress, error: progErr } = await supabase
     .from("resume_progress")
     .select("lead_id, status, pdf_path, assigned_to_email, assigned_to_name")
     .in("lead_id", leadIds);
 
   if (progErr) {
-    console.error(progErr);
-    return;
+    console.error("resume_progress fetch error:", progErr?.message ?? progErr);
   }
-
   const progMap = new Map(
     (progress ?? []).map((p) => [
       p.lead_id,
       {
-        status: p.status as ResumeStatus,
+        status: (p.status as ResumeStatus) ?? "not_started",
         pdf_path: p.pdf_path ?? null,
         assigned_to_email: p.assigned_to_email ?? null,
         assigned_to_name: p.assigned_to_name ?? null,
@@ -185,23 +1111,88 @@ export default function ResumeTeamPage() {
     ])
   );
 
-  // Merge final rows
-  setRows(
-    latest.map((r) => ({
-      ...r,
-      leads: leadMap.get(r.lead_id) || { name: "-", phone: "-" },
-      rp_status: progMap.get(r.lead_id)?.status ?? "not_started",
-      rp_pdf_path: progMap.get(r.lead_id)?.pdf_path ?? null,
-      assigned_to_email: progMap.get(r.lead_id)?.assigned_to_email ?? null,
-      assigned_to_name: progMap.get(r.lead_id)?.assigned_to_name ?? null,
-      onboarded_date: r.onboarded_date ? new Date(r.onboarded_date).toLocaleDateString("en-GB") : "Not Started",
-    }))
-  );
+  // Join portfolio_progress (read-only here), but **don’t** log if the table is missing or RLS blocks it.
+  // Instead, just leave portfolio columns empty.
+  let portMap = new Map<
+    string,
+    { status: PortfolioStatus | null; assigned_to_email: string | null; assigned_to_name: string | null; link: string | null }
+  >();
+  try {
+    const { data: portProg, error: portErr } = await supabase
+      .from("portfolio_progress")
+      .select("lead_id, status, assigned_to_email, assigned_to_name, link, portfolio_link")
+      .in("lead_id", leadIds);
+
+    if (!portErr && portProg) {
+      portMap = new Map(
+        portProg.map((p: any) => [
+          p.lead_id,
+          {
+            status: (p.status as PortfolioStatus) ?? null,
+            assigned_to_email: p.assigned_to_email ?? null,
+            assigned_to_name: p.assigned_to_name ?? null,
+            link: (p.link || p.portfolio_link || null) as string | null,
+          },
+        ])
+      );
+    }
+    // If there’s an error (table missing / RLS), just keep portMap empty and don’t spam console.
+  } catch (_) {
+    // ignore
+  }
+
+  const merged: SalesClosure[] = latest.map((r) => {
+    const lead = leadMap.get(r.lead_id) || { name: "-", phone: "-" };
+    const rp = progMap.get(r.lead_id) || {
+      status: "not_started" as ResumeStatus,
+      pdf_path: null,
+      assigned_to_email: null,
+      assigned_to_name: null,
+    };
+    const pp = portMap.get(r.lead_id) || {
+      status: null as PortfolioStatus | null,
+      assigned_to_email: null,
+      assigned_to_name: null,
+      link: null as string | null,
+    };
+
+    const onboardRaw: string | null = r.onboarded_date ?? null;
+return {
+  id: r.id,
+  lead_id: r.lead_id,
+  email: r.email,
+  company_application_email: r.company_application_email ?? null,
+  finance_status: r.finance_status,
+  closed_at: r.closed_at,
+  onboarded_date_raw: onboardRaw,
+  onboarded_date_label: formatOnboardLabel(onboardRaw),
+  resume_sale_value: r.resume_sale_value ?? null,
+  commitments: r.commitments ?? null,
+
+  leads: lead,
+
+  rp_status: rp.status,
+  rp_pdf_path: rp.pdf_path,
+  assigned_to_email: rp.assigned_to_email,
+  assigned_to_name: rp.assigned_to_name,
+
+  pp_status: pp.status,
+  pp_assigned_email: pp.assigned_to_email,
+  pp_assigned_name: pp.assigned_to_name,
+  pp_link: pp.link,
+
+  portfolio_sale_value: r.portfolio_sale_value ?? null,      // optional raw value
+  portfolio_paid: portfolioPaidMap.get(r.lead_id) === true,  // 👈 new field
+};
+
+  });
+
+  setRows(merged);
 };
 
 
   /* =========================
-     Gate
+     Gate + initial load
      ========================= */
 
   useEffect(() => {
@@ -211,14 +1202,14 @@ export default function ResumeTeamPage() {
       router.push("/unauthorized");
       return;
     }
-    setLoading(false);
+    // after role gate, load data
+    Promise.all([fetchTeamMembers(), fetchData()]).finally(() => setLoading(false));
   }, [user, router]);
 
-  useEffect(() => {
-    if (user) fetchData();
-  }, [user]);
+  /* =========================
+     Onboarding date updates
+     ========================= */
 
-  
   const updateOnboardedDate = async (leadId: string, date: string) => {
     const { error } = await supabase
       .from("sales_closure")
@@ -227,15 +1218,18 @@ export default function ResumeTeamPage() {
 
     if (error) {
       console.error("Error updating onboarded_date", error);
+      alert(error.message || "Failed to update onboarded date");
     } else {
       alert("Onboarded date updated successfully!");
       setShowDatePicker(false);
-      fetchData();  // Refresh the data
+      setSelectedDate(null);
+      setCurrentLeadId(null);
+      await fetchData();
     }
   };
 
   const handleOnboardClick = (leadId: string) => {
-    setCurrentLeadId(leadId);  // Set the lead ID
+    setCurrentLeadId(leadId);
     setShowDatePicker(true);
   };
 
@@ -252,7 +1246,7 @@ export default function ResumeTeamPage() {
      ========================= */
 
   const BUCKET = "resumes"; // must match your bucket name exactly
-  const ENABLE_DB_COPY = false; // set true ONLY if you've created public.resume_files (see helper below)
+  const ENABLE_DB_COPY = false; // set true ONLY if you've created public.resume_files
 
   const ensurePdf = (file: File) => {
     if (file.type !== "application/pdf") throw new Error("Please select a PDF file.");
@@ -269,7 +1263,6 @@ export default function ResumeTeamPage() {
     return "\\x" + hex;
   };
 
-  // Upload or replace: Storage -> (optional) delete old -> upsert resume_progress -> (optional) DB copy
   const uploadOrReplaceResume = async (leadId: string, file: File, previousPath?: string | null) => {
     ensurePdf(file);
 
@@ -292,7 +1285,7 @@ export default function ResumeTeamPage() {
       if (del.error) console.warn("STORAGE REMOVE WARNING:", del.error);
     }
 
-    // 3) Upsert progress row (this is where table RLS could fail)
+    // 3) Upsert progress row
     const db = await supabase
       .from("resume_progress")
       .upsert(
@@ -309,7 +1302,7 @@ export default function ResumeTeamPage() {
       throw new Error(db.error.message || "DB upsert failed");
     }
 
-    // 4) (Optional) also persist file bytes in a table for backup/audit
+    // 4) (Optional) persist file bytes in a table
     if (ENABLE_DB_COPY) {
       try {
         const bytea = await fileToHexBytea(file);
@@ -330,39 +1323,33 @@ export default function ResumeTeamPage() {
     return { path, publicUrl };
   };
 
-   // Always download as "resume-<lead_id>.pdf"
-const downloadResume = async (path: string) => {
-  try {
-    // lead_id is the first segment of the storage path: "<lead_id>/<timestamp>_file.pdf"
-    const segments = (path || "").split("/");
-    const leadId = segments[0] || "unknown";
-    const fileName = `Resume-${leadId}.pdf`;
+  // Always download as "Resume-<lead_id>.pdf"
+  const downloadResume = async (path: string) => {
+    try {
+      const segments = (path || "").split("/");
+      const leadId = segments[0] || "unknown";
+      const fileName = `Resume-${leadId}.pdf`;
 
-    // Get a signed URL (works for public or RLS-protected buckets)
-    const { data, error } = await supabase.storage
-      .from("resumes")
-      .createSignedUrl(path, 60 * 60); // 1 hour
+      const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, 60 * 60);
+      if (error) throw error;
+      if (!data?.signedUrl) throw new Error("No signed URL");
 
-    if (error) throw error;
-    if (!data?.signedUrl) throw new Error("No signed URL");
+      const res = await fetch(data.signedUrl);
+      if (!res.ok) throw new Error(`Download failed (${res.status})`);
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
 
-    // Fetch the file and trigger a client-side download with our custom filename
-    const res = await fetch(data.signedUrl);
-    if (!res.ok) throw new Error(`Download failed (${res.status})`);
-    const blob = await res.blob();
-    const objectUrl = URL.createObjectURL(blob);
-
-    const a = document.createElement("a");
-    a.href = objectUrl;
-    a.download = fileName; // 👈 force name = resume-<lead_id>.pdf
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(objectUrl);
-  } catch (e: any) {
-    alert(e?.message || "Could not download PDF");
-  }
-};
+      const a = document.createElement("a");
+      a.href = objectUrl;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(objectUrl);
+    } catch (e: any) {
+      alert(e?.message || "Could not download PDF");
+    }
+  };
 
   /* =========================
      Resume status & assignment
@@ -374,7 +1361,6 @@ const downloadResume = async (path: string) => {
   };
 
   const updateAssignedTo = async (leadId: string, email: string | null, name?: string | null) => {
-    // does a row exist?
     const { data: existingRows, error: findErr } = await supabase.from("resume_progress").select("id").eq("lead_id", leadId);
     if (findErr) throw findErr;
 
@@ -392,7 +1378,6 @@ const downloadResume = async (path: string) => {
     }
   };
 
-  // Handle change in status select
   const onChangeStatus = async (row: SalesClosure, newStatus: ResumeStatus) => {
     try {
       await updateStatus(row.lead_id, newStatus);
@@ -410,14 +1395,12 @@ const downloadResume = async (path: string) => {
     }
   };
 
-  // Handle click on Replace button
   const onReplacePdf = (row: SalesClosure) => {
     setUploadForLead(row.lead_id);
     setReplacingOldPath(row.rp_pdf_path ?? null);
     fileRef.current?.click();
   };
 
-  // Single hidden file input shared by all rows
   const onFilePicked = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
     const leadId = uploadForLead;
@@ -430,13 +1413,12 @@ const downloadResume = async (path: string) => {
 
     try {
       const { path } = await uploadOrReplaceResume(leadId, file, oldPath || undefined);
-      // reflect in UI
       await fetchData();
-      // or optimistic:
-      // setRows(rs => rs.map(r => r.lead_id === leadId ? ({ ...r, rp_status: "completed", rp_pdf_path: path }) : r));
       alert("PDF uploaded.");
     } catch (err: any) {
       alert(err.message || "Upload failed");
+      // Optional: rollback UI if you had optimistically set status=completed
+      await fetchData();
     }
   };
 
@@ -449,25 +1431,121 @@ const downloadResume = async (path: string) => {
       <input ref={fileRef} type="file" accept="application/pdf" className="hidden" onChange={onFilePicked} />
 
       <Table>
-        <TableHeader>
+        {/* <TableHeader>
           <TableRow>
             {RESUME_COLUMNS.map((c) => (
               <TableHead key={c}>{c}</TableHead>
             ))}
           </TableRow>
-        </TableHeader>
+        </TableHeader> */}
+        <TableHeader>
+  <TableRow>
+    <TableHead>S.No</TableHead>
+
+    {/* Client ID */}
+    <TableHead>
+      <button
+        type="button"
+        onClick={() => toggleSort("clientId")}
+        className="inline-flex items-center"
+        title="Sort by Client ID"
+      >
+        Client ID
+        <SortIcon active={sort.key === "clientId"} dir={sort.dir} />
+      </button>
+    </TableHead>
+
+    {/* Name */}
+    <TableHead>
+      <button
+        type="button"
+        onClick={() => toggleSort("name")}
+        className="inline-flex items-center"
+        title="Sort by Name"
+      >
+        Name
+        <SortIcon  active={sort.key === "name"} dir={sort.dir} />
+      </button>
+    </TableHead>
+
+    {/* Email */}
+    <TableHead>
+      <button
+        type="button"
+        onClick={() => toggleSort("email")}
+        className="inline-flex items-center"
+        title="Sort by Email"
+      >
+        Email
+        <SortIcon active={sort.key === "email"} dir={sort.dir} />
+      </button>
+    </TableHead>
+
+    <TableHead>Application email</TableHead>
+    <TableHead>Phone</TableHead>
+    <TableHead>Status</TableHead>
+    <TableHead>Resume Status</TableHead>
+    <TableHead>Assigned to</TableHead>
+    <TableHead>Resume PDF</TableHead>
+
+    {/* Closed At */}
+    <TableHead>
+      <button
+        type="button"
+        onClick={() => toggleSort("closedAt")}
+        className="inline-flex items-center"
+        title="Sort by Closed At"
+      >
+        Closed At
+        <SortIcon active={sort.key === "closedAt"} dir={sort.dir} />
+      </button>
+    </TableHead>
+
+    {/* Onboarded Date */}
+    <TableHead>
+      <button
+        type="button"
+        onClick={() => toggleSort("onboarded")}
+        className="inline-flex items-center"
+        title="Sort by Onboarded Date"
+      >
+        Onboarded Date
+        <SortIcon active={sort.key === "onboarded"} dir={sort.dir} />
+      </button>
+    </TableHead>
+
+    {/* Portfolio Status */}
+    <TableHead >
+      <button
+        type="button"
+        onClick={() => toggleSort("portfolio")}
+        className="inline-flex items-center"
+        title="Sort by Portfolio Status"
+      >
+        Portfolio Status
+        <SortIcon active={sort.key === "portfolio"} dir={sort.dir} />
+      </button>
+    </TableHead>
+
+    <TableHead>Portfolio Link</TableHead>
+    <TableHead>Portfolio Assignee</TableHead>
+    <TableHead>Client Requirements</TableHead>
+    <TableHead>Onboard</TableHead>
+  </TableRow>
+</TableHeader>
+
         <TableBody>
-          {data.map((row, index) => (
+          {sortedRows.map((row, index) => (
             <TableRow key={row.id}>
               <TableCell className="text-center">{index + 1}</TableCell>
               <TableCell>{row.lead_id}</TableCell>
-              {/* <TableCell>{row.leads?.name || "-"}</TableCell> */}
+
               <TableCell
-                                className="font-medium max-w-[150px] break-words whitespace-normal cursor-pointer text-blue-600 hover:underline"
-                                onClick={() => window.open(`/leads/${row.lead_id}`, "_blank")}
-                              >
-                                {row.leads?.name || "-"}
-                              </TableCell>
+                className="font-medium max-w-[150px] break-words whitespace-normal cursor-pointer text-blue-600 hover:underline"
+                onClick={() => window.open(`/leads/${row.lead_id}`, "_blank")}
+              >
+                {row.leads?.name || "-"}
+              </TableCell>
 
               <TableCell>{row.email}</TableCell>
               <TableCell>{row.company_application_email || "not given"}</TableCell>
@@ -511,7 +1589,7 @@ const downloadResume = async (path: string) => {
                       alert(e.message || "Failed to assign");
                     }
                   }}
-                  disabled={user?.role == "Resume Associate"}
+                  disabled={user?.role === "Resume Associate"}
                 >
                   <SelectTrigger className="!opacity-100 bg-muted/20 text-foreground">
                     <SelectValue placeholder="Assign to…" />
@@ -537,11 +1615,9 @@ const downloadResume = async (path: string) => {
               <TableCell className="space-x-2 min-w-[220px]">
                 {row.rp_pdf_path ? (
                   <>
-                  
-                  <Button variant="outline" size="sm" onClick={() => downloadResume(row.rp_pdf_path!)}>
-  Download
-</Button>
-
+                    <Button variant="outline" size="sm" onClick={() => downloadResume(row.rp_pdf_path!)}>
+                      Download
+                    </Button>
                     <Button variant="secondary" size="sm" onClick={() => onReplacePdf(row)}>
                       Replace
                     </Button>
@@ -562,43 +1638,71 @@ const downloadResume = async (path: string) => {
                 )}
               </TableCell>
 
-
               {/* Closed At */}
-              <TableCell>{row.closed_at ? new Date(row.closed_at).toLocaleDateString("en-GB") : "-"}</TableCell>
-{/* Onboarded Date */}
-            <TableCell>
-  {row.onboarded_date === "Not Started" ? (
-    <span className="bg-red-500 text-white text-sm py-1 px-3 rounded-full">{row.onboarded_date}</span>
+              <TableCell>{formatDateLabel(row.closed_at)}</TableCell>
+
+              {/* Onboarded Date */}
+              <TableCell className="min-w-[160px]">
+                {row.onboarded_date_raw ? (
+                  <span className="bg-green-500 text-white text-sm py-1 px-3 rounded-full">
+                    {row.onboarded_date_label}
+                  </span>
+                ) : (
+                  <span className="bg-red-500 text-white text-sm py-1 px-3 rounded-full">not onboarded</span>
+                )}
+              </TableCell>
+
+              {/* Portfolio Status */}
+              {/* <TableCell>
+                {row.pp_status ? PORTFOLIO_STATUS_LABEL[row.pp_status] : <span className="text-gray-400 text-sm">—</span>}
+              </TableCell> */}
+              {/* Portfolio Status */}
+{/* Portfolio Status */}
+<TableCell className="min-w-[140px]">
+  {row.portfolio_paid ? (
+    <span className="bg-green-500 text-white text-sm py-1 px-3 rounded-full">Paid</span>
   ) : (
-    <span className="bg-green-500 text-white text-sm py-1 px-3 rounded-full">
-      {row.onboarded_date}
-    </span>
+    <span className="bg-red-500 text-white text-sm py-1 px-3 rounded-full">Not Paid</span>
   )}
 </TableCell>
 
 
 
-             
-             <TableCell className="max-w-[220px] truncate">
-  {row.leads?.name && (
-    <a
-      href={`https://${row.leads?.name
-        .toLowerCase()
-        .replace(/[^a-z0-9]/g, "")}-applywizz.vercel.app/`}
-      target="_blank"
-      rel="noreferrer"
-      className="text-blue-600 underline block truncate"
-      title={`https://${row.leads?.name
-        .toLowerCase()
-        .replace(/[^a-z0-9]/g, "")}-applywizz.vercel.app/`} // tooltip shows full URL
-    >
-      https://{row.leads?.name
-        .toLowerCase()
-        .replace(/[^a-z0-9]/g, "")}-applywizz.vercel.app/
-    </a>
-  )}
-</TableCell>
 
+              {/* Portfolio Link */}
+              <TableCell className="max-w-[220px] truncate">
+                {row.pp_link ? (
+                  <a
+                    href={row.pp_link}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-blue-600 underline block truncate"
+                    title={row.pp_link}
+                  >
+                    {row.pp_link}
+                  </a>
+                ) : row.leads?.name ? (
+                  // fallback: your original pattern based on sanitized name
+                  <a
+                    href={`https://${(row.leads?.name || "")
+                      .toLowerCase()
+                      .replace(/[^a-z0-9]/g, "")}-applywizz.vercel.app/`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-blue-600 underline block truncate"
+                    title={`https://${(row.leads?.name || "")
+                      .toLowerCase()
+                      .replace(/[^a-z0-9]/g, "")}-applywizz.vercel.app/`}
+                  >
+                    https://{(row.leads?.name || "")
+                      .toLowerCase()
+                      .replace(/[^a-z0-9]/g, "")}
+                    -applywizz.vercel.app/
+                  </a>
+                ) : (
+                  <span className="text-gray-400 text-sm">—</span>
+                )}
+              </TableCell>
 
               {/* Portfolio Assignee */}
               <TableCell>
@@ -625,28 +1729,28 @@ const downloadResume = async (path: string) => {
                   <span className="text-gray-400 text-sm">—</span>
                 )}
               </TableCell>
-               {/* Onboard Client Button */}
-             <TableCell>
-  <Button
-    onClick={() => handleOnboardClick(row.lead_id)}
-    variant="outline"
-    size="sm"
-    className="bg-blue-400 text-white hover:bg-blue-600 hover:text-white"
-    disabled={row.onboarded_date !== "Not Started"} // Disable button if onboarded_date is not "Not Started"
-  >
-    Onboard Client
-  </Button>
-</TableCell>
 
-            </TableRow>
-          ))}
-          {data.length === 0 && (
-            <TableRow>
-              <TableCell colSpan={RESUME_COLUMNS.length} className="text-center text-sm text-muted-foreground py-10">
-                No records found.
+              {/* Onboard Client Button */}
+              <TableCell>
+                <Button
+                  onClick={() => handleOnboardClick(row.lead_id)}
+                  variant="outline"
+                  size="sm"
+                  className="bg-blue-400 text-white hover:bg-blue-600 hover:text-white"
+                  disabled={!!row.onboarded_date_raw} // disable if already set
+                >
+                  Onboard Client
+                </Button>
               </TableCell>
             </TableRow>
-          )}
+          ))}
+          {sortedRows.length === 0 && (
+    <TableRow>
+      <TableCell colSpan={RESUME_COLUMNS.length} className="text-center text-sm text-muted-foreground py-10">
+        No records found.
+      </TableCell>
+    </TableRow>
+  )}
         </TableBody>
       </Table>
     </div>
@@ -672,7 +1776,7 @@ const downloadResume = async (path: string) => {
           )}
         </div>
 
-         {/* Date Picker Modal for Onboarding */}
+        {/* Date Picker Modal for Onboarding */}
         {showDatePicker && (
           <Dialog open={showDatePicker} onOpenChange={setShowDatePicker}>
             <DialogContent className="max-w-sm">
@@ -687,16 +1791,14 @@ const downloadResume = async (path: string) => {
                 className="w-full p-2 border rounded-md"
               />
               <DialogFooter>
-                <Button  onClick={() => setShowDatePicker(false)}>
-                  Cancel
-                </Button>
+                <Button onClick={() => setShowDatePicker(false)}>Cancel</Button>
                 <Button onClick={handleSubmitDate}>Submit</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
         )}
-    
 
+        {/* Requirements Dialog */}
         <Dialog open={reqDialogOpen} onOpenChange={setReqDialogOpen}>
           <DialogContent className="max-w-3xl" onPointerDownOutside={(e) => e.preventDefault()}>
             <DialogHeader>
@@ -720,9 +1822,7 @@ const downloadResume = async (path: string) => {
                 </div>
                 <div>
                   <div className="text-xs text-muted-foreground">Closed At</div>
-                  <div className="font-medium">
-                    {reqRow?.closed_at ? new Date(reqRow.closed_at).toLocaleDateString("en-GB") : "—"}
-                  </div>
+                  <div className="font-medium">{reqRow?.closed_at ? new Date(reqRow.closed_at).toLocaleDateString("en-GB") : "—"}</div>
                 </div>
               </div>
 
