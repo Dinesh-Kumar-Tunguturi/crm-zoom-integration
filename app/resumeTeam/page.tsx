@@ -770,6 +770,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react"; // top of file with other imports
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
@@ -878,7 +881,32 @@ export default function ResumeTeamPage() {
   const [resumeTeamMembers, setResumeTeamMembers] = useState<TeamMember[]>([]);
   const [assigneeFilter, setAssigneeFilter] = useState<string>("__all__"); 
 
+  const [showOnboardDialog, setShowOnboardDialog] = useState(false);
+// const [currentLeadId, setCurrentLeadId] = useState<string | null>(null);
+const [currentSaleId, setCurrentSaleId] = useState<string | null>(null);
+const [dialogLoading, setDialogLoading] = useState(false);
+// latest onboarding row id (so we can update the most recent record)
+const [latestOnboardRowId, setLatestOnboardRowId] = useState<string | null>(null);
 
+// form values in the dialog
+const [obFullName, setObFullName] = useState("");
+const [obCompanyEmail, setObCompanyEmail] = useState("");
+const [obCallablePhone, setObCallablePhone] = useState("");
+const [obJobRolesText, setObJobRolesText] = useState("");      // comma-separated
+const [obLocationsText, setObLocationsText] = useState("");    // comma-separated
+const [obSalaryRange, setObSalaryRange] = useState("");
+const [obWorkAuth, setObWorkAuth] = useState("");
+const [obDate, setObDate] = useState<string>("");              // yyyy-mm-dd
+// NEW fields for client_onborading_details
+const [obNeedsSponsorship, setObNeedsSponsorship] = useState<boolean | null>(null);
+const [obFullAddress, setObFullAddress] = useState("");
+const [obLinkedInUrl, setObLinkedInUrl] = useState("");
+const [obDob, setObDob] = useState<string>(""); // yyyy-mm-dd
+
+
+
+const csvFromArray = (arr?: string[] | null) => (arr && arr.length ? arr.join(", ") : "");
+const csvToArray = (s: string) => s.split(",").map(v => v.trim()).filter(Boolean);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const router = useRouter();
   const { user } = useAuth();
@@ -1271,18 +1299,176 @@ const fetchData = async (opts?: { assigneeEmail?: string | null; unassigned?: bo
     }
   };
 
-  const handleOnboardClick = (leadId: string) => {
-    setCurrentLeadId(leadId);
-    setShowDatePicker(true);
-  };
+  const loadLatestOnboardingForLead = async (leadId: string, fallbackEmail?: string) => {
+  setDialogLoading(true);
+  setLatestOnboardRowId(null);
 
-  const handleSubmitDate = () => {
-    if (selectedDate && currentLeadId) {
-      updateOnboardedDate(currentLeadId, selectedDate);
-    } else {
-      alert("Please select a date.");
-    }
-  };
+  // 4a) Get the most recent onboarding row for this lead
+ const { data: row, error } = await supabase
+  .from("client_onborading_details")
+  .select(`
+    id,
+    full_name,
+    personal_email,
+    company_email,
+    callable_phone,
+    job_role_preferences,
+    location_preferences,
+    salary_range,
+    work_auth_details,
+    needs_sponsorship,
+    full_address,
+    linkedin_url,
+    date_of_birth,
+    created_at
+  `)
+  .eq("lead_id", leadId)
+  .order("created_at", { ascending: false })
+  .limit(1)
+  .maybeSingle();
+
+
+  // 4b) Prefill form from DB (or sane defaults)
+if (!error && row) {
+  setLatestOnboardRowId(row.id);
+  setObFullName(row.full_name ?? "");
+  setObCompanyEmail(row.company_email ?? "");
+  setObCallablePhone(row.callable_phone ?? "");
+  setObJobRolesText(csvFromArray(row.job_role_preferences));
+  setObLocationsText(csvFromArray(row.location_preferences));
+  setObSalaryRange(row.salary_range ?? "");
+  setObWorkAuth(row.work_auth_details ?? "");
+
+  // NEW fields
+  setObNeedsSponsorship(
+    typeof row.needs_sponsorship === "boolean" ? row.needs_sponsorship : null
+  );
+  setObFullAddress(row.full_address ?? "");
+  setObLinkedInUrl(row.linkedin_url ?? "");
+  setObDob(row.date_of_birth ?? ""); // expect 'YYYY-MM-DD'
+} else {
+  setLatestOnboardRowId(null);
+  setObFullName("");
+  setObCompanyEmail("");
+  setObCallablePhone("");
+  setObJobRolesText("");
+  setObLocationsText("");
+  setObSalaryRange("");
+  setObWorkAuth("");
+
+  // NEW fields reset
+  setObNeedsSponsorship(null);
+  setObFullAddress("");
+  setObLinkedInUrl("");
+  setObDob("");
+}
+
+
+  // Date in this modal only sets sales_closure.onboarded_date
+  setObDate("");
+
+  setDialogLoading(false);
+};
+
+
+const handleOnboardClick = async (row: SalesClosure) => {
+  setCurrentLeadId(row.lead_id);
+  setCurrentSaleId(row.id);
+  setShowOnboardDialog(true);
+  // prefill from latest onboarding record
+  await loadLatestOnboardingForLead(row.lead_id, row.email);
+};
+
+  // const handleSubmitDate = () => {
+  //   if (selectedDate && currentLeadId) {
+  //     updateOnboardedDate(currentLeadId, selectedDate);
+  //   } else {
+  //     alert("Please select a date.");
+  //   }
+  // };
+
+  const saveOnboardAndDetails = async () => {
+  if (!currentLeadId || !currentSaleId) {
+    alert("Missing context to save."); 
+    return;
+  }
+  if (!obDate) {
+    alert("Please choose an Onboarded Date.");
+    return;
+  }
+
+  setDialogLoading(true);
+  try {
+    // a) Upsert latest onboarding details (update latest row if exists, else insert a new one)
+ const payload = {
+  full_name: obFullName || null,
+  company_email: obCompanyEmail || null,
+  callable_phone: obCallablePhone || null,
+  job_role_preferences: csvToArray(obJobRolesText),
+  location_preferences: csvToArray(obLocationsText),
+  salary_range: obSalaryRange || null,
+  work_auth_details: obWorkAuth || null,
+  // NEW fields
+  needs_sponsorship: obNeedsSponsorship,
+  full_address: obFullAddress || null,
+  linkedin_url: obLinkedInUrl || null,
+  date_of_birth: obDob || null, // 'YYYY-MM-DD'
+  // key
+  lead_id: currentLeadId,
+};
+
+if (latestOnboardRowId) {
+  const { error: updErr } = await supabase
+    .from("client_onborading_details")
+    .update(payload)
+    .eq("id", latestOnboardRowId);
+  if (updErr) throw updErr;
+} else {
+  // insert (also set personal_email from sale row’s email like before)
+  const saleRow = rows.find(r => r.id === currentSaleId);
+  const personalEmail = saleRow?.email ?? "";
+
+  const { error: insErr } = await supabase
+    .from("client_onborading_details")
+    .insert({
+      ...payload,
+      personal_email: personalEmail || "",
+    });
+  if (insErr) throw insErr;
+}
+
+// UPDATE sales_closure: onboarded_date + company_application_email
+const { error: saleErr } = await supabase
+  .from("sales_closure")
+  .update({
+    onboarded_date: obDate,
+    company_application_email: obCompanyEmail || null,
+  })
+  .eq("id", currentSaleId);
+if (saleErr) throw saleErr;
+
+
+    // c) Refresh table with current filter preserved
+    await fetchData(
+      assigneeFilter === "__all__"
+        ? undefined
+        : assigneeFilter === "__unassigned__"
+        ? { unassigned: true }
+        : { assigneeEmail: assigneeFilter }
+    );
+
+    setShowOnboardDialog(false);
+    setCurrentLeadId(null);
+    setCurrentSaleId(null);
+    setLatestOnboardRowId(null);
+    setObDate("");
+  } catch (e: any) {
+    console.error(e);
+    alert(e?.message || "Failed to save onboarding details");
+  } finally {
+    setDialogLoading(false);
+  }
+};
 
   /* =========================
      PDF store helpers (Bucket + Optional DB copy)
@@ -1796,13 +1982,13 @@ const downloadResume = async (path: string) => {
     </Button>
   ) : (
     <Button
-      onClick={() => handleOnboardClick(row.lead_id)}
-      variant="outline"
-      size="sm"
-      className="bg-blue-400 text-white hover:bg-blue-600 hover:text-white"
-    >
-      Onboard Client
-    </Button>
+  onClick={() => handleOnboardClick(row)}
+  variant="outline"
+  size="sm"
+  className="bg-blue-400 text-white hover:bg-blue-600 hover:text-white"
+>
+  Onboard Client
+</Button>
   )}
 </TableCell>
 
@@ -1887,7 +2073,7 @@ const downloadResume = async (path: string) => {
         </div>
 
         {/* Date Picker Modal for Onboarding */}
-        {showDatePicker && (
+        {/* {showDatePicker && (
           <Dialog open={showDatePicker} onOpenChange={setShowDatePicker}>
             <DialogContent className="max-w-sm">
               <DialogHeader>
@@ -1906,7 +2092,7 @@ const downloadResume = async (path: string) => {
               </DialogFooter>
             </DialogContent>
           </Dialog>
-        )}
+        )} */}
 
         {/* Requirements Dialog */}
         <Dialog open={reqDialogOpen} onOpenChange={setReqDialogOpen}>
@@ -1959,6 +2145,152 @@ const downloadResume = async (path: string) => {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        <Dialog open={showOnboardDialog} onOpenChange={setShowOnboardDialog}>
+  <DialogContent className="max-w-3xl">
+    <DialogHeader>
+      <DialogTitle>Onboard & Edit — {currentLeadId ?? ""}</DialogTitle>
+      <DialogDescription>
+        Update the latest onboarding details and set the Onboarded Date for this client.
+      </DialogDescription>
+    </DialogHeader>
+
+    {dialogLoading ? (
+      <div className="p-8 text-sm text-muted-foreground">Loading…</div>
+    ) : (
+      <div className="space-y-4">
+        {/* Top Row */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <Label>Full Name</Label>
+            <Input value={obFullName} onChange={(e) => setObFullName(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Company Email</Label>
+            <Input value={obCompanyEmail} onChange={(e) => setObCompanyEmail(e.target.value)} />
+          </div>
+        </div>
+
+        {/* Phones & Date */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <Label>Callable Phone</Label>
+            <Input value={obCallablePhone} onChange={(e) => setObCallablePhone(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Onboarded Date</Label>
+            <Input
+              type="date"
+              value={obDate}
+              onChange={(e) => setObDate(e.target.value)}
+            />
+          </div>
+        </div>
+
+        {/* Textareas */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <Label>Job Role Preferences (comma separated)</Label>
+            <Textarea
+              rows={3}
+              value={obJobRolesText}
+              onChange={(e) => setObJobRolesText(e.target.value)}
+              placeholder="software-engineer, data-scientist"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Location Preferences (comma separated)</Label>
+            <Textarea
+              rows={3}
+              value={obLocationsText}
+              onChange={(e) => setObLocationsText(e.target.value)}
+              placeholder="san-francisco, new-york, remote"
+            />
+          </div>
+        </div>
+
+        {/* Misc */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <Label>Salary Range</Label>
+            <Input value={obSalaryRange} onChange={(e) => setObSalaryRange(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Work Auth Details</Label>
+            <Input value={obWorkAuth} onChange={(e) => setObWorkAuth(e.target.value)} />
+          </div>
+        </div>
+
+        {/* Sponsorship & DOB */}
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+  <div className="space-y-1.5">
+    <Label>Needs Sponsorship</Label>
+    <Select
+      value={
+        obNeedsSponsorship === null ? "__unset__" :
+        obNeedsSponsorship ? "yes" : "no"
+      }
+      onValueChange={(v) => {
+        if (v === "__unset__") setObNeedsSponsorship(null);
+        else setObNeedsSponsorship(v === "yes");
+      }}
+    >
+      <SelectTrigger>
+        <SelectValue placeholder="Select…" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="__unset__">—</SelectItem>
+        <SelectItem value="yes">Yes</SelectItem>
+        <SelectItem value="no">No</SelectItem>
+      </SelectContent>
+    </Select>
+  </div>
+  <div className="space-y-1.5">
+    <Label>Date of Birth</Label>
+    <Input
+      type="date"
+      value={obDob}
+      onChange={(e) => setObDob(e.target.value)}
+    />
+  </div>
+</div>
+
+{/* Address & LinkedIn */}
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+  <div className="space-y-1.5">
+    <Label>Full Address</Label>
+    <Textarea
+      rows={3}
+      value={obFullAddress}
+      onChange={(e) => setObFullAddress(e.target.value)}
+      placeholder="Flat / Street, City, State, Country, ZIP"
+    />
+  </div>
+  <div className="space-y-1.5">
+    <Label>LinkedIn URL</Label>
+    <Input
+      type="url"
+      value={obLinkedInUrl}
+      onChange={(e) => setObLinkedInUrl(e.target.value)}
+      placeholder="https://www.linkedin.com/in/username"
+    />
+  </div>
+</div>
+
+      </div>
+    )}
+
+    <DialogFooter>
+      <Button variant="outline" onClick={() => setShowOnboardDialog(false)} disabled={dialogLoading}>
+        Cancel
+      </Button>
+      <Button onClick={saveOnboardAndDetails} disabled={dialogLoading}>
+        {dialogLoading ? "Saving…" : "Save & Onboard"}
+      </Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
+
       </DashboardLayout>
     </ProtectedRoute>
   );
