@@ -1387,6 +1387,88 @@ const handleOnboardClick = async (row: SalesClosure) => {
   //   }
   // };
 
+
+  // Writes/updates a pending_clients row using latest onboarding row + lead's email
+const writePendingClientFromLead = async (leadId: string) => {
+  // a) Latest onboarding details for the lead
+  const { data: ob, error: obErr } = await supabase
+    .from("client_onborading_details")
+    .select(`
+      full_name,
+      whatsapp_number,
+      callable_phone,
+      company_email,
+      job_role_preferences,
+      salary_range,
+      location_preferences,
+      work_auth_details,
+      created_at
+    `)
+    .eq("lead_id", leadId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (obErr) throw obErr;
+  if (!ob) throw new Error("No onboarding details found for this client.");
+
+  // b) Personal email comes from leads.email (via business_id == leadId)
+  const { data: lead, error: leadErr } = await supabase
+    .from("leads")
+    .select("email")
+    .eq("business_id", leadId)
+    .maybeSingle();
+
+  if (leadErr) throw leadErr;
+  if (!lead?.email) throw new Error("Lead record missing email.");
+
+  const personalEmail = lead.email;
+
+  // c) If a row already exists for this personal_email, update; else insert (preserve created_at on first insert)
+  const { data: existing, error: existErr } = await supabase
+    .from("pending_clients")
+    .select("id, created_at")
+    .eq("personal_email", personalEmail)
+    .maybeSingle();
+
+  if (existErr && (existErr as any).code !== "PGRST116") throw existErr;
+
+  const basePayload = {
+    full_name: ob.full_name,
+    personal_email: personalEmail,
+    whatsapp_number: ob.whatsapp_number ?? null,
+    callable_phone: ob.callable_phone ?? null,
+    company_email: ob.company_email ?? null,
+    job_role_preferences: ob.job_role_preferences ?? null,
+    salary_range: ob.salary_range ?? null,
+    location_preferences: ob.location_preferences ?? null,
+    work_auth_details: ob.work_auth_details ?? null,
+    submitted_by: user?.id ?? null, // assumes your auth-provider exposes auth uid here
+  } as const;
+
+  // Include created_at only on first insert to keep original timestamp stable
+  if (!existing) {
+    const { error: insErr } = await supabase
+      .from("pending_clients")
+      .upsert(
+        {
+          ...basePayload,
+          created_at: ob.created_at ?? new Date().toISOString(),
+        },
+        { onConflict: "personal_email" }
+      );
+    if (insErr) throw insErr;
+  } else {
+    const { error: updErr } = await supabase
+      .from("pending_clients")
+      .upsert(basePayload, { onConflict: "personal_email" });
+    if (updErr) throw updErr;
+  }
+};
+
+
+
+
   const saveOnboardAndDetails = async () => {
   if (!currentLeadId || !currentSaleId) {
     alert("Missing context to save."); 
@@ -1447,6 +1529,10 @@ const { error: saleErr } = await supabase
   .eq("id", currentSaleId);
 if (saleErr) throw saleErr;
 
+
+
+// 🔹 NEW: Mirror data into pending_clients
+await writePendingClientFromLead(currentLeadId);
 
     // c) Refresh table with current filter preserved
     await fetchData(

@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   description: "Enterprise CRM Solution",
   generator: 'v0.dev',
   icons: {
-    icon: "/applywizz_logo_favicon.png",
+    icon: "/Applywizz_logo_new.jpg",
   },
 }
 
