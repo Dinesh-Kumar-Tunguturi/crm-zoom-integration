@@ -5,7 +5,7 @@ const url = process.env.TICKETING_SUPABASE_URL!;
 const serviceKey = process.env.TICKETING_SUPABASE_SERVICE_ROLE_KEY!;
 
 if (!url || !serviceKey) {
-  throw new Error('Missing PENDING_SUPABASE_URL or PENDING_SUPABASE_SERVICE_ROLE_KEY');
+  throw new Error('Missing TICKETING_SUPABASE_URL or TICKETING_SUPABASE_SERVICE_ROLE_KEY');
 }
 
 export const pendingDb = createClient(url, serviceKey, {
