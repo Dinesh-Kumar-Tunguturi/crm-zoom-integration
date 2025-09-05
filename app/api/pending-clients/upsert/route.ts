@@ -15,6 +15,11 @@ const Payload = z.object({
   work_auth_details: z.string().nullable().optional(),
   submitted_by: z.string().uuid().nullable().optional(), // pass null if FK won't exist in Project-B
   created_at: z.string().optional(),                     // ISO string (only used on first insert)
+  applywizz_id: z.string().nullable().optional(), // optional but recommended
+  // New fields:
+  visa_type: z.string().nullable().optional(),           // text
+  sponsorship: z.boolean().nullable().optional(),   // boolean
+
 });
 
 export async function POST(req: Request) {

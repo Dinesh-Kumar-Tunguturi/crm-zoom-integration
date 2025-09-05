@@ -1467,11 +1467,76 @@ const handleOnboardClick = async (row: SalesClosure) => {
 // };
 
 
+// // Writes/updates Project-B.pending_clients via server API
+// const writePendingClientFromLead = async (leadId: string) => {
+//   // a) Read latest onboarding details from Project-A (unchanged)
+//   const { data: ob, error: obErr } = await supabase
+//     .from("client_onborading_details") // keep your existing table name
+//     .select(`
+//       full_name,
+//       whatsapp_number,
+//       callable_phone,
+//       company_email,
+//       job_role_preferences,
+//       salary_range,
+//       location_preferences,
+//       work_auth_details,
+//       created_at, 
+//       lead_id
+//     `)
+//     .eq("lead_id", leadId)
+//     .order("created_at", { ascending: false })
+//     .limit(1)
+//     .maybeSingle();
+//     console.log("Onboarding details:", ob);
+//   if (obErr) throw obErr;
+//   if (!ob) throw new Error("No onboarding details found for this client.");
+
+//   // b) Get personal email from Project-A leads
+//   const { data: lead, error: leadErr } = await supabase
+//     .from("leads")
+//     .select("email")
+//     .eq("business_id", leadId)
+//     .maybeSingle();
+//   if (leadErr) throw leadErr;
+//   if (!lead?.email) throw new Error("Lead record missing email.");
+//   const personalEmail = lead.email as string;
+
+//   // c) Compose payload for Project-B
+//   const pcPayload = {
+//     full_name: ob.full_name,
+//     personal_email: personalEmail,
+//     whatsapp_number: ob.whatsapp_number ?? null,
+//     callable_phone: ob.callable_phone ?? null,
+//     company_email: ob.company_email ?? null,
+//     job_role_preferences: ob.job_role_preferences ?? null,
+//     salary_range: ob.salary_range ?? null,
+//     location_preferences: ob.location_preferences ?? null,
+//     work_auth_details: ob.work_auth_details ?? null,
+//     submitted_by: null,                 // ⚠ if FK won't match in Project-B, this can be null
+//     created_at: ob.created_at ?? new Date().toISOString(), // only used on first insert
+   
+//   };
+//   console.log("Pending client payload:", pcPayload);
+
+//   // d) Send to our server route (writes into Project-B)
+//   const res = await fetch("/api/pending-clients/upsert", {
+//     method: "POST",
+//     headers: { "Content-Type": "application/json" },
+//     body: JSON.stringify(pcPayload),
+//   });
+//   if (!res.ok) {
+//     const j = await res.json().catch(() => ({}));
+//     throw new Error(j.error || "Failed to upsert pending_client in Project-B");
+//   }
+// };
+
+
 // Writes/updates Project-B.pending_clients via server API
 const writePendingClientFromLead = async (leadId: string) => {
-  // a) Read latest onboarding details from Project-A (unchanged)
+  // a) Read latest onboarding details from Project-A
   const { data: ob, error: obErr } = await supabase
-    .from("client_onborading_details") // keep your existing table name
+    .from("client_onborading_details")
     .select(`
       full_name,
       whatsapp_number,
@@ -1481,19 +1546,21 @@ const writePendingClientFromLead = async (leadId: string) => {
       salary_range,
       location_preferences,
       work_auth_details,
-      created_at, 
-      visatypes,
-      lead_id
+      created_at,
+      lead_id,
+      needs_sponsorship,
+      visatypes
     `)
     .eq("lead_id", leadId)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
+
     console.log("Onboarding details:", ob);
   if (obErr) throw obErr;
   if (!ob) throw new Error("No onboarding details found for this client.");
 
-  // b) Get personal email from Project-A leads
+  // b) Get personal email from leads
   const { data: lead, error: leadErr } = await supabase
     .from("leads")
     .select("email")
@@ -1503,7 +1570,13 @@ const writePendingClientFromLead = async (leadId: string) => {
   if (!lead?.email) throw new Error("Lead record missing email.");
   const personalEmail = lead.email as string;
 
-  // c) Compose payload for Project-B
+  // c) Normalize visa type and sponsorship from onboarding row
+  const visaValue =
+    ob.visatypes ?? (ob as any).visaType ?? null; // any of the spellings
+  const sponsorshipValue =
+    typeof ob.needs_sponsorship === "boolean" ? ob.needs_sponsorship : null;
+
+  // d) Compose payload for Project-B (pending_clients)
   const pcPayload = {
     full_name: ob.full_name,
     personal_email: personalEmail,
@@ -1514,14 +1587,18 @@ const writePendingClientFromLead = async (leadId: string) => {
     salary_range: ob.salary_range ?? null,
     location_preferences: ob.location_preferences ?? null,
     work_auth_details: ob.work_auth_details ?? null,
-    submitted_by: null,                 // ⚠ if FK won't match in Project-B, this can be null
-    created_at: ob.created_at ?? new Date().toISOString(), // only used on first insert
-    visa_type: ob.visatypes || null,  
-    applywizz_id:ob.lead_id,               // new field example
+
+    // ✅ NEW fields going to pending_clients:
+    visa_type: ob.visatypes,             // maps from visatypes/visa_type/visaType
+    sponsorship: ob.needs_sponsorship,    // maps from needs_sponsorship
+    applywizz_id: ob.lead_id,             // optional but recommended
+
+    // Keep created_at only for insert (handled in the API below)
+    created_at: ob.created_at ?? new Date().toISOString(),
   };
   console.log("Pending client payload:", pcPayload);
 
-  // d) Send to our server route (writes into Project-B)
+  // e) Call server route that writes into pending_clients
   const res = await fetch("/api/pending-clients/upsert", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
