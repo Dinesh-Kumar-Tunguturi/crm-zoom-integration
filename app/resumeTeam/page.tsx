@@ -1281,23 +1281,23 @@ const fetchData = async (opts?: { assigneeEmail?: string | null; unassigned?: bo
      Onboarding date updates
      ========================= */
 
-  const updateOnboardedDate = async (leadId: string, date: string) => {
-    const { error } = await supabase
-      .from("sales_closure")
-      .update({ onboarded_date: date })
-      .eq("lead_id", leadId);
+  // const updateOnboardedDate = async (leadId: string, date: string) => {
+  //   const { error } = await supabase
+  //     .from("sales_closure")
+  //     .update({ onboarded_date: date })
+  //     .eq("lead_id", leadId);
 
-    if (error) {
-      console.error("Error updating onboarded_date", error);
-      alert(error.message || "Failed to update onboarded date");
-    } else {
-      alert("Onboarded date updated successfully!");
-      setShowDatePicker(false);
-      setSelectedDate(null);
-      setCurrentLeadId(null);
-      await fetchData();
-    }
-  };
+  //   if (error) {
+  //     console.error("Error updating onboarded_date", error);
+  //     alert(error.message || "Failed to update onboarded date");
+  //   } else {
+  //     alert("Onboarded date updated successfully!");
+  //     setShowDatePicker(false);
+  //     setSelectedDate(null);
+  //     setCurrentLeadId(null);
+  //     await fetchData();
+  //   }
+  // };
 
   const loadLatestOnboardingForLead = async (leadId: string, fallbackEmail?: string) => {
   setDialogLoading(true);
@@ -1389,10 +1389,89 @@ const handleOnboardClick = async (row: SalesClosure) => {
 
 
   // Writes/updates a pending_clients row using latest onboarding row + lead's email
+// const writePendingClientFromLead = async (leadId: string) => {
+//   // a) Latest onboarding details for the lead
+//   const { data: ob, error: obErr } = await supabase
+//     .from("client_onborading_details")
+//     .select(`
+//       full_name,
+//       whatsapp_number,
+//       callable_phone,
+//       company_email,
+//       job_role_preferences,
+//       salary_range,
+//       location_preferences,
+//       work_auth_details,
+//       created_at
+//     `)
+//     .eq("lead_id", leadId)
+//     .order("created_at", { ascending: false })
+//     .limit(1)
+//     .maybeSingle();
+
+//   if (obErr) throw obErr;
+//   if (!ob) throw new Error("No onboarding details found for this client.");
+
+//   // b) Personal email comes from leads.email (via business_id == leadId)
+//   const { data: lead, error: leadErr } = await supabase
+//     .from("leads")
+//     .select("email")
+//     .eq("business_id", leadId)
+//     .maybeSingle();
+
+//   if (leadErr) throw leadErr;
+//   if (!lead?.email) throw new Error("Lead record missing email.");
+
+//   const personalEmail = lead.email;
+
+//   // c) If a row already exists for this personal_email, update; else insert (preserve created_at on first insert)
+//   const { data: existing, error: existErr } = await supabase
+//     .from("pending_clients")
+//     .select("id, created_at")
+//     .eq("personal_email", personalEmail)
+//     .maybeSingle();
+
+//   if (existErr && (existErr as any).code !== "PGRST116") throw existErr;
+
+//   const basePayload = {
+//     full_name: ob.full_name,
+//     personal_email: personalEmail,
+//     whatsapp_number: ob.whatsapp_number ?? null,
+//     callable_phone: ob.callable_phone ?? null,
+//     company_email: ob.company_email ?? null,
+//     job_role_preferences: ob.job_role_preferences ?? null,
+//     salary_range: ob.salary_range ?? null,
+//     location_preferences: ob.location_preferences ?? null,
+//     work_auth_details: ob.work_auth_details ?? null,
+//     submitted_by: user?.id ?? null, // assumes your auth-provider exposes auth uid here
+//   } as const;
+
+//   // Include created_at only on first insert to keep original timestamp stable
+//   if (!existing) {
+//     const { error: insErr } = await supabase
+//       .from("pending_clients")
+//       .upsert(
+//         {
+//           ...basePayload,
+//           created_at: ob.created_at ?? new Date().toISOString(),
+//         },
+//         { onConflict: "personal_email" }
+//       );
+//     if (insErr) throw insErr;
+//   } else {
+//     const { error: updErr } = await supabase
+//       .from("pending_clients")
+//       .upsert(basePayload, { onConflict: "personal_email" });
+//     if (updErr) throw updErr;
+//   }
+// };
+
+
+// Writes/updates Project-B.pending_clients via server API
 const writePendingClientFromLead = async (leadId: string) => {
-  // a) Latest onboarding details for the lead
+  // a) Read latest onboarding details from Project-A (unchanged)
   const { data: ob, error: obErr } = await supabase
-    .from("client_onborading_details")
+    .from("client_onborading_details") // keep your existing table name
     .select(`
       full_name,
       whatsapp_number,
@@ -1402,38 +1481,30 @@ const writePendingClientFromLead = async (leadId: string) => {
       salary_range,
       location_preferences,
       work_auth_details,
-      created_at
+      created_at, 
+      visatypes,
+      lead_id
     `)
     .eq("lead_id", leadId)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
-
+    console.log("Onboarding details:", ob);
   if (obErr) throw obErr;
   if (!ob) throw new Error("No onboarding details found for this client.");
 
-  // b) Personal email comes from leads.email (via business_id == leadId)
+  // b) Get personal email from Project-A leads
   const { data: lead, error: leadErr } = await supabase
     .from("leads")
     .select("email")
     .eq("business_id", leadId)
     .maybeSingle();
-
   if (leadErr) throw leadErr;
   if (!lead?.email) throw new Error("Lead record missing email.");
+  const personalEmail = lead.email as string;
 
-  const personalEmail = lead.email;
-
-  // c) If a row already exists for this personal_email, update; else insert (preserve created_at on first insert)
-  const { data: existing, error: existErr } = await supabase
-    .from("pending_clients")
-    .select("id, created_at")
-    .eq("personal_email", personalEmail)
-    .maybeSingle();
-
-  if (existErr && (existErr as any).code !== "PGRST116") throw existErr;
-
-  const basePayload = {
+  // c) Compose payload for Project-B
+  const pcPayload = {
     full_name: ob.full_name,
     personal_email: personalEmail,
     whatsapp_number: ob.whatsapp_number ?? null,
@@ -1443,26 +1514,22 @@ const writePendingClientFromLead = async (leadId: string) => {
     salary_range: ob.salary_range ?? null,
     location_preferences: ob.location_preferences ?? null,
     work_auth_details: ob.work_auth_details ?? null,
-    submitted_by: user?.id ?? null, // assumes your auth-provider exposes auth uid here
-  } as const;
+    submitted_by: null,                 // ⚠ if FK won't match in Project-B, this can be null
+    created_at: ob.created_at ?? new Date().toISOString(), // only used on first insert
+    visa_type: ob.visatypes || null,  
+    applywizz_id:ob.lead_id,               // new field example
+  };
+  console.log("Pending client payload:", pcPayload);
 
-  // Include created_at only on first insert to keep original timestamp stable
-  if (!existing) {
-    const { error: insErr } = await supabase
-      .from("pending_clients")
-      .upsert(
-        {
-          ...basePayload,
-          created_at: ob.created_at ?? new Date().toISOString(),
-        },
-        { onConflict: "personal_email" }
-      );
-    if (insErr) throw insErr;
-  } else {
-    const { error: updErr } = await supabase
-      .from("pending_clients")
-      .upsert(basePayload, { onConflict: "personal_email" });
-    if (updErr) throw updErr;
+  // d) Send to our server route (writes into Project-B)
+  const res = await fetch("/api/pending-clients/upsert", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(pcPayload),
+  });
+  if (!res.ok) {
+    const j = await res.json().catch(() => ({}));
+    throw new Error(j.error || "Failed to upsert pending_client in Project-B");
   }
 };
 
@@ -1500,6 +1567,7 @@ const writePendingClientFromLead = async (leadId: string) => {
 };
 
 if (latestOnboardRowId) {
+  console.log("Updating data", payload);
   const { error: updErr } = await supabase
     .from("client_onborading_details")
     .update(payload)
