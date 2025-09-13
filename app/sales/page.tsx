@@ -90,12 +90,17 @@ interface SaleClosing {
   portfolio_value: number;
   linkedin_value: number;
   github_value: number;
+    badge_value: number | null;   // ✅ NEW
+
    // NEW
   courses_value: number;   // Courses/Certifications ($)
   custom_label: string;    // Custom label
   custom_value: number;    // Custom ($)
   commitments: string;     // Free-text commitments
   company_application_email:string;
+
+    no_of_job_applications: number | null;
+
 }
 
 
@@ -175,6 +180,8 @@ const [portfolioValue, setPortfolioValue] = useState("");
 const [linkedinValue, setLinkedinValue] = useState("");
 const [githubValue, setGithubValue] = useState("");
 
+
+
 // Calculated Fields
 const [autoTotal, setAutoTotal] = useState(0);
 const [totalSale, setTotalSale] = useState(0);
@@ -203,6 +210,8 @@ useEffect(() => {
 
   setTotalSale(autoTotal + resume + linkedin + github + portfolio);
 }, [autoTotal, resumeValue, linkedinValue, githubValue, portfolioValue]);
+
+
 
 useEffect(() => {
   fetchSalesClosureCount();
@@ -261,7 +270,11 @@ useEffect(() => {
   custom_label: "",
   custom_value: 0,
   commitments: "",
-    company_application_email: ""  // Add this field
+    company_application_email: "",  // Add this field
+  no_of_job_applications: null,
+    badge_value: null,                           // ✅ NEW
+
+
 
 });
 
@@ -344,6 +357,7 @@ useEffect(() => {
     saleData.subscription_cycle === 30 ? 1   :
     saleData.subscription_cycle === 60 ? 2   : 3; // 90
 
+    
   const addOns =
     saleData.resume_value +
     saleData.portfolio_value +
@@ -363,6 +377,8 @@ useEffect(() => {
   saleData.courses_value,   // NEW
   saleData.custom_value,    // NEW
 ]);
+
+
 
 
 /* 📅  Compute subscription-end date preview */
@@ -651,11 +667,14 @@ const handleSaleClosureUpdate = async () => {
       subscription_cycle,
       sale_value: saleTotal,
       closed_at: new Date(closed_at).toISOString(),
+      application_sale_value: applicationSaleValue,
       resume_sale_value: resume_value || null,
       portfolio_sale_value: portfolio_value || null,
       linkedin_sale_value: linkedin_value || null,
       github_sale_value: github_value || null,
       company_application_email, // Add this field to the payload
+        badge_value: saleData.badge_value ?? null,     // ✅ NEW
+
     };
 
     // Conditionally add new fields (avoid error if columns not yet created)
@@ -686,7 +705,10 @@ const handleSaleClosureUpdate = async () => {
       custom_label: "",
       custom_value: 0,
       commitments: "",
-      company_application_email: "" // Reset the email field
+      company_application_email: "", // Reset the email field
+      no_of_job_applications: null,
+        badge_value: 0,            // ✅ NEW
+
     });
 
     setPendingStageUpdate(null);
@@ -694,6 +716,12 @@ const handleSaleClosureUpdate = async () => {
 
     const updatedFollowUps = await fetchFollowUps();
     setFollowUpsData(updatedFollowUps);
+
+    const jobAppsU = saleData.no_of_job_applications;
+if (jobAppsU !== null && jobAppsU !== undefined && !Number.isNaN(jobAppsU)) {
+  payload.no_of_job_applications = Math.max(0, Math.floor(jobAppsU));
+}
+
   } catch (err: any) {
     console.error("Sale update failed:", err.message);
     alert("Failed to save sale.");
@@ -753,6 +781,10 @@ const fetchLatestSaleClosure = async (leadId: string) => {
         custom_value: latestSale.custom_sale_value ?? 0,
         commitments: latestSale.commitments ?? "",
         company_application_email: latestSale.company_application_email ?? "",
+          no_of_job_applications: latestSale.no_of_job_applications ?? null,
+            badge_value: latestSale.badge_value ?? null,            // ✅ NEW
+
+
       });
 
       // Optionally, update the stage if it's being used in the dialog (you can skip if unnecessary)
@@ -956,6 +988,7 @@ const handleSaleClosureSubmit = async () => {
     )
   );
 
+  
   const {
     base_value, subscription_cycle, payment_mode, closed_at,
     resume_value, portfolio_value, linkedin_value, github_value,
@@ -978,11 +1011,16 @@ const handleSaleClosureSubmit = async () => {
       subscription_cycle,
       sale_value: saleTotal,
       closed_at: new Date(closed_at).toISOString(),
+        application_sale_value: applicationSaleValue,
+
       resume_sale_value: resume_value || null,
       portfolio_sale_value: portfolio_value || null,
       linkedin_sale_value: linkedin_value || null,
       github_sale_value: github_value || null,
             company_application_email, // Add this field to the payload
+no_of_job_applications: null,
+  badge_value: saleData.badge_value ?? null,      // ✅ NEW
+
 
     };
 
@@ -991,6 +1029,11 @@ const handleSaleClosureSubmit = async () => {
     if (custom_label)  payload.custom_label = custom_label;
     if (custom_value)  payload.custom_sale_value = custom_value;
     if (commitments)   payload.commitments = commitments;
+
+    const jobApps = saleData.no_of_job_applications;
+if (jobApps !== null && jobApps !== undefined && !Number.isNaN(jobApps)) {
+  payload.no_of_job_applications = Math.max(0, Math.floor(jobApps));
+}
 
     const { error: insertErr } = await supabase.from("sales_closure").insert(payload);
     if (insertErr) throw insertErr;
@@ -1015,7 +1058,10 @@ const handleSaleClosureSubmit = async () => {
       custom_label: "",
       custom_value: 0,
       commitments: "",
-            company_application_email: "" // Reset the email field
+            company_application_email: "", // Reset the email field
+no_of_job_applications: null,
+  badge_value: 0,            // ✅ NEW
+
 
     });
 
@@ -1100,6 +1146,8 @@ async function handleOnboardClientSubmit() {
       cycle === 60 ? 2   :
       cycle === 90 ? 3   : 0;
 
+      const applicationSale = Number((base * multiplier).toFixed(2));
+
     const totalSaleCalc = base * multiplier + resume + linkedin + github + portfolio;
 
     // use local date strings for date columns stored as DATE in PG
@@ -1129,6 +1177,7 @@ async function handleOnboardClientSubmit() {
       closed_at: onboardDate,                // if column is date
       onboarded_date: onboardDate,          // if you store this too
       finance_status: "Paid",
+        application_sale_value: applicationSale,
       resume_sale_value: resume || null,
       linkedin_sale_value: linkedin || null,
       github_sale_value: github || null,
@@ -1139,6 +1188,9 @@ async function handleOnboardClientSubmit() {
       associates_tl_name: "",
       checkout_date: null,
       invoice_url: "",
+      no_of_job_applications: null,
+        badge_value: saleData.badge_value ?? null,      // ✅ optional here
+
     });
     if (salesInsertError) throw salesInsertError;
 
@@ -1250,6 +1302,13 @@ const downloadResume = async (path: string) => {
 const toYMD = (d?: string | Date) => (d ? dayjs(d).format("YYYY-MM-DD") : "");
 const todayLocalYMD = () => dayjs().format("YYYY-MM-DD");
 
+const cycleMultiplier = (d?: number) =>
+  d === 15 ? 0.5 : d === 30 ? 1 : d === 60 ? 2 : d === 90 ? 3 : 0;
+
+// 👉 ADD THIS derived constant (place near your other derived consts)
+const applicationSaleValue = Number(
+  (saleData.base_value * cycleMultiplier(saleData.subscription_cycle)).toFixed(2)
+);
 
 const sortedLeads = [...filteredLeads].sort((a, b) => {
   const { key, direction } = sortConfig;
@@ -2485,7 +2544,7 @@ const LinkCell = ({ href, label }: { href?: string | null; label?: string }) =>
   </div>
 
   {/* Commitments textarea */}
-  <div className="col-span-2">
+  <div className="grid-cols-2">
     <Label>Commitments</Label>
     <Textarea
       placeholder="Enter commitments (e.g., # of applications, calls, deliverables, timelines…)"
@@ -2494,6 +2553,45 @@ const LinkCell = ({ href, label }: { href?: string | null; label?: string }) =>
       required
     />
   </div>
+  {/* NEW: No. of job applications per month */}
+<div>
+  <Label>No. of job applications per month</Label>
+  <Input
+    type="number"
+    inputMode="numeric"
+    min={0}
+    step={1}
+    value={saleData.no_of_job_applications ?? ""}
+    onChange={e =>
+      setSaleData(p => ({
+        ...p,
+        no_of_job_applications:
+          e.target.value === "" ? null : Math.max(0, parseInt(e.target.value, 10) || 0),
+      }))
+    }
+    placeholder="20 or 40 applications"
+  />
+</div>
+
+<div>
+  <Label>Badge Value ($)</Label>
+  <Input
+    type="number"
+    inputMode="decimal"
+    min={0}
+    step="0.01"
+    value={saleData.badge_value ?? ""}          // show blank when null
+    onChange={(e) =>
+      setSaleData((p) => ({
+        ...p,
+        badge_value: e.target.value === "" ? null : Number(e.target.value),
+      }))
+    }
+    placeholder="e.g., 100"
+  />
+</div>
+
+
 </div>
 
 

@@ -16,9 +16,12 @@ const Payload = z.object({
   submitted_by: z.string().uuid().nullable().optional(), // pass null if FK won't exist in Project-B
   created_at: z.string().optional(),                     // ISO string (only used on first insert)
   applywizz_id: z.string().nullable().optional(), // optional but recommended
+  
   // New fields:
   visa_type: z.string().nullable().optional(),           // text
   sponsorship: z.boolean().nullable().optional(),   // boolean
+    badge_value: z.coerce.number().nullable().optional(),
+
 
 });
 

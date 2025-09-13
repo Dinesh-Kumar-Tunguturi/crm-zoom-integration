@@ -959,12 +959,17 @@ export default function SalesFormPage() {
   const [portfolioValue, setPortfolioValue] = useState<string>("");
   const [linkedinValue, setLinkedinValue] = useState<string>("");
   const [githubValue, setGithubValue] = useState<string>("");
+  // Add with the other add-on states
+const [badgeValue, setBadgeValue] = useState<string>("");
+
 
   // NEW add-ons + notes
 const [coursesValue, setCoursesValue] = useState<string>("");
 const [customLabel, setCustomLabel] = useState<string>("");
 const [customValue, setCustomValue] = useState<string>("");
 const [commitments, setCommitments] = useState<string>("");
+const [noOfJobApps, setNoOfJobApps] = useState<string>("");
+
 
 
   // Source + referral
@@ -1064,6 +1069,11 @@ const fmtDate = (s?: string | null) => {
     () => n(subscriptionSaleValue) * durationFactor,
     [subscriptionSaleValue, durationFactor]
   );
+
+  const applicationSaleValue = useMemo(
+  () => Number(autoTotal.toFixed(2)),
+  [autoTotal]
+);
 
   // grand total (subscription for duration + add-ons)
   const totalSale = useMemo(
@@ -1220,6 +1230,8 @@ console.log("Lead insert result:", leadInsert);
       payment_mode: paymentMode,
       subscription_cycle: durationInDays,
       sale_value: totalSale,
+        application_sale_value: applicationSaleValue,
+
       // omit closed_at to use DB default now()
       onboarded_date: null,
       finance_status: "Paid" as const,
@@ -1232,6 +1244,9 @@ console.log("Lead insert result:", leadInsert);
   custom_label: (customLabel.trim() || null),
   custom_sale_value: numOrNull(customValue),
   commitments: (commitments.trim() || null),
+ no_of_job_applications:
+    noOfJobApps.trim() === "" ? null : Math.max(0, parseInt(noOfJobApps, 10) || 0),
+  badge_value: numOrNull(badgeValue),
 
       checkout_date: null,
       invoice_url: "",
@@ -1266,9 +1281,12 @@ console.log("Lead insert result:", leadInsert);
     setLinkedinValue("");
     setGithubValue("");
     setCoursesValue("");
+    setBadgeValue("");
+
 setCustomLabel("");
 setCustomValue("");
 setCommitments("");
+setNoOfJobApps("");
 
     setSubscriptionSource("");
     setReferrerId("");
@@ -1611,16 +1629,43 @@ const sanitizePhone = (input: string) => {
                       onChange={(e) => setGithubValue(e.target.value)}
                     />
                                       {/* Courses / Certifications ($) */}
-
+<div className="flex gap-2">
                     <Input
   type="number"
   inputMode="decimal"
   min="0"
   step="0.01"
-  placeholder="Courses / Certifications Value ($)"
+  placeholder="Courses Value ($)"
   value={coursesValue}
   onChange={(e) => setCoursesValue(e.target.value)}
 />
+
+{/* NEW: No. of job applications per month (integer) */}
+<Input
+  type="number"
+  inputMode="numeric"
+  min="0"
+  step="1"
+  placeholder="No. of job applications per month"
+  value={noOfJobApps}
+  onChange={(e) => {
+    // keep only digits; store as string for easy empty/null handling
+    const cleaned = e.target.value.replace(/[^\d]/g, "");
+    setNoOfJobApps(cleaned);
+  }}
+/>
+<Input
+    type="number"
+    inputMode="decimal"
+    min="0"
+    step="0.01"
+    placeholder="Badge Value ($)"
+    value={badgeValue}
+    onChange={(e) => setBadgeValue(e.target.value)}
+  />
+
+
+</div>
 <div className="flex gap-2">
   <Input
     placeholder="Custom Add-on (e.g., Courses)"

@@ -39,19 +39,6 @@ import {
 
 type FinanceStatus = "Paid" | "Unpaid" | "Paused" | "Closed" | "Got Placed"; // 🆕 added "Got Placed"
 
-// interface SalesClosure {
-//   id: string;
-//   lead_id: string;
-//   sale_value: number;
-//   subscription_cycle: number;
-//   payment_mode: string;
-//   closed_at: string;
-//   email: string;
-//   finance_status: FinanceStatus;
-//   leads?: { name: string, phone: string }; // 🆕 include phone
-//   reason_for_close?: string;
-//   onboarded_date?: string;
-// }
 
 interface SalesClosure {
   id: string;
@@ -189,8 +176,8 @@ export default function FinancePage() {
   const [loadingNotOnboarded, setLoadingNotOnboarded] = useState(false);
   const [feedbackMsg, setFeedbackMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-const [sortField, setSortField] = useState<string | null>(null);
-const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [sortField, setSortField] = useState<string | null>(null);
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
 
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -200,9 +187,9 @@ const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [subscriptionMultiplier, setSubscriptionMultiplier] = useState(1);
   const [subscriptionSource, setSubscriptionSource] = useState(""); // For Referral/NEW
 
-const [showReasonDialog, setShowReasonDialog] = useState(false);
-// const [selectedFinanceStatus, setSelectedFinanceStatus] = useState<FinanceStatus | null>(null);
-const [reasonText, setReasonText] = useState("");
+  const [showReasonDialog, setShowReasonDialog] = useState(false);
+  // const [selectedFinanceStatus, setSelectedFinanceStatus] = useState<FinanceStatus | null>(null);
+  const [reasonText, setReasonText] = useState("");
 
 
 
@@ -233,7 +220,7 @@ const [reasonText, setReasonText] = useState("");
     fetchSalesData();
   }, []);
 
-  
+
   useEffect(() => {
     if (allSales.length > 0) {
       const breakdown = generateMonthlyRevenue(allSales, selectedYear);
@@ -265,209 +252,89 @@ const [reasonText, setReasonText] = useState("");
 
 
 
-  //   async function fetchSalesData() {
-  //     const { data: salesData, error: salesError } = await supabase
-  //       .from("sales_closure")
-  //       .select("*")
-  //       .order("closed_at", { ascending: false });
-
-  //     if (salesError) {
-  //       console.error("Error fetching sales data:", salesError);
-  //       return;
-  //     }
-
-  //     const leadIds = [...new Set(salesData.map((s) => s.lead_id))];
-
-  //     const { data: leadsData, error: leadsError } = await supabase
-  //   .from("leads")
-  //   .select("business_id, name")
-  //   .in("business_id", leadIds);
-
-  // if (leadsError) {
-  //   console.error("Error fetching leads:", leadsError);
-  //   return;
-  // }
-
-  // const { data: salesClosureData, error: closureError } = await supabase
-  //   .from("sales_closure")
-  //   .select("lead_id, lead_name");
-
-  // if (closureError) {
-  //   console.error("Error fetching sales_closure fallback names:", closureError);
-  //   return;
-  // }
-
-  // // 🧠 Create two maps
-  // const leadNameMap = new Map(leadsData.map((l) => [l.business_id, l.name]));
-  // const closureNameMap = new Map(salesClosureData.map((s) => [s.lead_id, s.lead_name]));
-
-  // // ✅ Final mapping with fallback logic
-  // const salesWithName = salesData.map((s) => {
-  //   const nameFromLeads = leadNameMap.get(s.lead_id);
-  //   const fallbackName = closureNameMap.get(s.lead_id);
-  //   return {
-  //     ...s,
-  //     leads: {
-  //       name: nameFromLeads || fallbackName || "-",
-  //     },
-  //   };
-  // });
-
-  // setSales(salesWithName as SalesClosure[]);
-  //   }
 
 
-  // async function fetchSalesData() {
+  async function fetchSalesData() {
+    const { data: rows, error } = await supabase
+      .from("sales_closure")
+      .select("*")
+      .order("closed_at", { ascending: false });
 
-
-  //   const { data: salesData, error: salesError } = await supabase
-  //     .from("sales_closure")
-  //     .select("*")
-  //     .order("onboarded_date", { ascending: false });
-
-  //   if (salesError) {
-  //     console.error("Error fetching sales data:", salesError);
-  //     return;
-  //   }
-
-  //   // 🧠 Keep only the latest record per lead_id
-  //   const latestSalesMap = new Map<string, SalesClosure>();
-  //   for (const record of salesData) {
-  //     const existing = latestSalesMap.get(record.lead_id);
-  //     if (!existing || new Date(record.closed_at) > new Date(existing.closed_at)) {
-  //       latestSalesMap.set(record.lead_id, record);
-  //     }
-  //   }
-  //   const filteredSalesData = Array.from(latestSalesMap.values());
-
-  //   // 🧠 Fetch leads for name mapping
-  //   const leadIds = filteredSalesData.map((s) => s.lead_id);
-  //   const { data: leadsData, error: leadsError } = await supabase
-  //     .from("leads")
-  //     .select("business_id, name")
-  //     .in("business_id", leadIds);
-
-  //   if (leadsError) {
-  //     console.error("Error fetching leads:", leadsError);
-  //     return;
-  //   }
-
-  //   const { data: salesClosureData, error: closureError } = await supabase
-  //     .from("sales_closure")
-  //     .select("lead_id, lead_name");
-
-  //   if (closureError) {
-  //     console.error("Error fetching sales_closure fallback names:", closureError);
-  //     return;
-  //   }
-
-  //   // 🧠 Join names
-  //   const leadNameMap = new Map(leadsData.map((l) => [l.business_id, l.name]));
-  //   const closureNameMap = new Map(salesClosureData.map((s) => [s.lead_id, s.lead_name]));
-
-  //   const salesWithName = filteredSalesData.map((s) => {
-  //     const nameFromLeads = leadNameMap.get(s.lead_id);
-  //     const fallbackName = closureNameMap.get(s.lead_id);
-  //     return {
-  //       ...s,
-  //       leads: {
-  //         name: nameFromLeads || fallbackName || "-",
-  //       },
-  //     };
-  //   });
-
-  //   setSales(salesWithName as SalesClosure[]);
-  // }
-
-
-async function fetchSalesData() {
-  const { data: rows, error } = await supabase
-    .from("sales_closure")
-    .select("*")
-    .order("closed_at", { ascending: false });
-
-  if (error) {
-    console.error("Error fetching sales data:", error);
-    return;
-  }
-
-  setAllSales(rows);
-  const onboardedRows = rows.filter((r) => r.onboarded_date);
-
-  const latestMap = new Map<string, SalesClosure>();
-  for (const rec of onboardedRows) {
-    const existing = latestMap.get(rec.lead_id);
-    if (!existing || new Date(rec.closed_at) > new Date(existing.closed_at)) {
-      latestMap.set(rec.lead_id, rec);
+    if (error) {
+      console.error("Error fetching sales data:", error);
+      return;
     }
+
+    setAllSales(rows);
+    const onboardedRows = rows.filter((r) => r.onboarded_date);
+
+    const latestMap = new Map<string, SalesClosure>();
+    for (const rec of onboardedRows) {
+      const existing = latestMap.get(rec.lead_id);
+      if (!existing || new Date(rec.closed_at) > new Date(existing.closed_at)) {
+        latestMap.set(rec.lead_id, rec);
+      }
+    }
+
+    const latestRows = Array.from(latestMap.values()).sort(
+      (a, b) =>
+        new Date(b.onboarded_date ?? "").getTime() -
+        new Date(a.onboarded_date ?? "").getTime()
+    );
+
+    // Step 1: Build oldest sale_done map
+    const oldestSaleDateMap = new Map<string, string>();
+
+    for (const record of rows) {
+      const existing = oldestSaleDateMap.get(record.lead_id);
+      const currentClosedAt = new Date(record.closed_at);
+      if (!existing || currentClosedAt < new Date(existing)) {
+        oldestSaleDateMap.set(record.lead_id, record.closed_at);
+      }
+    }
+
+
+    const leadIds = latestRows.map((r) => r.lead_id);
+
+    // 🆕 Fetch both name and phone from leads
+    const { data: leads, error: leadsErr } = await supabase
+      .from("leads")
+      .select("business_id, name, phone") // 👈 add phone here
+      .in("business_id", leadIds);
+
+    if (leadsErr) {
+      console.error("Error fetching leads:", leadsErr);
+      return;
+    }
+
+    const { data: fallback, error: fbErr } = await supabase
+      .from("sales_closure")
+      .select("lead_id, lead_name");
+
+    if (fbErr) {
+      console.error("Error fetching fallback names:", fbErr);
+      return;
+    }
+
+    const leadNameMap = new Map(leads.map((l) => [l.business_id, l.name]));
+    const leadPhoneMap = new Map(leads.map((l) => [l.business_id, l.phone])); // 🆕 map phone
+    const fallbackNameMap = new Map(
+      fallback.map((f) => [f.lead_id, f.lead_name])
+    );
+
+
+    const tableReady = latestRows.map((r) => ({
+      ...r,
+      leads: {
+        name: leadNameMap.get(r.lead_id) || fallbackNameMap.get(r.lead_id) || "-",
+        phone: leadPhoneMap.get(r.lead_id) || "-",
+      },
+      oldest_sale_done_at: oldestSaleDateMap.get(r.lead_id) || r.closed_at, // fallback to current
+    }));
+
+
+    setSales(tableReady);
   }
-
-  const latestRows = Array.from(latestMap.values()).sort(
-    (a, b) =>
-      new Date(b.onboarded_date ?? "").getTime() -
-      new Date(a.onboarded_date ?? "").getTime()
-  );
-
-  // Step 1: Build oldest sale_done map
-const oldestSaleDateMap = new Map<string, string>();
-
-for (const record of rows) {
-  const existing = oldestSaleDateMap.get(record.lead_id);
-  const currentClosedAt = new Date(record.closed_at);
-  if (!existing || currentClosedAt < new Date(existing)) {
-    oldestSaleDateMap.set(record.lead_id, record.closed_at);
-  }
-}
-
-
-  const leadIds = latestRows.map((r) => r.lead_id);
-
-  // 🆕 Fetch both name and phone from leads
-  const { data: leads, error: leadsErr } = await supabase
-    .from("leads")
-    .select("business_id, name, phone") // 👈 add phone here
-    .in("business_id", leadIds);
-
-  if (leadsErr) {
-    console.error("Error fetching leads:", leadsErr);
-    return;
-  }
-
-  const { data: fallback, error: fbErr } = await supabase
-    .from("sales_closure")
-    .select("lead_id, lead_name");
-
-  if (fbErr) {
-    console.error("Error fetching fallback names:", fbErr);
-    return;
-  }
-
-  const leadNameMap = new Map(leads.map((l) => [l.business_id, l.name]));
-  const leadPhoneMap = new Map(leads.map((l) => [l.business_id, l.phone])); // 🆕 map phone
-  const fallbackNameMap = new Map(
-    fallback.map((f) => [f.lead_id, f.lead_name])
-  );
-
-  // const tableReady = latestRows.map((r) => ({
-  //   ...r,
-  //   leads: {
-  //     name: leadNameMap.get(r.lead_id) || fallbackNameMap.get(r.lead_id) || "-",
-  //     phone: leadPhoneMap.get(r.lead_id) || "-", // 🆕 include phone
-  //   },
-  // }));
-
-  const tableReady = latestRows.map((r) => ({
-  ...r,
-  leads: {
-    name: leadNameMap.get(r.lead_id) || fallbackNameMap.get(r.lead_id) || "-",
-    phone: leadPhoneMap.get(r.lead_id) || "-",
-  },
-  oldest_sale_done_at: oldestSaleDateMap.get(r.lead_id) || r.closed_at, // fallback to current
-}));
-
-
-  setSales(tableReady);
-}
 
 
 
@@ -495,12 +362,7 @@ for (const record of rows) {
   const [linkedinValue, setLinkedinValue] = useState("");
   const [githubValue, setGithubValue] = useState("");
 
-  // 🧮 Auto Calculated
-  // const totalSale = Number(subscriptionSaleValue || 0) +
-  //   Number(resumeValue || 0) +
-  //   Number(portfolioValue || 0) +
-  //   Number(linkedinValue || 0) +
-  //   Number(githubValue || 0);
+
 
   function calculateDueDate(start: string, durationInDays: number): string {
     if (!start) return "";
@@ -559,7 +421,7 @@ for (const record of rows) {
     setDueDate(nextDue.toLocaleDateString("en-GB")); // or "en-US" as needed
   }, [startDate, subscriptionCycle]);
 
-  
+
 
   const filteredSales = sales.filter((sale) => {
     const matchesSearch =
@@ -585,130 +447,96 @@ for (const record of rows) {
   });
 
   function handleSort(field: string) {
-  if (sortField === field) {
-    // Toggle sort direction
-    setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
-  } else {
-    setSortField(field);
-    setSortOrder("asc"); // default order
-  }
-}
-
-const sortedSales = [...filteredSales].sort((a, b) => {
-  if (!sortField) return 0;
-
-  if (sortField === "lead_id") {
-    const aNum = parseInt(a.lead_id.split("-")[1]);
-    const bNum = parseInt(b.lead_id.split("-")[1]);
-    return sortOrder === "asc" ? aNum - bNum : bNum - aNum;
+    if (sortField === field) {
+      // Toggle sort direction
+      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortField(field);
+      setSortOrder("asc"); // default order
+    }
   }
 
-  if (sortField === "leads") {
-    const nameA = a.leads?.name?.toLowerCase() ?? "";
-    const nameB = b.leads?.name?.toLowerCase() ?? "";
-    return sortOrder === "asc"
-      ? nameA.localeCompare(nameB)
-      : nameB.localeCompare(nameA);
-  }
+  const sortedSales = [...filteredSales].sort((a, b) => {
+    if (!sortField) return 0;
 
-  if (sortField === "sale_value") {
-    return sortOrder === "asc"
-      ? a.sale_value - b.sale_value
-      : b.sale_value - a.sale_value;
-  }
+    if (sortField === "lead_id") {
+      const aNum = parseInt(a.lead_id.split("-")[1]);
+      const bNum = parseInt(b.lead_id.split("-")[1]);
+      return sortOrder === "asc" ? aNum - bNum : bNum - aNum;
+    }
 
-  if (sortField === "closed_at") {
-    const dateA = new Date(a.closed_at).getTime();
-    const dateB = new Date(b.closed_at).getTime();
-    return sortOrder === "asc" ? dateA - dateB : dateB - dateA;
-  }
+    if (sortField === "leads") {
+      const nameA = a.leads?.name?.toLowerCase() ?? "";
+      const nameB = b.leads?.name?.toLowerCase() ?? "";
+      return sortOrder === "asc"
+        ? nameA.localeCompare(nameB)
+        : nameB.localeCompare(nameA);
+    }
 
-  if (sortField === "onboarded_date") {
-    const dateA = new Date(a.onboarded_date ?? "").getTime();
-    const dateB = new Date(b.onboarded_date ?? "").getTime();
-    return sortOrder === "asc" ? dateA - dateB : dateB - dateA;
-  }
+    if (sortField === "sale_value") {
+      return sortOrder === "asc"
+        ? a.sale_value - b.sale_value
+        : b.sale_value - a.sale_value;
+    }
 
-  if (sortField === "next_renewal_date") {
-    const dateA = new Date(calculateNextRenewal(a.onboarded_date, a.subscription_cycle)).getTime();
-    const dateB = new Date(calculateNextRenewal(b.onboarded_date, b.subscription_cycle)).getTime();
-    return sortOrder === "asc" ? dateA - dateB : dateB - dateA;
-  }
+    if (sortField === "closed_at") {
+      const dateA = new Date(a.closed_at).getTime();
+      const dateB = new Date(b.closed_at).getTime();
+      return sortOrder === "asc" ? dateA - dateB : dateB - dateA;
+    }
 
-  return 0;
-});
+    if (sortField === "onboarded_date") {
+      const dateA = new Date(a.onboarded_date ?? "").getTime();
+      const dateB = new Date(b.onboarded_date ?? "").getTime();
+      return sortOrder === "asc" ? dateA - dateB : dateB - dateA;
+    }
 
-// function getRenewWithinBadge(createdAt: string): React.ReactNode {
-  //   const closedDate = new Date(createdAt);
-  //   const today = new Date();
-  //   const diffInDays = Math.floor((today.getTime() - closedDate.getTime()) / (1000 * 60 * 60 * 24));
-  //   const renewalWindow = 25;
+    if (sortField === "next_renewal_date") {
+      const dateA = new Date(calculateNextRenewal(a.onboarded_date, a.subscription_cycle)).getTime();
+      const dateB = new Date(calculateNextRenewal(b.onboarded_date, b.subscription_cycle)).getTime();
+      return sortOrder === "asc" ? dateA - dateB : dateB - dateA;
+    }
 
-  //   if (diffInDays < renewalWindow) {
-  //     const daysLeft = renewalWindow - diffInDays;
-  //     return (
-  //       <Badge className="bg-green-100 text-green-800">
-  //         Within {daysLeft} day{daysLeft === 1 ? "" : "s"}
-  //       </Badge>
-  //     );
-  //   } else if (diffInDays === renewalWindow) {
-  //     return (
-  //       <Badge className="bg-yellow-100 text-gray-800">Today lastdate</Badge>
-  //     );
-  //   } else {
-  //     const overdue = diffInDays - renewalWindow;
-  //     return (
-  //       <Badge className="bg-red-100 text-red-800">
-  //         Overdue by {overdue} day{overdue === 1 ? "" : "s"}
-  //       </Badge>
-  //     );
-  //   }
-  // }
+    return 0;
+  });
 
-  
+
+
   function getRenewWithinBadge(createdAt: string, subscriptionCycle: number): React.ReactNode {
-  if (!createdAt || !subscriptionCycle) return null;
+    if (!createdAt || !subscriptionCycle) return null;
 
-  const startDate = new Date(createdAt);
-  const today = new Date();
+    const startDate = new Date(createdAt);
+    const today = new Date();
 
-  // Normalize time to 00:00:00 to compare only dates
-  startDate.setHours(0, 0, 0, 0);
-  today.setHours(0, 0, 0, 0);
+    // Normalize time to 00:00:00 to compare only dates
+    startDate.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
 
-  const diffInDays = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+    const diffInDays = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
 
-  if (diffInDays < subscriptionCycle) {
-    const daysLeft = subscriptionCycle - diffInDays;
-    return (
-      <Badge className="bg-green-100 text-green-800">
-        Within {daysLeft} day{daysLeft === 1 ? "" : "s"}
-      </Badge>
-    );
-  } else if (diffInDays === subscriptionCycle) {
-    return (
-      <Badge className="bg-yellow-100 text-gray-800">
-        Today last date
-      </Badge>
-    );
-  } else {
-    const overdue = diffInDays - subscriptionCycle;
-    return (
-      <Badge className="bg-red-100 text-red-800">
-        Overdue by {overdue} day{overdue === 1 ? "" : "s"}
-      </Badge>
-    );
+    if (diffInDays < subscriptionCycle) {
+      const daysLeft = subscriptionCycle - diffInDays;
+      return (
+        <Badge className="bg-green-100 text-green-800">
+          Within {daysLeft} day{daysLeft === 1 ? "" : "s"}
+        </Badge>
+      );
+    } else if (diffInDays === subscriptionCycle) {
+      return (
+        <Badge className="bg-yellow-100 text-gray-800">
+          Today last date
+        </Badge>
+      );
+    } else {
+      const overdue = diffInDays - subscriptionCycle;
+      return (
+        <Badge className="bg-red-100 text-red-800">
+          Overdue by {overdue} day{overdue === 1 ? "" : "s"}
+        </Badge>
+      );
+    }
   }
-}
 
-  // const totalRevenue = sales.reduce((sum, sale) => sum + sale.sale_value, 0);
-  // const paidRevenue = sales.filter(s => s.finance_status === "Paid").reduce((sum, s) => sum + s.sale_value, 0);
-  // const unpaidRevenue = sales.filter(s => s.finance_status === "Unpaid").reduce((sum, s) => sum + s.sale_value, 0);
-  // const pausedRevenue = sales.filter(s => s.finance_status === "Paused").reduce((sum, s) => sum + s.sale_value, 0);
-
-  // const paidCount = sales.filter(s => s.finance_status === "Paid").length;
-  // const unpaidCount = sales.filter(s => s.finance_status === "Unpaid").length;
-  // const pausedCount = sales.filter(s => s.finance_status === "Paused").length;
 
   const totalRevenue = allSales.reduce((sum, s) => sum + s.sale_value, 0);
 
@@ -772,7 +600,7 @@ const sortedSales = [...filteredSales].sort((a, b) => {
       .map((row) => row.map((col) => `"${col}"`).join(","))
       .join("\n");
 
-  const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
+    const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
@@ -782,166 +610,10 @@ const sortedSales = [...filteredSales].sort((a, b) => {
     document.body.removeChild(link);
   };
 
-
-  // async function handleOnboardClientSubmit() {
-  //   try {
-  //     // 1. Generate new lead_id like AWL-1, AWL-2, ...
-  //     const { data: existing, error: countError } = await supabase
-  //       .from("sales_closure")
-  //       .select("lead_id");
-
-  //     if (countError) throw countError;
-
-  //     const newLeadId = `AWL-${(existing?.length ?? 0) + 1}`;
-
-  //     // 2. Parse sale values (treat empty as 0)
-  //     const baseValue = parseInt(subscriptionSaleValue || "0");
-  //     const resume = parseInt(resumeValue || "0");
-  //     const linkedin = parseInt(linkedinValue || "0");
-  //     const github = parseInt(githubValue || "0");
-  //     const portfolio = parseInt(portfolioValue || "0");
-
-  //     // 3. Calculate total value
-  //     const totalSaleValue = baseValue + resume + linkedin + github + portfolio;
-
-  //     // 4. Compute next payment due date
-  //     const start = new Date(startDate);
-  //     const nextDueDate = new Date(start);
-  //     const durationInDays = parseInt(subscriptionCycle || "0"); // Expected: 30, 60, 90, etc.
-  //     nextDueDate.setDate(start.getDate() + durationInDays);
-
-  //     // 5. Submit to Supabase
-  //     const { error: insertError } = await supabase.from("sales_closure").insert({
-  //       lead_id: newLeadId,
-  //       email: clientEmail,
-  //       payment_mode: paymentMode,
-  //       subscription_cycle: durationInDays,
-  //       sale_value: totalSaleValue,
-  //       closed_at: startDate,
-  //       finance_status: "Paid", // default value, change if needed
-  //       next_payment_due: nextDueDate.toISOString(),
-
-  //       // Optional add-ons
-  //       resume_service: resume,
-  //       linkedin_service: linkedin,
-  //       github_service: github,
-  //       portfolio_service: portfolio,
-
-  //       created_at: new Date().toISOString(), // optional
-  //     });
-
-  //     if (insertError) throw insertError;
-
-  //     alert("Client onboarded successfully!");
-  //     setShowAddClientDialog(false); // Close the form/dialog
-
-  //   } catch (err) {
-  //     console.error("❌ Error onboarding client:", err);
-  //     alert("Failed to onboard client.");
-  //   }
-  // }
-
-  // async function handleOnboardClientSubmit() {
-  //   try {
-  //     // 1. Generate new lead_id like AWL-1, AWL-2, ...
-  //     const { data: existing, error: countError } = await supabase
-  //       .from("sales_closure")
-  //       .select("lead_id");
-
-  //     if (countError) throw countError;
-
-  //     const newLeadId = `AWL-${(existing?.length ?? 0) + 1}`;
-
-  //     // 2. Parse sale values (treat empty as 0)
-  //     const baseValue = parseInt(subscriptionSaleValue || "0");
-  //     const resume = parseInt(resumeValue || "0");
-  //     const linkedin = parseInt(linkedinValue || "0");
-  //     const github = parseInt(githubValue || "0");
-  //     const portfolio = parseInt(portfolioValue || "0");
-
-  //     // 3. Calculate total value
-  //     const totalSaleValue = baseValue + resume + linkedin + github + portfolio;
-
-  //     // 4. Compute next payment due date
-  //     const start = new Date(startDate);
-  //     const nextDueDate = new Date(start);
-  //     const durationInDays = parseInt(subscriptionCycle || "0"); // 30, 60, 90, etc.
-  //     nextDueDate.setDate(start.getDate() + durationInDays);
-
-  //     // 5. Submit to Supabase
-  //     const { error: insertError } = await supabase.from("sales_closure").insert({
-  //       lead_id: newLeadId,
-  //       email: clientEmail,
-  //       lead_name: clientName,
-  //       payment_mode: paymentMode,
-  //       subscription_cycle: durationInDays,
-  //       sale_value: totalSaleValue,
-  //       closed_at: startDate,
-  //       finance_status: "Paid",
-  //       // next_payment_due: nextDueDate.toISOString(),
-
-  //       // Optional add-ons
-  //       resume_sale_value: resume,
-  //       linkedin_sale_value: linkedin,
-  //       github_sale_value: github,
-  //       portfolio_sale_value: portfolio,
-
-  //       // created_at: new Date().toISOString(),
-  //     });
-
-  //     if (insertError) throw insertError;
-
-  //     // 6. Append to table view
-  //     const newEntry = {
-  //       lead_id: newLeadId,
-  //       sale_value: totalSaleValue,
-  //       subscription_cycle: durationInDays,
-  //       payment_mode: paymentMode,
-  //       closed_at: startDate,
-  //       email: clientEmail,
-  //       lead_name: clientName,
-  //       finance_status: "Paid",
-  //       resume_sale_value: resume,
-  //       linkedin_sale_value: linkedin,
-  //       github_sale_value: github,
-  //       portfolio_sale_value: portfolio,
-  //       next_payment_due: nextDueDate.toISOString(),
-  //       // created_at: new Date().toISOString(),
-  //     };
-
-  //     setSalesData((prevData) => [...prevData, newEntry]);
-
-  //     // 7. Reset all fields
-  //     setClientName("");
-  //     setClientEmail("");
-  //     setContactNumber("");
-  //     setStartDate("");
-  //     setSubscriptionCycle("");
-  //     setSubscriptionSaleValue("");
-  //     setPaymentMode("");
-  //     setResumeValue("");
-  //     setPortfolioValue("");
-  //     setLinkedinValue("");
-  //     setGithubValue("");
-
-  //     // 8. Close the dialog
-  //     setShowOnboardDialog(false);
-
-  //     // 9. Optional: Success alert
-  //     setTimeout(() => {
-  //       alert("✅ Client onboarded successfully!");
-  //     }, 100);
-
-  //   }  catch (err: any) {
-  //   console.error("❌ Error onboarding client:", err?.message || err);
-  //   alert(`Failed to onboard client: ${err?.message || "Unknown error"}`);
-  // }
-  // }
-
   async function handleOnboardClientSubmit() {
     try {
       const confirmed = window.confirm("Are you sure you want to Onboard this client?");
-if (!confirmed) return;
+      if (!confirmed) return;
 
       // 1. Generate new lead_id like AWL-1, AWL-2, ...
       const { data: existingLeads, error: leadsCountError } = await supabase
@@ -950,14 +622,6 @@ if (!confirmed) return;
 
       if (leadsCountError) throw leadsCountError;
 
-      // const maxId = existingLeads
-      //   ?.map((lead) => parseInt((lead.business_id || "").split("-")[1]))
-      //   .filter((num) => !isNaN(num))
-      //   .sort((a, b) => b - a)[0] || 0;
-
-      // const newLeadId = `AWL-${maxId + 1}`;
-
-      // 👇 Call your DB-side function to generate the next ID
       const { data: idResult, error: idError } = await supabase.rpc('generate_custom_lead_id');
 
       if (idError || !idResult) {
@@ -1066,86 +730,6 @@ if (!confirmed) return;
     }
   }
 
-  // async function handlePaymentClose() {
-  //   if (!selectedSaleId || !paymentAmount) return;
-
-  //   try {
-  //     // Update the original sale row with Paid
-  //     await supabase
-  //       .from("sales_closure")
-  //       .update({
-  //         finance_status: "Paid",
-  //         sale_value: parseFloat(paymentAmount),
-  //         closed_at: paymentDate.toISOString(),
-  //       })
-  //       .eq("id", selectedSaleId);
-
-  //     // Optional: Re-fetch or mutate local state to reflect
-  //     alert("✅ Payment marked as Paid!");
-  //     setShowPaymentDialog(false);
-  //     setPaymentAmount("");
-  //     setSelectedSaleId(null);
-  //   } catch (err) {
-  //     console.error("Payment update failed", err);
-  //     alert("Failed to update payment.");
-  //   }
-  // }
-
-
-  // async function handlePaymentClose() {
-  //   if (!selectedSaleId || !paymentAmount || !onboardDate || !subscriptionMonths) {
-  //     alert("Please fill all fields.");
-  //     return;
-  //   }
-
-  //   /* 🔄 Map months → cycle days */
-  //   const cycleDays = subscriptionMonths === "0.5"
-  //     ? 15
-  //     : parseInt(subscriptionMonths) * 30; // 1→30, 2→60, 3→90
-
-  //   try {
-  //     await supabase
-  //       .from("sales_closure")
-  //       .update({
-  //         finance_status: "Paid",
-  //         sale_value: parseFloat(paymentAmount),
-  //         // closed_at: paymentDate.toISOString(),                 // timestamp
-  //         onboarded_date: onboardDate.toISOString().slice(0,10),// date yyyy-mm-dd
-  //         subscription_cycle: cycleDays                         // 15 / 30 / 60 / 90
-  //       })
-  //       .eq("id", selectedSaleId);
-
-  //     /* Optional: update local state so table refreshes instantly */
-  //     setSales(prev =>
-  //       prev.map(row =>
-  //         row.id === selectedSaleId
-  //           ? {
-  //               ...row,
-  //               finance_status: "Paid",
-  //               sale_value: parseFloat(paymentAmount),
-  //               closed_at: paymentDate.toISOString(),
-  //               onboarded_date: onboardDate.toISOString().slice(0,10),
-  //               subscription_cycle: cycleDays
-  //             }
-  //           : row
-  //       )
-  //     );
-
-  //     alert("✅ Payment saved!");
-  //     /* reset & close */
-  //     setShowPaymentDialog(false);
-  //     setPaymentAmount("");
-  //     setOnboardDate(null);
-  //     setSubscriptionMonths("");
-  //     setSelectedSaleId(null);
-
-  //   } catch (err) {
-  //     console.error("Payment update failed", err);
-  //     alert("Failed to update payment.");
-  //   }
-  // }
-
-
   async function handlePaymentClose() {
     if (!selectedSaleId || !paymentAmount || !onboardDate || !subscriptionMonths) {
       alert("Please fill all fields.");
@@ -1161,7 +745,7 @@ if (!confirmed) return;
       const original = sales.find(s => s.id === selectedSaleId);
       if (!original) throw new Error("Original record not found");
 
-      const { leads, id ,oldest_sale_done_at, ...cleanOriginal } = original; // 🧼 remove frontend-only field and id
+      const { leads, id, oldest_sale_done_at, ...cleanOriginal } = original; // 🧼 remove frontend-only field and id
       const newRow = {
         ...cleanOriginal,
         sale_value: parseFloat(paymentAmount),
@@ -1212,7 +796,7 @@ if (!confirmed) return;
 
   const handleOnboardClient = async (clientId: string) => {
     const confirmed = window.confirm("Are you sure you want to onboard this client?");
-if (!confirmed) return;
+    if (!confirmed) return;
 
     const today = new Date().toISOString();
 
@@ -1236,149 +820,88 @@ if (!confirmed) return;
 
   };
 
-//   async function handleDownloadFullSalesCSV() {
-//   try {
-//     // 1. Fetch all sales_closure data
-//     const { data: salesData, error: salesError } = await supabase
-//       .from("sales_closure")
-//       .select("*");
 
-//     if (salesError) throw salesError;
-//     if (!salesData || salesData.length === 0) {
-//       alert("No sales data found.");
-//       return;
-//     }
+  async function handleDownloadFullSalesCSV() {
+    try {
+      // 1. Fetch all sales_closure records
+      const { data: salesData, error: salesError } = await supabase
+        .from("sales_closure")
+        .select("*");
 
-//     // 2. Get unique lead_ids
-//     const leadIds = [...new Set(salesData.map((s) => s.lead_id))];
+      if (salesError) throw salesError;
+      if (!salesData || salesData.length === 0) {
+        alert("No sales data found.");
+        return;
+      }
 
-//     // 3. Fetch phone numbers from leads
-//     const { data: leadsData, error: leadsError } = await supabase
-//       .from("leads")
-//       .select("business_id, phone, source, created_at, assigned_to")
-//       .in("business_id", leadIds);
+      // 2. Get unique lead_ids to fetch from leads
+      const leadIds = [...new Set(salesData.map((s) => s.lead_id))];
 
-//     if (leadsError) throw leadsError;
+      // 3. Fetch leads: phone, source, created_at, assigned_to
+      const { data: leadsData, error: leadsError } = await supabase
+        .from("leads")
+        .select("business_id, phone, source, created_at, assigned_to")
+        .in("business_id", leadIds);
 
-//     const phoneMap = new Map(leadsData.map((lead) => [lead.business_id, lead.phone]));
+      if (leadsError) throw leadsError;
 
-//     // 4. Merge phone numbers into each sales row
-//     const enrichedRows = salesData.map((row) => ({
-//       ...row,
-//       phone: phoneMap.get(row.lead_id) || "",
-//     }));
+      // 4. Build a map for fast lookup
+      const leadsMap = new Map(
+        leadsData.map((lead) => [lead.business_id, lead])
+      );
 
-//     // 5. Format CSV
-//     const headers = Object.keys(enrichedRows[0]);
-//     const rows = enrichedRows.map((row) =>
-//       headers
-//         .map((header) => {
-//           const val = row[header];
-//           return typeof val === "string"
-//             ? `"${val.replace(/"/g, '""')}"`
-//             : `"${val ?? ""}"`;
-//         })
-//         .join(",")
-//     );
+      // 5. Enrich sales data with lead fields
+      const enrichedRows = salesData.map((row) => {
+        const lead = leadsMap.get(row.lead_id);
+        return {
+          ...row,
+          phone: lead?.phone || "",
+          source: lead?.source || "",
+          lead_created_at: lead?.created_at || "",
+          assigned_to: lead?.assigned_to || "",
+        };
+      });
 
-//     const csvContent = [headers.join(","), ...rows].join("\n");
+      // 6. Format for CSV
+      const headers = Object.keys(enrichedRows[0]);
+      const rows = enrichedRows.map((row) =>
+        headers
+          .map((header) => {
+            const val = row[header];
+            return typeof val === "string"
+              ? `"${val.replace(/"/g, '""')}"`
+              : `"${val ?? ""}"`;
+          })
+          .join(",")
+      );
 
-//     // 6. Trigger download
-//     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-//     const url = URL.createObjectURL(blob);
-//     const link = document.createElement("a");
-//     link.href = url;
-//     link.setAttribute("download", `sales_closure_full_export_${Date.now()}.csv`);
-//     document.body.appendChild(link);
-//     link.click();
-//     document.body.removeChild(link);
-//   } catch (err: any) {
-//     console.error("❌ Error exporting revenue CSV:", err?.message || err);
-//     alert("Failed to download CSV. Try again.");
-//   }
-// }
+      const csvContent = [headers.join(","), ...rows].join("\n");
 
-async function handleDownloadFullSalesCSV() {
-  try {
-    // 1. Fetch all sales_closure records
-    const { data: salesData, error: salesError } = await supabase
-      .from("sales_closure")
-      .select("*");
+      // 7. Trigger download
 
-    if (salesError) throw salesError;
-    if (!salesData || salesData.length === 0) {
-      alert("No sales data found.");
-      return;
+      const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
+      // const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `sales_closure_full_export_${Date.now()}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err: any) {
+      console.error("❌ Error exporting CSV:", err?.message || err);
+      alert("Failed to download CSV. Try again.");
     }
-
-    // 2. Get unique lead_ids to fetch from leads
-    const leadIds = [...new Set(salesData.map((s) => s.lead_id))];
-
-    // 3. Fetch leads: phone, source, created_at, assigned_to
-    const { data: leadsData, error: leadsError } = await supabase
-      .from("leads")
-      .select("business_id, phone, source, created_at, assigned_to")
-      .in("business_id", leadIds);
-
-    if (leadsError) throw leadsError;
-
-    // 4. Build a map for fast lookup
-    const leadsMap = new Map(
-      leadsData.map((lead) => [lead.business_id, lead])
-    );
-
-    // 5. Enrich sales data with lead fields
-    const enrichedRows = salesData.map((row) => {
-      const lead = leadsMap.get(row.lead_id);
-      return {
-        ...row,
-        phone: lead?.phone || "",
-        source: lead?.source || "",
-        lead_created_at: lead?.created_at || "",
-        assigned_to: lead?.assigned_to || "",
-      };
-    });
-
-    // 6. Format for CSV
-    const headers = Object.keys(enrichedRows[0]);
-    const rows = enrichedRows.map((row) =>
-      headers
-        .map((header) => {
-          const val = row[header];
-          return typeof val === "string"
-            ? `"${val.replace(/"/g, '""')}"`
-            : `"${val ?? ""}"`;
-        })
-        .join(",")
-    );
-
-    const csvContent = [headers.join(","), ...rows].join("\n");
-
-    // 7. Trigger download
-
-    const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
-    // const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute("download", `sales_closure_full_export_${Date.now()}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  } catch (err: any) {
-    console.error("❌ Error exporting CSV:", err?.message || err);
-    alert("Failed to download CSV. Try again.");
   }
-}
 
-function calculateNextRenewal(onboarded: string | undefined, cycle: number): string {
-  if (!onboarded || !cycle) return "-";
+  function calculateNextRenewal(onboarded: string | undefined, cycle: number): string {
+    if (!onboarded || !cycle) return "-";
 
-  const start = new Date(onboarded);
-  start.setDate(start.getDate() + cycle);
+    const start = new Date(onboarded);
+    start.setDate(start.getDate() + cycle);
 
-  return start.toLocaleDateString("en-GB"); // Format: dd/mm/yyyy
-}
+    return start.toLocaleDateString("en-GB"); // Format: dd/mm/yyyy
+  }
 
 
 
@@ -1393,28 +916,25 @@ function calculateNextRenewal(onboarded: string | undefined, cycle: number): str
             </div>
             {/* <Button onClick={() => setShowRevenueDialog(true)}>Revenue</Button> */}
             <div className="flex gap-2">
-              {/* <Button onClick={() => setShowRevenueDialog(true)}>Revenue</Button> */}
-              {/* <Button onClick={() => setShowOnboardDialog(true)} className="bg-green-600 hover:bg-green-500 text-white">
-                Onboard New Client
-              </Button> */}
+
               <DropdownMenu>
-  <DropdownMenuTrigger asChild>
-    <Button variant="outline" className="flex gap-1">
-      Revenue <MoreVertical size={16} />
-    </Button>
-  </DropdownMenuTrigger>
-  <DropdownMenuContent align="end">
-    <DropdownMenuItem onClick={() => setShowRevenueDialog(true)}>
-      Quick Revenue Analysis
-    </DropdownMenuItem>
-    <DropdownMenuItem onClick={() => window.open("/finance/full-analysis", "_blank")}>
-      Complete Revenue Analysis
-    </DropdownMenuItem>
-    <DropdownMenuItem onClick={handleDownloadFullSalesCSV}>
-  Download Revenue Information
-</DropdownMenuItem>
-  </DropdownMenuContent>
-</DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="flex gap-1">
+                    Revenue <MoreVertical size={16} />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setShowRevenueDialog(true)}>
+                    Quick Revenue Analysis
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => window.open("/finance/full-analysis", "_blank")}>
+                    Complete Revenue Analysis
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleDownloadFullSalesCSV}>
+                    Download Revenue Information
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
 
@@ -1475,15 +995,7 @@ function calculateNextRenewal(onboarded: string | undefined, cycle: number): str
             </Card>
           </div>
 
-          {/* {feedbackMsg && (
-  <div
-    className={`p-3 rounded-md text-white mb-4 ${
-      feedbackMsg.type === "success" ? "bg-green-600" : "bg-red-600"
-    }`}
-  >
-    {feedbackMsg.text}
-  </div>
-)} */}
+
 
           <div className="flex items-center justify-between mt-4">
             <Input
@@ -1526,7 +1038,7 @@ function calculateNextRenewal(onboarded: string | undefined, cycle: number): str
               ) : (
                 <Button
                   className="bg-orange-500 hover:bg-orange-400 text-white"
-                onClick={() => setActiveTabView("notOnboarded")}
+                  onClick={() => setActiveTabView("notOnboarded")}
                 >
                   Not Onboarded Clients
                 </Button>
@@ -1582,8 +1094,8 @@ function calculateNextRenewal(onboarded: string | undefined, cycle: number): str
                           <Button
                             size="sm"
                             className="bg-green-600 text-white"
-                            onClick={() => 
-                              
+                            onClick={() =>
+
                               handleOnboardClient(client.id)}
                           >
                             Onboard
@@ -1609,84 +1121,79 @@ function calculateNextRenewal(onboarded: string | undefined, cycle: number): str
 
 
             <div className="rounded-md border mt-4">
-              <Table>
+              {/* <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>S.No</TableHead>
-                    {/* <TableHead>Client Id</TableHead> */}
                     <TableHead className="cursor-pointer  items-center gap-1" onClick={() => handleSort("lead_id")}>
                       <div className="flex flex-center gap-1">
-  ClientID
-  
-    <span
-      className={`text-xs leading-none ${sortField === "lead_id" && sortOrder === "desc" ? "text-blue-600" : "text-gray-400"}`}
-    >▲</span>
-    <span
-      className={`text-xs leading-none ${sortField === "lead_id" && sortOrder === "asc" ? "text-blue-600" : "text-gray-400"}`}
-    >▼</span>
-  </div>
-</TableHead>
+                        ClientID
 
-                    {/* <TableHead>Name</TableHead> */}
+                        <span
+                          className={`text-xs leading-none ${sortField === "lead_id" && sortOrder === "desc" ? "text-blue-600" : "text-gray-400"}`}
+                        >▲</span>
+                        <span
+                          className={`text-xs leading-none ${sortField === "lead_id" && sortOrder === "asc" ? "text-blue-600" : "text-gray-400"}`}
+                        >▼</span>
+                      </div>
+                    </TableHead>
+
                     <TableHead className="cursor-pointer  items-center gap-1" onClick={() => handleSort("name")}>
                       <div className="flex flex-center gap-1">
-  Name
-  
-    <span
-      className={`text-xs leading-none ${sortField === "name" && sortOrder === "desc" ? "text-blue-600" : "text-gray-400"}`}
-    >▲</span>
-    <span
-      className={`text-xs leading-none ${sortField === "name" && sortOrder === "asc" ? "text-blue-600" : "text-gray-400"}`}
-    >▼</span>
-  </div>
-</TableHead>
+                        Name
+
+                        <span
+                          className={`text-xs leading-none ${sortField === "name" && sortOrder === "desc" ? "text-blue-600" : "text-gray-400"}`}
+                        >▲</span>
+                        <span
+                          className={`text-xs leading-none ${sortField === "name" && sortOrder === "asc" ? "text-blue-600" : "text-gray-400"}`}
+                        >▼</span>
+                      </div>
+                    </TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Phone</TableHead>
-                    {/* <TableHead>Sale Value</TableHead> */}
-                     <TableHead className="cursor-pointer  items-center gap-1" onClick={() => handleSort("sale_value")}>
+                    <TableHead className="cursor-pointer  items-center gap-1" onClick={() => handleSort("sale_value")}>
                       <div className="flex flex-center gap-1">
-  Sale value
-  
-    <span
-      className={`text-xs leading-none ${sortField === "sale_value" && sortOrder === "desc" ? "text-blue-600" : "text-gray-400"}`}
-    >▲</span>
-    <span
-      className={`text-xs leading-none ${sortField === "sale_value" && sortOrder === "asc" ? "text-blue-600" : "text-gray-400"}`}
-    >▼</span>
-  </div>
-</TableHead>
+                        Sale value
+
+                        <span
+                          className={`text-xs leading-none ${sortField === "sale_value" && sortOrder === "desc" ? "text-blue-600" : "text-gray-400"}`}
+                        >▲</span>
+                        <span
+                          className={`text-xs leading-none ${sortField === "sale_value" && sortOrder === "asc" ? "text-blue-600" : "text-gray-400"}`}
+                        >▼</span>
+                      </div>
+                    </TableHead>
                     <TableHead>Subscription Cycle</TableHead>
                     <TableHead>Assigned To</TableHead>
                     <TableHead>Stage</TableHead>
-                    {/* <TableHead>saleDone At</TableHead> */}
-                     <TableHead className="cursor-pointer  items-center gap-1" onClick={() => handleSort("oldest_sale_done_at")}>
+                    <TableHead className="cursor-pointer  items-center gap-1" onClick={() => handleSort("oldest_sale_done_at")}>
                       <div className="flex flex-center gap-1">
-  SaledoneAt
-  
-    <span
-      className={`text-xs leading-none ${sortField === "oldest_sale_done_at" && sortOrder === "desc" ? "text-blue-600" : "text-gray-400"}`}
-    >▲</span>
-    <span
-      className={`text-xs leading-none ${sortField === "oldest_sale_done_at" && sortOrder === "asc" ? "text-blue-600" : "text-gray-400"}`}
-    >▼</span>
-  </div>
-</TableHead>
-                    {/* <TableHead>Onboarded / last payment at</TableHead> */}
+                        SaledoneAt
 
- <TableHead className="cursor-pointer  items-center gap-1" onClick={() => handleSort("onboarded_date")}>
+                        <span
+                          className={`text-xs leading-none ${sortField === "oldest_sale_done_at" && sortOrder === "desc" ? "text-blue-600" : "text-gray-400"}`}
+                        >▲</span>
+                        <span
+                          className={`text-xs leading-none ${sortField === "oldest_sale_done_at" && sortOrder === "asc" ? "text-blue-600" : "text-gray-400"}`}
+                        >▼</span>
+                      </div>
+                    </TableHead>
+
+                    <TableHead className="cursor-pointer  items-center gap-1" onClick={() => handleSort("onboarded_date")}>
                       <div className="flex flex-center gap-1">
-  Onboarded/lastPaymentAt
-  
-    <span
-      className={`text-xs leading-none ${sortField === "onboarded_date" && sortOrder === "desc" ? "text-blue-600" : "text-gray-400"}`}
-    >▲</span>
-    <span
-      className={`text-xs leading-none ${sortField === "onboarded_date" && sortOrder === "asc" ? "text-blue-600" : "text-gray-400"}`}
-    >▼</span>
-  </div>
-</TableHead>
-                    
-<TableHead>Next Renewal Date</TableHead>
+                        Onboarded/lastPaymentAt
+
+                        <span
+                          className={`text-xs leading-none ${sortField === "onboarded_date" && sortOrder === "desc" ? "text-blue-600" : "text-gray-400"}`}
+                        >▲</span>
+                        <span
+                          className={`text-xs leading-none ${sortField === "onboarded_date" && sortOrder === "asc" ? "text-blue-600" : "text-gray-400"}`}
+                        >▼</span>
+                      </div>
+                    </TableHead>
+
+                    <TableHead>Next Renewal Date</TableHead>
 
                     <TableHead>Deadline</TableHead>
                     <TableHead>Actions</TableHead>
@@ -1700,169 +1207,168 @@ function calculateNextRenewal(onboarded: string | undefined, cycle: number): str
                       <TableRow key={sale.id}>
                         <TableCell>{idx + 1}</TableCell>
                         <TableCell className="font-medium">{sale.lead_id}</TableCell>
-                        {/* <TableCell
-                                                      className="font-medium max-w-[150px] break-words whitespace-normal cursor-pointer text-blue-600 hover:underline"
-                                                      onClick={() => window.open(`/leads/${sale.lead_id}`, "_blank")}
-                                                    >{sale.lead_id}</TableCell> */}
+
                         <TableCell
-                                                      className="font-medium max-w-[150px] break-words whitespace-normal cursor-pointer text-blue-600 hover:underline"
-                                                      onClick={() => window.open(`/leads/${sale.lead_id}`, "_blank")}
-                                                    >{sale.leads?.name ?? "-"}</TableCell>
+                          className="font-medium max-w-[150px] break-words whitespace-normal cursor-pointer text-blue-600 hover:underline"
+                          onClick={() => window.open(`/leads/${sale.lead_id}`, "_blank")}
+                        >{sale.leads?.name ?? "-"}</TableCell>
                         <TableCell className="max-w-[160px] break-words whitespace-normal">{sale.email}</TableCell>
                         <TableCell className="max-w-[160px] break-words whitespace-normal">
-  {sale.leads?.phone ?? "-"}
-</TableCell>
+                          {sale.leads?.phone ?? "-"}
+                        </TableCell>
                         <TableCell>{formatCurrency(sale.sale_value)}</TableCell>
                         <TableCell>{sale.subscription_cycle} days</TableCell>
                         <TableCell>Finance Team A</TableCell>
                         <TableCell>
 
-                          {/* {(() => {
-                            const createdAt = new Date(sale.onboarded_date || "");
-                            const today = new Date();
-                            const diffInDays = Math.floor((today.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24));
 
-                            if (diffInDays >= 25) {
-                              return <span className="text-gray-400 text-sm italic">-</span>;
-                            }
-
-                            return (
-                              <Badge className={getStageColor(sale.finance_status)}>
-                                {sale.finance_status}
-                              </Badge>
-                            );
-                          })()} */}
                           <Badge className={getStageColor(sale.finance_status)}>
-  {sale.finance_status}
-</Badge>
+                            {sale.finance_status}
+                          </Badge>
 
 
                         </TableCell>
-                        {/* <TableCell>{new Date(sale.closed_at).toLocaleDateString("en-GB")}</TableCell> */}
 
                         <TableCell>
-  {sale.oldest_sale_done_at
-    ? new Date(sale.oldest_sale_done_at).toLocaleDateString("en-GB")
-    : "-"}
-</TableCell>
+                          {sale.oldest_sale_done_at
+                            ? new Date(sale.oldest_sale_done_at).toLocaleDateString("en-GB")
+                            : "-"}
+                        </TableCell>
 
 
                         <TableCell>{sale.onboarded_date ? new Date(sale.onboarded_date).toLocaleDateString("en-GB") : "-"}</TableCell>
 
                         <TableCell>
-  {calculateNextRenewal(sale.onboarded_date, sale.subscription_cycle)}
-</TableCell>
-
-
-                        {/* <TableCell>{getRenewWithinBadge(sale.onboarded_date || "")}</TableCell> */}
-                        <TableCell>
-  {getRenewWithinBadge(sale.onboarded_date || "", sale.subscription_cycle)}
-</TableCell>
-
-                        <TableCell>
-                          {(() => {
-                            const closedDate = new Date(sale.onboarded_date ?? "");
-                            const today = new Date();
-                            closedDate.setHours(0, 0, 0, 0);
-                            today.setHours(0, 0, 0, 0);
-
-                            const subscription_cycle = sale.subscription_cycle; // Default to 30 days if not set
-                            const diffInDays = Math.floor((today.getTime() - closedDate.getTime()) / (1000 * 60 * 60 * 24));
-                            const isOlderThan25Days = diffInDays >= subscription_cycle;
-
-                            const handleStatusChange = (value: FinanceStatus | "Closed") => {
-                              if (value === "Closed") {
-                                setSelectedSaleId(sale.id);
-                                setShowCloseDialog(true);
-                                setSelectedFinanceStatus(null);
-                              } else {
-                                handleFinanceStatusUpdate(sale.id, value);
-                              }
-                            };
-
-                            return (
-
-
-                              <Select
-  value={actionSelections[sale.id] || ""}
-  onValueChange={(value) => {
-    setActionSelections((prev) => ({
-      ...prev,
-      [sale.id]: value,
-    }));
-
-    if (value === "Paid") {
-      const confirmed = window.confirm("Are you sure you want to update status as PAID ?");
-if (!confirmed) return;
-
-  setSelectedSaleId(sale.id);
-  setShowPaymentDialog(true);
-} else if (["Closed", "Paused", "Unpaid", "Got Placed"].includes(value)) {
-  const confirmed = window.confirm(`Are you sure you want to update status as ${value} ?`);
-if (!confirmed) return;
-
-  setSelectedSaleId(sale.id);
-  setSelectedFinanceStatus(value as FinanceStatus); // This must be declared as a state variable
-  setShowReasonDialog(true); // New shared dialog
-} else {
-  handleFinanceStatusUpdate(sale.id, value as FinanceStatus); // For anything else (if ever)
-}
-
-  }
-}
-  disabled={followUpFilter === "All dates" && !isOlderThan25Days || !!actionSelections[sale.id]}
->
-
-
-                                <SelectTrigger className="w-36">
-                                  <SelectValue placeholder="Select Status" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="Paid">Paid</SelectItem>
-                                  <SelectItem value="Unpaid">Unpaid</SelectItem>
-                                  <SelectItem value="Paused">Paused</SelectItem>
-                                  <SelectItem value="Closed">Closed</SelectItem>           
-                                  <SelectItem value="Got Placed">Got Placed</SelectItem>
-
-                                  
-                                </SelectContent>
-                              </Select>
-
-
-                            );
-                          })()}
-
+                          {calculateNextRenewal(sale.onboarded_date, sale.subscription_cycle)}
                         </TableCell>
+
+
+                        <TableCell>
+                          {getRenewWithinBadge(sale.onboarded_date || "", sale.subscription_cycle)}
+                        </TableCell>
+
+                        
+                        <TableCell>
+  {(() => {
+    const toLocalDate = (s?: string | null) => {
+      if (!s) return null;
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+        const [y, m, d] = s.split("-").map(Number);
+        return new Date(y, m - 1, d);
+      }
+      const d = new Date(s);
+      return isNaN(d.getTime()) ? null : d;
+    };
+    const atMidnight = (d: Date) => {
+      const x = new Date(d);
+      x.setHours(0, 0, 0, 0);
+      return x;
+    };
+
+    const cycle = Number(sale.subscription_cycle) || 30;
+    const onboard = toLocalDate(sale.onboarded_date);
+    const today = atMidnight(new Date());
+
+    let status: "upcoming" | "due_today" | "overdue" | "unknown" = "unknown";
+    let label = "—";
+    let due: Date | null = null;
+
+    if (onboard) {
+      due = atMidnight(new Date(onboard));
+      due.setDate(due.getDate() + cycle);
+
+      const msPerDay = 24 * 60 * 60 * 1000;
+      const daysLeft = Math.round((due.getTime() - today.getTime()) / msPerDay);
+
+      if (daysLeft === 0) {
+        status = "due_today";
+        label = "today last date";
+      } else if (daysLeft < 0) {
+        status = "overdue";
+        label = `overdue by ${Math.abs(daysLeft)} day${Math.abs(daysLeft) === 1 ? "" : "s"}`;
+      } else {
+        status = "upcoming";
+        label = `${daysLeft} day${daysLeft === 1 ? "" : "s"} left`;
+      }
+    }
+
+    const badgeClass =
+      status === "overdue"
+        ? "bg-red-100 text-red-700"
+        : status === "due_today"
+        ? "bg-amber-100 text-amber-700"
+        : status === "upcoming"
+        ? "bg-emerald-100 text-emerald-700"
+        : "text-gray-400";
+
+     const isActionAllowed =
+      followUpFilter === "All dates" ? status !== "upcoming" : true;
+
+    const handleStatusChange = (value: FinanceStatus | "Closed") => {
+      if (value === "Closed") {
+        setSelectedSaleId(sale.id);
+        setShowCloseDialog(true);
+        setSelectedFinanceStatus(null);
+      } else {
+        handleFinanceStatusUpdate(sale.id, value);
+      }
+    };
+
+    return (
+      <>
+      
+
+        <Select
+          value={actionSelections[sale.id] || ""}
+          onValueChange={(value) => {
+            setActionSelections((prev) => ({ ...prev, [sale.id]: value }));
+            if (value === "Paid") {
+              if (!window.confirm("Are you sure you want to update status as PAID ?")) return;
+              setSelectedSaleId(sale.id);
+              setShowPaymentDialog(true);
+            } else if (["Closed", "Paused", "Unpaid", "Got Placed"].includes(value)) {
+              if (!window.confirm(`Are you sure you want to update status as ${value} ?`)) return;
+              setSelectedSaleId(sale.id);
+              setSelectedFinanceStatus(value as FinanceStatus);
+              setShowReasonDialog(true);
+            } else {
+              handleFinanceStatusUpdate(sale.id, value as FinanceStatus);
+            }
+          }}
+          disabled={!isActionAllowed || !!actionSelections[sale.id]}
+        >
+          <SelectTrigger className="w-36">
+            <SelectValue placeholder="Select Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="Paid">Paid</SelectItem>
+            <SelectItem value="Unpaid">Unpaid</SelectItem>
+            <SelectItem value="Paused">Paused</SelectItem>
+            <SelectItem value="Closed">Closed</SelectItem>
+            <SelectItem value="Got Placed">Got Placed</SelectItem>
+          </SelectContent>
+        </Select>
+      </>
+    );
+  })()}
+</TableCell>
+
                         <TableCell className="text-center">
-                          {/* {sale.finance_status === "Closed" && sale.reason_for_close ? (
+
+                          {sale.reason_for_close ? (
                             <Popover>
                               <PopoverTrigger asChild>
                                 <button className="hover:text-blue-600">
                                   <MessageSquare className="w-5 h-5" />
                                 </button>
                               </PopoverTrigger>
-                              <PopoverContent className="w-[300px] bg-white shadow-lg border p-4 text-sm text-gray-700">Reason: '
-                                {sale.reason_for_close}'
+                              <PopoverContent className="w-[300px] bg-white shadow-lg border p-4 text-sm text-gray-700">
+                                Reason: '{sale.reason_for_close}'
                               </PopoverContent>
                             </Popover>
                           ) : (
                             <span className="text-gray-400 text-xs italic">—</span>
-                          )} */}
-
-                          {sale.reason_for_close ? (
-  <Popover>
-    <PopoverTrigger asChild>
-      <button className="hover:text-blue-600">
-        <MessageSquare className="w-5 h-5" />
-      </button>
-    </PopoverTrigger>
-    <PopoverContent className="w-[300px] bg-white shadow-lg border p-4 text-sm text-gray-700">
-      Reason: '{sale.reason_for_close}'
-    </PopoverContent>
-  </Popover>
-) : (
-  <span className="text-gray-400 text-xs italic">—</span>
-)}
+                          )}
 
                         </TableCell>
                       </TableRow>
@@ -1875,283 +1381,461 @@ if (!confirmed) return;
                     </TableRow>
                   )}
                 </TableBody>
-              </Table>
+              </Table> */}
+
+
+              {/* Assumes you already have:
+    - sortedSales, sortField, sortOrder, handleSort
+    - formatCurrency, getStageColor, calculateNextRenewal, getRenewWithinBadge
+    - followUpFilter, actionSelections, setActionSelections
+    - setSelectedSaleId, setShowPaymentDialog, setShowReasonDialog, setShowCloseDialog
+    - handleFinanceStatusUpdate
+    - FinanceStatus type
+    - MessageSquare icon and Popover components imported
+*/}
+
+<Table>
+  <TableHeader>
+    <TableRow>
+      <TableHead>S.No</TableHead>
+
+      <TableHead
+        className="cursor-pointer items-center gap-1"
+        onClick={() => handleSort("lead_id")}
+      >
+        <div className="flex flex-center gap-1">
+          ClientID
+          <span
+            className={`text-xs leading-none ${
+              sortField === "lead_id" && sortOrder === "desc"
+                ? "text-blue-600"
+                : "text-gray-400"
+            }`}
+          >
+            ▲
+          </span>
+          <span
+            className={`text-xs leading-none ${
+              sortField === "lead_id" && sortOrder === "asc"
+                ? "text-blue-600"
+                : "text-gray-400"
+            }`}
+          >
+            ▼
+          </span>
+        </div>
+      </TableHead>
+
+      <TableHead
+        className="cursor-pointer items-center gap-1"
+        onClick={() => handleSort("name")}
+      >
+        <div className="flex flex-center gap-1">
+          Name
+          <span
+            className={`text-xs leading-none ${
+              sortField === "name" && sortOrder === "desc"
+                ? "text-blue-600"
+                : "text-gray-400"
+            }`}
+          >
+            ▲
+          </span>
+          <span
+            className={`text-xs leading-none ${
+              sortField === "name" && sortOrder === "asc"
+                ? "text-blue-600"
+                : "text-gray-400"
+            }`}
+          >
+            ▼
+          </span>
+        </div>
+      </TableHead>
+
+      <TableHead>Email</TableHead>
+      <TableHead>Phone</TableHead>
+
+      <TableHead
+        className="cursor-pointer items-center gap-1"
+        onClick={() => handleSort("sale_value")}
+      >
+        <div className="flex flex-center gap-1">
+          Sale value
+          <span
+            className={`text-xs leading-none ${
+              sortField === "sale_value" && sortOrder === "desc"
+                ? "text-blue-600"
+                : "text-gray-400"
+            }`}
+          >
+            ▲
+          </span>
+          <span
+            className={`text-xs leading-none ${
+              sortField === "sale_value" && sortOrder === "asc"
+                ? "text-blue-600"
+                : "text-gray-400"
+            }`}
+          >
+            ▼
+          </span>
+        </div>
+      </TableHead>
+
+      <TableHead>Subscription Cycle</TableHead>
+      <TableHead>Assigned To</TableHead>
+      <TableHead>Stage</TableHead>
+
+      <TableHead
+        className="cursor-pointer items-center gap-1"
+        onClick={() => handleSort("oldest_sale_done_at")}
+      >
+        <div className="flex flex-center gap-1">
+          SaledoneAt
+          <span
+            className={`text-xs leading-none ${
+              sortField === "oldest_sale_done_at" && sortOrder === "desc"
+                ? "text-blue-600"
+                : "text-gray-400"
+            }`}
+          >
+            ▲
+          </span>
+          <span
+            className={`text-xs leading-none ${
+              sortField === "oldest_sale_done_at" && sortOrder === "asc"
+                ? "text-blue-600"
+                : "text-gray-400"
+            }`}
+          >
+            ▼
+          </span>
+        </div>
+      </TableHead>
+
+      <TableHead
+        className="cursor-pointer items-center gap-1"
+        onClick={() => handleSort("onboarded_date")}
+      >
+        <div className="flex flex-center gap-1">
+          Onboarded/lastPaymentAt
+          <span
+            className={`text-xs leading-none ${
+              sortField === "onboarded_date" && sortOrder === "desc"
+                ? "text-blue-600"
+                : "text-gray-400"
+            }`}
+          >
+            ▲
+          </span>
+          <span
+            className={`text-xs leading-none ${
+              sortField === "onboarded_date" && sortOrder === "asc"
+                ? "text-blue-600"
+                : "text-gray-400"
+            }`}
+          >
+            ▼
+          </span>
+        </div>
+      </TableHead>
+
+      <TableHead>Next Renewal Date</TableHead>
+      <TableHead>Deadline</TableHead>
+      <TableHead>Actions</TableHead>
+      <TableHead>Reason</TableHead>
+    </TableRow>
+  </TableHeader>
+
+  <TableBody>
+   {sortedSales.length > 0 ? (
+  sortedSales.map((sale, idx) => {
+    // Treat these statuses as "finalized"
+    const stage = String(sale.finance_status || "").trim().toLowerCase();
+    const isFinalized = ["closed", "unpaid", "got placed"].includes(stage);
+
+        return (
+          <TableRow key={sale.id}>
+            <TableCell>{idx + 1}</TableCell>
+
+            <TableCell className="font-medium">{sale.lead_id}</TableCell>
+
+            <TableCell
+              className="font-medium max-w-[150px] break-words whitespace-normal cursor-pointer text-blue-600 hover:underline"
+              onClick={() => window.open(`/leads/${sale.lead_id}`, "_blank")}
+            >
+              {sale.leads?.name ?? "-"}
+            </TableCell>
+
+            <TableCell className="max-w-[160px] break-words whitespace-normal">
+              {sale.email}
+            </TableCell>
+
+            <TableCell className="max-w-[160px] break-words whitespace-normal">
+              {sale.leads?.phone ?? "-"}
+            </TableCell>
+
+            <TableCell>{formatCurrency(sale.sale_value)}</TableCell>
+            <TableCell>{sale.subscription_cycle} days</TableCell>
+
+            <TableCell>Finance Team A</TableCell>
+
+            <TableCell>
+              <Badge className={getStageColor(sale.finance_status)}>
+                {sale.finance_status}
+              </Badge>
+            </TableCell>
+
+            <TableCell>
+              {sale.oldest_sale_done_at
+                ? new Date(sale.oldest_sale_done_at).toLocaleDateString("en-GB")
+                : "-"}
+            </TableCell>
+
+            <TableCell>
+              {sale.onboarded_date
+                ? new Date(sale.onboarded_date).toLocaleDateString("en-GB")
+                : "-"}
+            </TableCell>
+
+            {/* Next Renewal Date — render nothing if Closed */}
+             <TableCell>
+          {isFinalized
+            ? null
+            : calculateNextRenewal(sale.onboarded_date, sale.subscription_cycle)}
+        </TableCell>
+
+        {/* Deadline — hide if finalized */}
+        <TableCell>
+          {isFinalized
+            ? null
+            : getRenewWithinBadge(sale.onboarded_date || "", sale.subscription_cycle)}
+        </TableCell>
+
+        {/* Actions — disable if finalized */}
+        <TableCell>
+          <Select
+            value={actionSelections[sale.id] || ""}
+            onValueChange={(value) => {
+              setActionSelections((prev) => ({ ...prev, [sale.id]: value }));
+              if (value === "Paid") {
+                if (!window.confirm("Are you sure you want to update status as PAID ?")) return;
+                setSelectedSaleId(sale.id);
+                setShowPaymentDialog(true);
+              } else if (["Closed", "Paused", "Unpaid", "Got Placed"].includes(value)) {
+                if (!window.confirm(`Are you sure you want to update status as ${value} ?`)) return;
+                setSelectedSaleId(sale.id);
+                setSelectedFinanceStatus(value as FinanceStatus);
+                setShowReasonDialog(true);
+              } else {
+                handleFinanceStatusUpdate(sale.id, value as FinanceStatus);
+              }
+            }}
+            disabled={isFinalized || !!actionSelections[sale.id]}
+          >
+            <SelectTrigger className="w-36">
+              <SelectValue placeholder="Select Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Paid">Paid</SelectItem>
+              <SelectItem value="Unpaid">Unpaid</SelectItem>
+              <SelectItem value="Paused">Paused</SelectItem>
+              <SelectItem value="Closed">Closed</SelectItem>
+              <SelectItem value="Got Placed">Got Placed</SelectItem>
+            </SelectContent>
+          </Select>
+        </TableCell>
+
+
+            {/* Reason */}
+            <TableCell className="text-center">
+              {sale.reason_for_close ? (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button className="hover:text-blue-600">
+                      <MessageSquare className="w-5 h-5" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[300px] bg-white shadow-lg border p-4 text-sm text-gray-700">
+                    Reason: '{sale.reason_for_close}'
+                  </PopoverContent>
+                </Popover>
+              ) : (
+                <span className="text-gray-400 text-xs italic">—</span>
+              )}
+            </TableCell>
+          </TableRow>
+        );
+      })
+    ) : (
+      <TableRow>
+        <TableCell
+          colSpan={7}
+          className="text-center py-8 text-muted-foreground"
+        >
+          {followUpFilter === "Today"
+            ? "No follow ups today"
+            : "No information here"}
+        </TableCell>
+      </TableRow>
+    )}
+  </TableBody>
+</Table>
+
             </div>
 
           )}
 
-          {/* <Dialog open={showReasonDialog} onOpenChange={setShowReasonDialog}>
-  <DialogContent aria-describedby="reason-details-dialog-box" className="sm:max-w-md">
-    <DialogHeader>
-      <DialogTitle>Reason for {selectedFinanceStatus}</DialogTitle>
-    </DialogHeader>
 
-    <Textarea
-      placeholder={`Enter reason for ${selectedFinanceStatus}`}
-      value={reasonText}
-      onChange={(e) => setReasonText(e.target.value)}
-      className="min-h-[100px]"
-    />
+          <Dialog
+            open={showReasonDialog}
+            onOpenChange={(open) => {
+              // Prevent closing by outside click or ESC
+              if (!open) return;
+            }}
+          >
+            <DialogContent
+              hideCloseIcon
+              aria-describedby="reason-details-dialog-box"
+              className="sm:max-w-md"
+              onInteractOutside={(e) => e.preventDefault()} // Disable outside click to close
+            >
+              <DialogHeader>
+                <DialogTitle>Reason for {selectedFinanceStatus}</DialogTitle>
+              </DialogHeader>
 
-    <div className="flex justify-end mt-4">
-      <Button
-        onClick={async () => {
-          if (!selectedSaleId || !selectedFinanceStatus || !reasonText.trim()) {
-            alert("Please provide a reason.");
-            return;
-          }
+              <Textarea
+                placeholder={`Enter reason for ${selectedFinanceStatus}`}
+                value={reasonText}
+                onChange={(e) => setReasonText(e.target.value)}
+                className="min-h-[100px]"
+              />
 
-          const { error } = await supabase
-            .from("sales_closure")
-            .update({
-              finance_status: selectedFinanceStatus,
-              reason_for_close: reasonText.trim(),
-            })
-            .eq("id", selectedSaleId);
+              <div className="flex justify-between gap-3 mt-4">
+                {/* ❌ Cancel Button */}
+                <Button
+                  variant="ghost"
+                  className="w-full bg-black text-white hover:bg-gray-800"
+                  onClick={() => {
+                    // 🔁 Reset dropdown to "Select Status"
+                    if (selectedSaleId) {
+                      setActionSelections((prev) => ({
+                        ...prev,
+                        [selectedSaleId]: "", // reset to "Select Status"
+                      }));
+                    }
 
-          if (error) {
-            console.error("Failed to update:", error);
-            alert("❌ Failed to save status.");
-            return;
-          }
+                    // Reset dialog states
+                    setShowReasonDialog(false);
+                    setSelectedSaleId(null);
+                    setSelectedFinanceStatus(null);
+                    setReasonText("");
+                  }}
+                >
+                  Cancel
+                </Button>
 
-          setSales((prev) =>
-            prev.map((s) =>
-              s.id === selectedSaleId
-                ? {
-                    ...s,
-                    finance_status: selectedFinanceStatus,
-                    reason_for_close: reasonText.trim(),
-                  }
-                : s
-            )
-          );
+                {/* ✅ Submit Button */}
+                <Button
+                  className="w-full bg-green-600 text-white hover:bg-green-700"
+                  onClick={async () => {
+                    if (!selectedSaleId || !selectedFinanceStatus || !reasonText.trim()) {
+                      alert("Please provide a reason.");
+                      return;
+                    }
 
-          // Reset
-          setShowReasonDialog(false);
-          setSelectedSaleId(null);
-          setSelectedFinanceStatus(null);
-          setReasonText("");
-        }}
-      >
-        Submit
-      </Button>
-    </div>
-  </DialogContent>
-</Dialog>
- */}
+                    const { error } = await supabase
+                      .from("sales_closure")
+                      .update({
+                        finance_status: selectedFinanceStatus,
+                        reason_for_close: reasonText.trim(),
+                      })
+                      .eq("id", selectedSaleId);
 
+                    if (error) {
+                      console.error("Failed to update:", error);
+                      alert("❌ Failed to save status.");
+                      return;
+                    }
 
-{/* <Dialog
-  open={showReasonDialog}
-  onOpenChange={(open) => {
-    // Do NOT allow closing via outside click
-    if (!open) return;
-  }}
->
-  <DialogContent
-    hideCloseIcon aria-describedby="reason-details-dialog-box"
-    className="sm:max-w-md"
-    onInteractOutside={(e) => e.preventDefault()} // Prevent outside click close
-  >
-    <DialogHeader>
-      <DialogTitle>Reason for {selectedFinanceStatus}</DialogTitle>
-    </DialogHeader>
+                    // Update local UI state
+                    setSales((prev) =>
+                      prev.map((s) =>
+                        s.id === selectedSaleId
+                          ? {
+                            ...s,
+                            finance_status: selectedFinanceStatus,
+                            reason_for_close: reasonText.trim(),
+                          }
+                          : s
+                      )
+                    );
 
-    <Textarea
-      placeholder={`Enter reason for ${selectedFinanceStatus}`}
-      value={reasonText}
-      onChange={(e) => setReasonText(e.target.value)}
-      className="min-h-[100px]"
-    />
+                    // ✅ Update dropdown after successful submit
+                    setActionSelections((prev) => ({
+                      ...prev,
+                      [selectedSaleId]: selectedFinanceStatus,
+                    }));
 
-    <div className="flex justify-end gap-3 mt-4">
-      <Button
-        variant="ghost"
-        onClick={() => {
-          // Cancel: reset everything
-          setShowReasonDialog(false);
-          if (selectedSaleId) {
-            setActionSelections((prev) => ({
-              ...prev,
-              [selectedSaleId]: "", // Reset dropdown to "Select Status"
-            }));
-          }
-          setSelectedSaleId(null);
-          setSelectedFinanceStatus(null);
-          setReasonText("");
-        }}
-      >
-        Cancel
-      </Button>
-
-      <Button
-        onClick={async () => {
-          if (!selectedSaleId || !selectedFinanceStatus || !reasonText.trim()) {
-            alert("Please provide a reason.");
-            return;
-          }
-
-          const { error } = await supabase
-            .from("sales_closure")
-            .update({
-              finance_status: selectedFinanceStatus,
-              reason_for_close: reasonText.trim(),
-            })
-            .eq("id", selectedSaleId);
-
-          if (error) {
-            console.error("Failed to update:", error);
-            alert("❌ Failed to save status.");
-            return;
-          }
-
-          setSales((prev) =>
-            prev.map((s) =>
-              s.id === selectedSaleId
-                ? {
-                    ...s,
-                    finance_status: selectedFinanceStatus,
-                    reason_for_close: reasonText.trim(),
-                  }
-                : s
-            )
-          );
-
-          // Close and clean up
-          setShowReasonDialog(false);
-          setSelectedSaleId(null);
-          setSelectedFinanceStatus(null);
-          setReasonText("");
-        }}
-      >
-        Submit
-      </Button>
-    </div>
-  </DialogContent>
-</Dialog> */}
-<Dialog
-  open={showReasonDialog}
-  onOpenChange={(open) => {
-    // Prevent closing by outside click or ESC
-    if (!open) return;
-  }}
->
-  <DialogContent
-    hideCloseIcon
-    aria-describedby="reason-details-dialog-box"
-    className="sm:max-w-md"
-    onInteractOutside={(e) => e.preventDefault()} // Disable outside click to close
-  >
-    <DialogHeader>
-      <DialogTitle>Reason for {selectedFinanceStatus}</DialogTitle>
-    </DialogHeader>
-
-    <Textarea
-      placeholder={`Enter reason for ${selectedFinanceStatus}`}
-      value={reasonText}
-      onChange={(e) => setReasonText(e.target.value)}
-      className="min-h-[100px]"
-    />
-
-    <div className="flex justify-between gap-3 mt-4">
-      {/* ❌ Cancel Button */}
-      <Button
-        variant="ghost"
-        className="w-full bg-black text-white hover:bg-gray-800"
-        onClick={() => {
-          // 🔁 Reset dropdown to "Select Status"
-          if (selectedSaleId) {
-            setActionSelections((prev) => ({
-              ...prev,
-              [selectedSaleId]: "", // reset to "Select Status"
-            }));
-          }
-
-          // Reset dialog states
-          setShowReasonDialog(false);
-          setSelectedSaleId(null);
-          setSelectedFinanceStatus(null);
-          setReasonText("");
-        }}
-      >
-        Cancel
-      </Button>
-
-      {/* ✅ Submit Button */}
-      <Button
-        className="w-full bg-green-600 text-white hover:bg-green-700"
-        onClick={async () => {
-          if (!selectedSaleId || !selectedFinanceStatus || !reasonText.trim()) {
-            alert("Please provide a reason.");
-            return;
-          }
-
-          const { error } = await supabase
-            .from("sales_closure")
-            .update({
-              finance_status: selectedFinanceStatus,
-              reason_for_close: reasonText.trim(),
-            })
-            .eq("id", selectedSaleId);
-
-          if (error) {
-            console.error("Failed to update:", error);
-            alert("❌ Failed to save status.");
-            return;
-          }
-
-          // Update local UI state
-          setSales((prev) =>
-            prev.map((s) =>
-              s.id === selectedSaleId
-                ? {
-                    ...s,
-                    finance_status: selectedFinanceStatus,
-                    reason_for_close: reasonText.trim(),
-                  }
-                : s
-            )
-          );
-
-          // ✅ Update dropdown after successful submit
-          setActionSelections((prev) => ({
-            ...prev,
-            [selectedSaleId]: selectedFinanceStatus,
-          }));
-
-          // Reset
-          setShowReasonDialog(false);
-          setSelectedSaleId(null);
-          setSelectedFinanceStatus(null);
-          setReasonText("");
-        }}
-      >
-        Submit
-      </Button>
-    </div>
-  </DialogContent>
-</Dialog>
+                    // Reset
+                    setShowReasonDialog(false);
+                    setSelectedSaleId(null);
+                    setSelectedFinanceStatus(null);
+                    setReasonText("");
+                  }}
+                >
+                  Submit
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
 
 
 
-{/* 
-          <Dialog open={showCloseDialog} onOpenChange={(val) => setShowCloseDialog(val)}>
-            <DialogContent aria-describedby="ReasonForClose" hideCloseIcon
+
+          <Dialog open={showCloseDialog} onOpenChange={(open) => {
+            if (!open) return;
+          }}>
+
+            <DialogContent
+              hideCloseIcon
+              aria-describedby="ReasonForClose"
               className="sm:max-w-md"
               onInteractOutside={(e) => e.preventDefault()}
             >
               <DialogHeader>
                 <DialogTitle>Reason for Closing</DialogTitle>
               </DialogHeader>
+
               <Textarea
                 placeholder="Enter reason for closing this ticket..."
                 value={closingNote}
                 onChange={(e) => setClosingNote(e.target.value)}
                 className="min-h-[100px]"
               />
-              <div className="flex justify-end mt-4">
+
+              <div className="flex justify-between gap-3 mt-4">
                 <Button
+                  variant="ghost"
+                  className="w-full bg-black text-white hover:bg-gray-800"
+                  onClick={() => {
+                    setShowCloseDialog(false);
+                    if (selectedSaleId) {
+                      setActionSelections((prev) => ({
+                        ...prev,
+                        [selectedSaleId]: "",
+                      }));
+                    }
+                    setSelectedSaleId(null);
+                    setClosingNote("");
+                  }}
+                >
+                  Cancel
+                </Button>
+
+                <Button
+                  className="w-full bg-green-600 text-white hover:bg-green-700"
                   onClick={async () => {
                     if (!selectedSaleId) return;
 
@@ -2167,6 +1851,7 @@ if (!confirmed) return;
                       console.error("Error saving close reason:", error);
                       return;
                     }
+
                     setSales((prev) =>
                       prev.map((sale) =>
                         sale.id === selectedSaleId
@@ -2178,9 +1863,8 @@ if (!confirmed) return;
                     setShowCloseDialog(false);
                     setActionSelections((prev) => ({
                       ...prev,
-                      [selectedSaleId]: "", // or sale.id
+                      [selectedSaleId]: "",
                     }));
-
                     setClosingNote("");
                     setSelectedSaleId(null);
                   }}
@@ -2189,117 +1873,14 @@ if (!confirmed) return;
                 </Button>
               </div>
             </DialogContent>
-          </Dialog> */}
-
-          <Dialog open={showCloseDialog} onOpenChange={(open) => {
-  if (!open) return;
-}}>
-
-  <DialogContent
-    hideCloseIcon
-    aria-describedby="ReasonForClose"
-    className="sm:max-w-md"
-    onInteractOutside={(e) => e.preventDefault()}
-  >
-    <DialogHeader>
-      <DialogTitle>Reason for Closing</DialogTitle>
-    </DialogHeader>
-
-    <Textarea
-      placeholder="Enter reason for closing this ticket..."
-      value={closingNote}
-      onChange={(e) => setClosingNote(e.target.value)}
-      className="min-h-[100px]"
-    />
-
-    <div className="flex justify-between gap-3 mt-4">
-      <Button
-        variant="ghost"
-        className="w-full bg-black text-white hover:bg-gray-800"
-        onClick={() => {
-          setShowCloseDialog(false);
-          if (selectedSaleId) {
-            setActionSelections((prev) => ({
-              ...prev,
-              [selectedSaleId]: "",
-            }));
-          }
-          setSelectedSaleId(null);
-          setClosingNote("");
-        }}
-      >
-        Cancel
-      </Button>
-
-      <Button
-        className="w-full bg-green-600 text-white hover:bg-green-700"
-        onClick={async () => {
-          if (!selectedSaleId) return;
-
-          const { error } = await supabase
-            .from("sales_closure")
-            .update({
-              finance_status: "Closed",
-              reason_for_close: closingNote.trim(),
-            })
-            .eq("id", selectedSaleId);
-
-          if (error) {
-            console.error("Error saving close reason:", error);
-            return;
-          }
-
-          setSales((prev) =>
-            prev.map((sale) =>
-              sale.id === selectedSaleId
-                ? { ...sale, finance_status: "Closed", reason_for_close: closingNote.trim() }
-                : sale
-            )
-          );
-
-          setShowCloseDialog(false);
-          setActionSelections((prev) => ({
-            ...prev,
-            [selectedSaleId]: "",
-          }));
-          setClosingNote("");
-          setSelectedSaleId(null);
-        }}
-      >
-        Submit
-      </Button>
-    </div>
-  </DialogContent>
-</Dialog>
+          </Dialog>
 
 
-          {/* <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
-  <DialogContent className="w-[400px]">
-    <DialogHeader>
-      <DialogTitle>💰 Payment Details</DialogTitle>
-    </DialogHeader>
-    <div className="space-y-4">
-      <Input
-        type="number"
-        placeholder="Enter payment amount"
-        value={paymentAmount}
-        onChange={(e) => setPaymentAmount(e.target.value)}
-        required
-      />
-      <Input
-        type="date"
-        value={paymentDate.toISOString().split("T")[0]}
-        onChange={(e) => setPaymentDate(new Date(e.target.value))}
-      />
-      <Button onClick={handlePaymentClose}>Payment Close</Button>
-    </div>
-  </DialogContent>
-</Dialog>
- */}
+
 
           <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
-            <DialogContent  hideCloseIcon aria-describedby="payment-details-description" className="w-[420px]"     onInteractOutside={(e) => e.preventDefault()} // Prevent outside click close
->
+            <DialogContent hideCloseIcon aria-describedby="payment-details-description" className="w-[420px]" onInteractOutside={(e) => e.preventDefault()} // Prevent outside click close
+            >
               <DialogHeader>
                 <DialogTitle>💰 Payment Details</DialogTitle>
               </DialogHeader>
@@ -2319,13 +1900,6 @@ if (!confirmed) return;
                   required
                 />
 
-                {/* Closed-at date (already existed)
-      <Input
-        type="date"
-        value={paymentDate.toISOString().slice(0, 10)}
-        onChange={(e) => setPaymentDate(new Date(e.target.value))}
-        required
-      /> */}
 
                 {/* NEW -- Onboarded Date */}
                 <Input
@@ -2345,48 +1919,47 @@ if (!confirmed) return;
                     <SelectValue placeholder="Subscription duration" />
                   </SelectTrigger>
                   <SelectContent>
-                    {/* Uncomment if you also want a 15-day option */}
                     {/* <SelectItem value="0.5">15 days</SelectItem> */}
                     <SelectItem value="1">1 month</SelectItem>
                     <SelectItem value="2">2 months</SelectItem>
                     <SelectItem value="3">3 months</SelectItem>
                   </SelectContent>
                 </Select>
-<div className="flex gap-3 pt-4">
-  <Button
-  variant="ghost"
-  className="w-1/2 bg-black text-white hover:bg-orange-400"
-  onClick={() => {
-    // Close the dialog
-    setShowPaymentDialog(false);
+                <div className="flex gap-3 pt-4">
+                  <Button
+                    variant="ghost"
+                    className="w-1/2 bg-black text-white hover:bg-orange-400"
+                    onClick={() => {
+                      // Close the dialog
+                      setShowPaymentDialog(false);
 
-    // Reset form fields
-    setPaymentAmount("");
-    setOnboardDate(null);
-    setSubscriptionMonths("");
+                      // Reset form fields
+                      setPaymentAmount("");
+                      setOnboardDate(null);
+                      setSubscriptionMonths("");
 
-    // Reset action dropdown (if applicable)
-    if (selectedSaleId) {
-      setActionSelections((prev) => ({
-        ...prev,
-        [selectedSaleId]: "", // Resets to "Select Status"
-      }));
-    }
+                      // Reset action dropdown (if applicable)
+                      if (selectedSaleId) {
+                        setActionSelections((prev) => ({
+                          ...prev,
+                          [selectedSaleId]: "", // Resets to "Select Status"
+                        }));
+                      }
 
-    // Clear selected ID (optional cleanup)
-    setSelectedSaleId(null);
-  }}
->
-    Cancel payment ❌
-  </Button>
+                      // Clear selected ID (optional cleanup)
+                      setSelectedSaleId(null);
+                    }}
+                  >
+                    Cancel payment ❌
+                  </Button>
 
-  <Button
-    onClick={handlePaymentClose}
-    className="w-1/2 bg-blue-600 text-white hover:bg-blue-700"
-  >
-    Payment Done ✅
-  </Button>
-</div>
+                  <Button
+                    onClick={handlePaymentClose}
+                    className="w-1/2 bg-blue-600 text-white hover:bg-blue-700"
+                  >
+                    Payment Done ✅
+                  </Button>
+                </div>
 
               </div>
             </DialogContent>
@@ -2511,71 +2084,7 @@ if (!confirmed) return;
             </DialogContent>
           </Dialog>
 
-          {/* <Dialog open={showOnboardDialog} onOpenChange={setShowOnboardDialog}>
-  <DialogContent className="max-w-5xl h-[90vh] overflow-hidden">
-    <DialogHeader>
-      <DialogTitle className="text-xl font-bold text-gray-800">🧾 Onboard New Client</DialogTitle>
-    </DialogHeader>
 
-    <div className="overflow-auto h-[75vh]"> 
-      <div className="grid grid-cols-2 gap-4">
-  <div className="col-span-2 text-lg font-semibold">🔹 Client Details</div>
-  <Input placeholder="Client Full Name" value={clientName} onChange={(e) => setClientName(e.target.value)} required />
-  <Input placeholder="Client Email" type="email" value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} required />
-  <Input placeholder="Contact Number" value={contactNumber} onChange={(e) => setContactNumber(e.target.value)} required />
-  <Input placeholder="City" value={city} onChange={(e) => setCity(e.target.value)} required/>
-
-  <Input placeholder="Start Date (MM/DD/YYYY)" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} required />
-
-  <div className="col-span-2 text-lg font-semibold mt-4">💳 Subscription & Payment Info</div>
-  <Select value={paymentMode} onValueChange={setPaymentMode} required>
-    <SelectTrigger className="w-full"><SelectValue placeholder="Select Payment Mode" /></SelectTrigger>
-    <SelectContent>
-      <SelectItem value="UPI">UPI</SelectItem>
-      <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
-      <SelectItem value="PayPal">PayPal</SelectItem>
-      <SelectItem value="Stripe">Stripe</SelectItem>
-      <SelectItem value="Credit/Debit Card">Credit/Debit Card</SelectItem>
-      <SelectItem value="Other">Other</SelectItem>
-    </SelectContent>
-  </Select>
-
-  <Select value={subscriptionCycle} onValueChange={setSubscriptionCycle}>
-    <SelectTrigger className="w-full"><SelectValue placeholder="Subscription Duration" /></SelectTrigger>
-    <SelectContent>
-      <SelectItem value="30">1 Month</SelectItem>
-      <SelectItem value="60">2 Months</SelectItem>
-      <SelectItem value="90">3 Months</SelectItem>
-    </SelectContent>
-  </Select>
-
-  <Input
-    placeholder="Subscription Sale Value ($)"
-    type="number"
-    value={subscriptionSaleValue}
-    onChange={(e) => setSubscriptionSaleValue(e.target.value)}
-    required
-  />
-
-  <div className="col-span-2 text-lg font-semibold mt-4">🧩 Optional Add-On Services</div>
-  <Input placeholder="Resume Sale Value ($)" type="number" value={resumeValue} onChange={(e) => setResumeValue(e.target.value)} />
-  <Input placeholder="Portfolio Creation Value ($)" type="number" value={portfolioValue} onChange={(e) => setPortfolioValue(e.target.value)} />
-  <Input placeholder="LinkedIn Optimization Value ($)" type="number" value={linkedinValue} onChange={(e) => setLinkedinValue(e.target.value)} />
-  <Input placeholder="GitHub Optimization Value ($)" type="number" value={githubValue} onChange={(e) => setGithubValue(e.target.value)} />
-
- 
-  <div className="col-span-2 text-lg font-semibold mt-4">🧮 Auto Calculated</div>
-  <div className="col-span-1 font-medium text-gray-700">Total Sale Value: <span className="font-bold text-black">${totalSale}</span></div>
-  <div className="col-span-1 font-medium text-gray-700">Next Payment Due Date: <span className="font-bold text-black">{dueDate || "-"}</span></div>
-</div>
-
-<div className="flex justify-start mt-6">
-  <Button onClick={handleOnboardClientSubmit}>Submit</Button>
-</div>
-
-    </div>
-  </DialogContent>
-</Dialog> */}
 
 
           <Dialog open={showOnboardDialog} onOpenChange={setShowOnboardDialog}>
@@ -2616,14 +2125,7 @@ if (!confirmed) return;
                       </SelectContent>
                     </Select>
 
-                    {/* <Select value={subscriptionCycle} onValueChange={setSubscriptionCycle}>
-            <SelectTrigger className="w-full"><SelectValue placeholder="Subscription Duration" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="30">1 Month</SelectItem>
-              <SelectItem value="60">2 Months</SelectItem>
-              <SelectItem value="90">3 Months</SelectItem>
-            </SelectContent>
-          </Select> */}
+
 
                     {/* Subscription Duration Dropdown */}
                     <Select
@@ -2709,7 +2211,6 @@ if (!confirmed) return;
                   </div>
                 </div>
 
-                {/* Submit Button - LEFT ALIGNED */}
 
               </div>
             </DialogContent>

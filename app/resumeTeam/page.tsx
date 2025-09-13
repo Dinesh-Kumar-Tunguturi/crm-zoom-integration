@@ -817,6 +817,8 @@ interface SalesClosure {
  portfolio_sale_value?: number | string | null; // keep raw if you still want it
   portfolio_paid: boolean;    
   commitments?: string | null;
+  badge_value?: number | null;
+
 
   // joined
   leads?: { name: string; phone: string };
@@ -876,6 +878,14 @@ export default function ResumeTeamPage() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [currentLeadId, setCurrentLeadId] = useState<string | null>(null);
+
+
+  // --- "My Tasks" dialog state ---
+const [myTasksOpen, setMyTasksOpen] = useState(false);
+const [myTasksRows, setMyTasksRows] = useState<SalesClosure[]>([]);
+const [myTasksLoading, setMyTasksLoading] = useState(false);
+const [myTasksError, setMyTasksError] = useState<string | null>(null);
+
 
   // NEW: team members (Resume Head + Resume Associate)
   const [resumeTeamMembers, setResumeTeamMembers] = useState<TeamMember[]>([]);
@@ -997,12 +1007,10 @@ const boolToNum = (b: boolean) => (b ? 1 : 0);
 // Generic comparator with nulls pushed to the end (for asc).
 const cmp = (a: number | string, b: number | string) => (a < b ? -1 : a > b ? 1 : 0);
 
-// Build a sorted view of rows
-const sortedRows = React.useMemo(() => {
-  const arr = [...rows];
+const sortRowsBy = (arr: SalesClosure[]) => {
   if (!sort.key) return arr;
-
-  arr.sort((A, B) => {
+  const copy = [...arr];
+  copy.sort((A, B) => {
     let vA: number | string;
     let vB: number | string;
 
@@ -1028,21 +1036,22 @@ const sortedRows = React.useMemo(() => {
         vB = dateToMs(B.onboarded_date_raw);
         break;
       case "portfolio":
-        // use your computed boolean
         vA = boolToNum(A.portfolio_paid);
         vB = boolToNum(B.portfolio_paid);
         break;
       default:
-        vA = 0;
-        vB = 0;
+        vA = 0; vB = 0;
     }
-
     const base = cmp(vA, vB);
     return sort.dir === "asc" ? base : -base;
   });
+  return copy;
+};
 
-  return arr;
-}, [rows, sort]);
+// Use it for main table
+const sortedRows = React.useMemo(() => sortRowsBy(rows), [rows, sort]);
+const mySortedRows = React.useMemo(() => sortRowsBy(myTasksRows), [myTasksRows, sort]);
+
 
 // Small icon component for header arrows
 const SortIcon = ({ active, dir }: { active: boolean; dir: SortDir }) =>
@@ -1107,7 +1116,7 @@ const fetchData = async (opts?: { assigneeEmail?: string | null; unassigned?: bo
   let salesQuery = supabase
     .from("sales_closure")
     .select(
-      "id, lead_id, email, finance_status, closed_at, resume_sale_value, portfolio_sale_value, commitments, company_application_email, onboarded_date"
+      "id, lead_id, email, finance_status, closed_at, resume_sale_value, portfolio_sale_value, commitments, company_application_email, onboarded_date,badge_value"
     )
     .not("resume_sale_value", "is", null)
     .neq("resume_sale_value", 0);
@@ -1239,6 +1248,8 @@ const fetchData = async (opts?: { assigneeEmail?: string | null; unassigned?: bo
       onboarded_date_label: formatOnboardLabel(onboardRaw),
       resume_sale_value: r.resume_sale_value ?? null,
       commitments: r.commitments ?? null,
+      badge_value: r.badge_value ?? null,
+
 
       leads: lead,
 
@@ -1533,6 +1544,85 @@ const handleOnboardClick = async (row: SalesClosure) => {
 
 
 // Writes/updates Project-B.pending_clients via server API
+// const writePendingClientFromLead = async (leadId: string) => {
+//   // a) Read latest onboarding details from Project-A
+//   const { data: ob, error: obErr } = await supabase
+//     .from("client_onborading_details")
+//     .select(`
+//       full_name,
+//       whatsapp_number,
+//       callable_phone,
+//       company_email,
+//       job_role_preferences,
+//       salary_range,
+//       location_preferences,
+//       work_auth_details,
+//       created_at,
+//       lead_id,
+//       needs_sponsorship,
+//       visatypes
+//     `)
+//     .eq("lead_id", leadId)
+//     .order("created_at", { ascending: false })
+//     .limit(1)
+//     .maybeSingle();
+
+//     console.log("Onboarding details:", ob);
+//   if (obErr) throw obErr;
+//   if (!ob) throw new Error("No onboarding details found for this client.");
+
+//   // b) Get personal email from leads
+//   const { data: lead, error: leadErr } = await supabase
+//     .from("leads")
+//     .select("email")
+//     .eq("business_id", leadId)
+//     .maybeSingle();
+//   if (leadErr) throw leadErr;
+//   if (!lead?.email) throw new Error("Lead record missing email.");
+//   const personalEmail = lead.email as string;
+
+//   // c) Normalize visa type and sponsorship from onboarding row
+//   const visaValue =
+//     ob.visatypes ?? (ob as any).visaType ?? null; // any of the spellings
+//   const sponsorshipValue =
+//     typeof ob.needs_sponsorship === "boolean" ? ob.needs_sponsorship : null;
+
+//   // d) Compose payload for Project-B (pending_clients)
+//   const pcPayload = {
+//     full_name: ob.full_name,
+//     personal_email: personalEmail,
+//     whatsapp_number: ob.whatsapp_number ?? null,
+//     callable_phone: ob.callable_phone ?? null,
+//     company_email: ob.company_email ?? null,
+//     job_role_preferences: ob.job_role_preferences ?? null,
+//     salary_range: ob.salary_range ?? null,
+//     location_preferences: ob.location_preferences ?? null,
+//     work_auth_details: ob.work_auth_details ?? null,
+
+//     // ✅ NEW fields going to pending_clients:
+//     visa_type: ob.visatypes,             // maps from visatypes/visa_type/visaType
+//     sponsorship: ob.needs_sponsorship,    // maps from needs_sponsorship
+//     applywizz_id: ob.lead_id,             // optional but recommended
+
+//     // Keep created_at only for insert (handled in the API below)
+//     created_at: ob.created_at ?? new Date().toISOString(),
+//   };
+//   console.log("Pending client payload:", pcPayload);
+
+//   // e) Call server route that writes into pending_clients
+//   const res = await fetch("/api/pending-clients/upsert", {
+//     method: "POST",
+//     headers: { "Content-Type": "application/json" },
+//     body: JSON.stringify(pcPayload),
+//   });
+//   if (!res.ok) {
+//     const j = await res.json().catch(() => ({}));
+//     throw new Error(j.error || "Failed to upsert pending_client in Project-B");
+//   }
+// };
+
+
+// Writes/updates Project-B.pending_clients via server API
 const writePendingClientFromLead = async (leadId: string) => {
   // a) Read latest onboarding details from Project-A
   const { data: ob, error: obErr } = await supabase
@@ -1555,8 +1645,6 @@ const writePendingClientFromLead = async (leadId: string) => {
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
-
-    console.log("Onboarding details:", ob);
   if (obErr) throw obErr;
   if (!ob) throw new Error("No onboarding details found for this client.");
 
@@ -1570,13 +1658,21 @@ const writePendingClientFromLead = async (leadId: string) => {
   if (!lead?.email) throw new Error("Lead record missing email.");
   const personalEmail = lead.email as string;
 
-  // c) Normalize visa type and sponsorship from onboarding row
-  const visaValue =
-    ob.visatypes ?? (ob as any).visaType ?? null; // any of the spellings
-  const sponsorshipValue =
-    typeof ob.needs_sponsorship === "boolean" ? ob.needs_sponsorship : null;
+  // c) ✅ Get latest badge_value from sales_closure for this lead
+  const { data: scRow, error: scErr } = await supabase
+    .from("sales_closure")
+    .select("badge_value, closed_at")
+    .eq("lead_id", leadId)
+    .order("closed_at", { ascending: false, nullsFirst: false })
+    .limit(1)
+    .maybeSingle();
+  if (scErr) throw scErr;
+  const latestBadgeValue: number | null =
+    scRow?.badge_value !== null && scRow?.badge_value !== undefined
+      ? Number(scRow.badge_value)
+      : null;
 
-  // d) Compose payload for Project-B (pending_clients)
+  // d) Compose payload for pending_clients
   const pcPayload = {
     full_name: ob.full_name,
     personal_email: personalEmail,
@@ -1588,17 +1684,18 @@ const writePendingClientFromLead = async (leadId: string) => {
     location_preferences: ob.location_preferences ?? null,
     work_auth_details: ob.work_auth_details ?? null,
 
-    // ✅ NEW fields going to pending_clients:
-    visa_type: ob.visatypes,             // maps from visatypes/visa_type/visaType
-    sponsorship: ob.needs_sponsorship,    // maps from needs_sponsorship
-    applywizz_id: ob.lead_id,             // optional but recommended
+    // extra fields
+    visa_type: ob.visatypes ?? null,
+    sponsorship: typeof ob.needs_sponsorship === "boolean" ? ob.needs_sponsorship : null,
+    applywizz_id: ob.lead_id ?? leadId,
 
-    // Keep created_at only for insert (handled in the API below)
+    // ✅ send badge_value along
+    badge_value: latestBadgeValue,
+
+    // keep created_at for first insert (server will handle upsert)
     created_at: ob.created_at ?? new Date().toISOString(),
   };
-  console.log("Pending client payload:", pcPayload);
 
-  // e) Call server route that writes into pending_clients
   const res = await fetch("/api/pending-clients/upsert", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -1609,6 +1706,7 @@ const writePendingClientFromLead = async (leadId: string) => {
     throw new Error(j.error || "Failed to upsert pending_client in Project-B");
   }
 };
+
 
 
 
@@ -1701,12 +1799,10 @@ await writePendingClientFromLead(currentLeadId);
   }
 };
 
-  /* =========================
-     PDF store helpers (Bucket + Optional DB copy)
-     ========================= */
+ 
 
-  const BUCKET = "resumes"; // must match your bucket name exactly
-  const ENABLE_DB_COPY = false; // set true ONLY if you've created public.resume_files
+  const BUCKET = "resumes"; 
+  const ENABLE_DB_COPY = false; 
 
   const ensurePdf = (file: File) => {
     if (file.type !== "application/pdf") throw new Error("Please select a PDF file.");
@@ -1732,11 +1828,9 @@ await writePendingClientFromLead(currentLeadId);
 const uploadOrReplaceResume = async (leadId: string, file: File, previousPath?: string | null) => {
   ensurePdf(file);
 
-  // keep the original filename (sanitized), ensure it ends with .pdf
   const fileName = ensurePdfFilename(file.name);
   const path = `${leadId}/${fileName}`.replace(/^\/+/, "");
 
-  // 1) Storage upload (upsert true will overwrite if same name exists)
   const up = await supabase.storage.from(BUCKET).upload(path, file, {
     cacheControl: "3600",
     upsert: true,
@@ -1747,13 +1841,11 @@ const uploadOrReplaceResume = async (leadId: string, file: File, previousPath?: 
     throw new Error(up.error.message || "Upload to Storage failed");
   }
 
-  // 2) If the previous path exists and is different from the new path, remove it
   if (previousPath && previousPath !== path) {
     const del = await supabase.storage.from(BUCKET).remove([previousPath]);
     if (del.error) console.warn("STORAGE REMOVE WARNING:", del.error);
   }
 
-  // 3) Upsert progress row
   const db = await supabase
     .from("resume_progress")
     .upsert(
@@ -1775,8 +1867,7 @@ const uploadOrReplaceResume = async (leadId: string, file: File, previousPath?: 
 };
 
 
-  // Always download as "Resume-<lead_id>.pdf"
-  // Always download with the original uploaded name (last segment of the path)
+
 const downloadResume = async (path: string) => {
   try {
     const segments = (path || "").split("/");
@@ -1793,7 +1884,7 @@ const downloadResume = async (path: string) => {
 
     const a = document.createElement("a");
     a.href = objectUrl;
-    a.download = fileName; // <- use stored filename
+    a.download = fileName; 
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -1804,9 +1895,192 @@ const downloadResume = async (path: string) => {
 };
 
 
-  /* =========================
-     Resume status & assignment
-     ========================= */
+const fetchMyTasks = async () => {
+  try {
+    setMyTasksLoading(true);
+    setMyTasksError(null);
+
+    const assigneeEmail = (user?.email || "").trim().toLowerCase();
+    const assigneeName  = (user?.name  || "").trim();
+
+    // 0) get lead_ids assigned to me (by email and/or name)
+    const leadIdsSet = new Set<string>();
+
+    if (assigneeEmail) {
+      const { data: byEmail, error: e1 } = await supabase
+        .from("resume_progress")
+        .select("lead_id")
+        .eq("assigned_to_email", assigneeEmail);
+      if (e1) throw e1;
+      (byEmail ?? []).forEach(r => r.lead_id && leadIdsSet.add(r.lead_id));
+    }
+
+    if (assigneeName) {
+      const { data: byName, error: e2 } = await supabase
+        .from("resume_progress")
+        .select("lead_id")
+        .ilike("assigned_to_name", assigneeName);
+      if (e2) throw e2;
+      (byName ?? []).forEach(r => r.lead_id && leadIdsSet.add(r.lead_id));
+    }
+
+    const allowLeadIds = Array.from(leadIdsSet);
+    if (allowLeadIds.length === 0) {
+      setMyTasksRows([]);
+      setMyTasksOpen(true);
+      return;
+    }
+
+    // 1) sales_closure base (limit to my lead ids)
+    const { data: sales, error: salesErr } = await supabase
+      .from("sales_closure")
+      .select("id, lead_id, email, finance_status, closed_at, resume_sale_value, portfolio_sale_value, commitments, company_application_email, onboarded_date")
+      .in("lead_id", allowLeadIds)
+      .not("resume_sale_value", "is", null)
+      .neq("resume_sale_value", 0);
+    if (salesErr) throw salesErr;
+
+    // 2) latest per lead + portfolio_paid (same as your fetchData)
+    type LeadAgg = { latest: any | null; portfolio_paid: boolean };
+    const byLead = new Map<string, LeadAgg>();
+
+    for (const r of sales ?? []) {
+      const leadId: string = r.lead_id;
+      const current = byLead.get(leadId) ?? { latest: null, portfolio_paid: false };
+
+      const prev = current.latest;
+      const prevClosed = prev?.closed_at ? new Date(prev.closed_at).getTime() : -Infinity;
+      const thisClosed = r?.closed_at ? new Date(r.closed_at).getTime() : -Infinity;
+      if (!prev || thisClosed > prevClosed) current.latest = r;
+
+      const val = r.portfolio_sale_value;
+      const num = val === null || val === undefined || val === "" ? 0 : Number(val);
+      if (!Number.isNaN(num) && num > 0) current.portfolio_paid = true;
+
+      byLead.set(leadId, current);
+    }
+
+    const latest = Array.from(byLead.values()).map(v => v.latest).filter(Boolean) as any[];
+    const portfolioPaidMap = new Map(
+      Array.from(byLead.entries()).map(([leadId, agg]) => [leadId, agg.portfolio_paid])
+    );
+
+    const leadIds = latest.map(r => r.lead_id);
+    if (!leadIds.length) {
+      setMyTasksRows([]);
+      setMyTasksOpen(true);
+      return;
+    }
+
+    // 3) join leads
+    const { data: leadsData } = await supabase
+      .from("leads")
+      .select("business_id, name, phone")
+      .in("business_id", leadIds);
+    const leadMap = new Map((leadsData ?? []).map(l => [l.business_id, { name: l.name, phone: l.phone }]));
+
+    // 4) join resume_progress
+    const { data: progress } = await supabase
+      .from("resume_progress")
+      .select("lead_id, status, pdf_path, assigned_to_email, assigned_to_name")
+      .in("lead_id", leadIds);
+    const progMap = new Map(
+      (progress ?? []).map(p => [
+        p.lead_id,
+        {
+          status: (p.status as ResumeStatus) ?? "not_started",
+          pdf_path: p.pdf_path ?? null,
+          assigned_to_email: p.assigned_to_email ?? null,
+          assigned_to_name: p.assigned_to_name ?? null,
+        },
+      ])
+    );
+
+    // 5) join portfolio_progress (optional)
+    let portMap = new Map<
+      string,
+      { status: PortfolioStatus | null; assigned_to_email: string | null; assigned_to_name: string | null; link: string | null }
+    >();
+    try {
+      const { data: portProg } = await supabase
+        .from("portfolio_progress")
+        .select("lead_id, status, assigned_to_email, assigned_to_name, link, portfolio_link")
+        .in("lead_id", leadIds);
+
+      if (portProg) {
+        portMap = new Map(
+          portProg.map((p: any) => [
+            p.lead_id,
+            {
+              status: (p.status as PortfolioStatus) ?? null,
+              assigned_to_email: p.assigned_to_email ?? null,
+              assigned_to_name: p.assigned_to_name ?? null,
+              link: (p.link || p.portfolio_link || null) as string | null,
+            },
+          ])
+        );
+      }
+    } catch {}
+
+    // 6) merge
+    const merged: SalesClosure[] = latest.map((r) => {
+      const lead = leadMap.get(r.lead_id) || { name: "-", phone: "-" };
+      const rp = progMap.get(r.lead_id) || {
+        status: "not_started" as ResumeStatus,
+        pdf_path: null,
+        assigned_to_email: null,
+        assigned_to_name: null,
+      };
+      const pp = portMap.get(r.lead_id) || {
+        status: null as PortfolioStatus | null,
+        assigned_to_email: null,
+        assigned_to_name: null,
+        link: null as string | null,
+      };
+      const onboardRaw: string | null = r.onboarded_date ?? null;
+
+      return {
+        id: r.id,
+        lead_id: r.lead_id,
+        email: r.email,
+        company_application_email: r.company_application_email ?? null,
+        finance_status: r.finance_status,
+        closed_at: r.closed_at,
+        onboarded_date_raw: onboardRaw,
+        onboarded_date_label: formatOnboardLabel(onboardRaw),
+        resume_sale_value: r.resume_sale_value ?? null,
+        commitments: r.commitments ?? null,
+badge_value: r.badge_value ?? null,
+
+        leads: lead,
+
+        rp_status: rp.status,
+        rp_pdf_path: rp.pdf_path,
+        assigned_to_email: rp.assigned_to_email,
+        assigned_to_name: rp.assigned_to_name,
+
+        pp_status: pp.status,
+        pp_assigned_email: pp.assigned_to_email,
+        pp_assigned_name: pp.assigned_to_name,
+        pp_link: pp.link,
+
+        portfolio_sale_value: r.portfolio_sale_value ?? null,
+        portfolio_paid: portfolioPaidMap.get(r.lead_id) === true,
+      };
+    });
+
+    setMyTasksRows(merged);
+    setMyTasksOpen(true);
+  } catch (e: any) {
+    console.error(e);
+    setMyTasksError(e?.message || "Failed to load your tasks");
+    setMyTasksRows([]);
+    setMyTasksOpen(true);
+  } finally {
+    setMyTasksLoading(false);
+  }
+};
+
 
   const updateStatus = async (leadId: string, status: ResumeStatus) => {
     const { error } = await supabase.from("resume_progress").upsert({ lead_id: leadId, status }, { onConflict: "lead_id" });
@@ -1840,6 +2114,8 @@ const downloadResume = async (path: string) => {
         setUploadForLead(row.lead_id);
         setReplacingOldPath(null);
         fileRef.current?.click();
+        if (myTasksOpen) await fetchMyTasks();
+
       } else {
         setRows((rs) => rs.map((r) => (r.lead_id === row.lead_id ? { ...r, rp_status: newStatus } : r)));
       }
@@ -1867,11 +2143,15 @@ const downloadResume = async (path: string) => {
     try {
       const { path } = await uploadOrReplaceResume(leadId, file, oldPath || undefined);
       await fetchData();
+      if (myTasksOpen) await fetchMyTasks();
+
       alert("PDF uploaded.");
     } catch (err: any) {
       alert(err.message || "Upload failed");
       // Optional: rollback UI if you had optimistically set status=completed
       await fetchData();
+      if (myTasksOpen) await fetchMyTasks();
+
     }
   };
 
@@ -1988,7 +2268,9 @@ const downloadResume = async (path: string) => {
 </TableHeader>
 
         <TableBody>
-          {sortedRows.map((row, index) => (
+          {/* {sortedRows.map((row, index) => ( */}
+          {data.map((row, index) => (
+
             <TableRow key={row.id}>
               <TableCell className="text-center">{index + 1}</TableCell>
               <TableCell>{row.lead_id}</TableCell>
@@ -2044,10 +2326,16 @@ const downloadResume = async (path: string) => {
     // 🔁 KEEP FILTER AFTER CHANGE (Point #5)
     if (assigneeFilter === "__all__") {
       await fetchData();
+      if (myTasksOpen) await fetchMyTasks();
+
     } else if (assigneeFilter === "__unassigned__") {
       await fetchData({ unassigned: true });
+      if (myTasksOpen) await fetchMyTasks();
+
     } else {
       await fetchData({ assigneeEmail: assigneeFilter });
+      if (myTasksOpen) await fetchMyTasks();
+
     }
   } catch (e: any) {
     console.error("Assign failed:", e);
@@ -2225,7 +2513,8 @@ const downloadResume = async (path: string) => {
 
             </TableRow>
           ))}
-          {sortedRows.length === 0 && (
+          {/* {sortedRows.length === 0 && ( */}
+          {data.length === 0 && (
     <TableRow>
       <TableCell colSpan={RESUME_COLUMNS.length} className="text-center text-sm text-muted-foreground py-10">
         No records found.
@@ -2241,9 +2530,16 @@ const downloadResume = async (path: string) => {
     <ProtectedRoute allowedRoles={["Super Admin", "Resume Head", "Resume Associate"]}>
       <DashboardLayout>
         <div className="space-y-6">
-          <div className="flex items-center justify-between">
+          {/* <div className="flex items-center justify-between">
             <h1 className="text-3xl font-bold text-gray-900">Resume Page</h1>
-          </div>
+          </div> */}
+
+          <div className="flex items-center justify-between">
+   <h1 className="text-3xl font-bold text-gray-900">Resume Page</h1>
+   <Button variant="outline" onClick={fetchMyTasks}>
+     My Tasks
+   </Button>
+ </div>
           {/* Filter row */}
 <div className="flex items-center gap-3">
   <div className="text-sm font-medium">Assigned To:</div>
@@ -2376,6 +2672,32 @@ const downloadResume = async (path: string) => {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+<Dialog open={myTasksOpen} onOpenChange={setMyTasksOpen}>
+  <DialogContent className="max-w-7xl overflow-scroll">
+    <DialogHeader>
+      <DialogTitle>My Tasks</DialogTitle>
+      <DialogDescription>
+        Resumes assigned to you ({myTasksRows.length})
+      </DialogDescription>
+    </DialogHeader>
+
+    {myTasksLoading ? (
+      <div className="p-6 text-sm text-muted-foreground">Loading…</div>
+    ) : myTasksError ? (
+      <div className="p-6 text-sm text-red-600">{myTasksError}</div>
+    ) : (
+      // reuse the same table with full actions
+      renderTable(mySortedRows)
+    )}
+
+    <DialogFooter className="gap-2">
+      <Button variant="outline" onClick={fetchMyTasks}>Refresh</Button>
+      <Button onClick={() => setMyTasksOpen(false)}>Close</Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
+
 
         <Dialog open={showOnboardDialog} onOpenChange={setShowOnboardDialog}>
   <DialogContent className="max-w-3xl">

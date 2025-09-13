@@ -699,6 +699,7 @@ type SalesClosureRow = {
   id: string;
   lead_id: string;
   sale_value: number | null; // we treat this as TOTAL stored in DB
+  application_sale_value: number | null;
   subscription_cycle: 15 | 30 | 60 | 90 | null;
   payment_mode: PaymentMode | null;
   closed_at: string | null;
@@ -722,6 +723,7 @@ type SalesClosureRow = {
   custom_sale_value: number | null;
   commitments: string | null;
   company_application_email: string | null;
+  no_of_job_applications: number | null;
 };
 
 // ---------- Helpers ----------
@@ -799,7 +801,7 @@ export default function SaleUpdatePage() {
 
   const [customLabel, setCustomLabel] = useState<string>("");
   const [customValue, setCustomValue] = useState<string>("");
-
+  const [no_of_job_applications, set_no_of_job_applications] = useState<string>("");
   const [commitments, setCommitments] = useState<string>("");
 
   // Dates
@@ -811,6 +813,7 @@ export default function SaleUpdatePage() {
 
   // We treat `sale_value` in DB as the TOTAL contract value
   const [originalTotal, setOriginalTotal] = useState<number>(0);
+  const [applicationSaleValue, setApplicationSaleValue] = useState<number>(0);
 
   // --- Fetch latest record on mount ---
   useEffect(() => {
@@ -841,6 +844,7 @@ export default function SaleUpdatePage() {
 
         // total from DB
         setOriginalTotal(Number(data.sale_value || 0));
+        setApplicationSaleValue(Number(data.application_sale_value || 0));
 
         // map addons
         setResumeValue(data.resume_sale_value?.toString() ?? "");
@@ -858,6 +862,7 @@ export default function SaleUpdatePage() {
         setClientName(data.lead_name ?? "");
         setClientEmail(data.email ?? "");
         setCompanyApplicationEmail(data.company_application_email ?? "");
+        set_no_of_job_applications(data.no_of_job_applications?.toString() || "");
 
         // cycle
         setSubscriptionCycle(
@@ -979,7 +984,8 @@ export default function SaleUpdatePage() {
         subscription_cycle: subscriptionCycle ? Number(subscriptionCycle) : null,
 
         // Save TOTAL to DB
-        sale_value: Number(totalSale.toFixed(2)),
+   sale_value: Number(totalSale.toFixed(2)),
+application_sale_value: Number(autoTotal.toFixed(2)),
 
         finance_status: financeStatus || null,
 
@@ -994,6 +1000,7 @@ export default function SaleUpdatePage() {
         custom_sale_value: num(customValue),
 
         commitments: commitments || null,
+        no_of_job_applications: num(no_of_job_applications),
 
         // dates
         closed_at: closedAt || null,
@@ -1152,7 +1159,7 @@ export default function SaleUpdatePage() {
 
                     {/* Finance status */}
                     <div className="md:col-span-3">
-                      <Select
+                      {/* <Select
                         value={financeStatus}
                         onValueChange={(v) => setFinanceStatus(v as FinanceStatus)}
                       >
@@ -1166,7 +1173,17 @@ export default function SaleUpdatePage() {
                           <SelectItem value="Closed">Closed</SelectItem>
                           <SelectItem value="Got Placed">Got Placed</SelectItem>
                         </SelectContent>
-                      </Select>
+                      </Select> */}
+
+                      <Input
+                    type="number"
+                    inputMode="decimal"
+                    min="0"
+                    step="0.01"
+                    placeholder="No. of applications for month"
+                    value={no_of_job_applications}
+                    onChange={(e) => set_no_of_job_applications(e.target.value)}
+                  />
                     </div>
 
                     {/* Closer display-only (optional) */}
