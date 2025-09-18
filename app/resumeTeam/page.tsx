@@ -874,6 +874,9 @@ export default function ResumeTeamPage() {
   const [replacingOldPath, setReplacingOldPath] = useState<string | null>(null);
   const [reqDialogOpen, setReqDialogOpen] = useState(false);
   const [reqRow, setReqRow] = useState<SalesClosure | null>(null);
+  // Was the upload triggered from main table or My Tasks?
+const [uploadContext, setUploadContext] = useState<"main" | "myTasks">("main");
+
 
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -983,8 +986,12 @@ const csvToArray = (s: string) => s.split(",").map(v => v.trim()).filter(Boolean
 // ---- Sorting ----
 type SortKey = "clientId" | "name" | "email" | "closedAt" | "onboarded" | "portfolio";
 type SortDir = "asc" | "desc";
+const [sort, setSort] = useState<{ key: SortKey | null; dir: SortDir }>({
+  key: "closedAt",
+  dir: "desc",
+});
 
-const [sort, setSort] = useState<{ key: SortKey | null; dir: SortDir }>({ key: null, dir: "asc" });
+// const [sort, setSort] = useState<{ key: SortKey | null; dir: SortDir }>({ key: null, dir: "asc" });
 
 const toggleSort = (key: SortKey) => {
   setSort((s) => (s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }));
@@ -1119,7 +1126,9 @@ const fetchData = async (opts?: { assigneeEmail?: string | null; unassigned?: bo
       "id, lead_id, email, finance_status, closed_at, resume_sale_value, portfolio_sale_value, commitments, company_application_email, onboarded_date,badge_value"
     )
     .not("resume_sale_value", "is", null)
-    .neq("resume_sale_value", 0);
+    .neq("resume_sale_value", 0)
+      .order("closed_at", { ascending: false }); // 👈 add this
+
 
   if (allowLeadIds && allowLeadIds.length > 0) {
     salesQuery = salesQuery.in("lead_id", allowLeadIds);
@@ -2105,24 +2114,43 @@ badge_value: r.badge_value ?? null,
     }
   };
 
+  // const onChangeStatus = async (row: SalesClosure, newStatus: ResumeStatus) => {
+  //   try {
+  //     await updateStatus(row.lead_id, newStatus);
+
+  //     if (newStatus === "completed" && !row.rp_pdf_path) {
+  //       // Ask for a file only if there's no PDF yet
+  //       setUploadForLead(row.lead_id);
+  //       setReplacingOldPath(null);
+  //       fileRef.current?.click();
+  //       if (myTasksOpen) await fetchMyTasks();
+
+  //     } else {
+  //       setRows((rs) => rs.map((r) => (r.lead_id === row.lead_id ? { ...r, rp_status: newStatus } : r)));
+  //     }
+  //   } catch (e: any) {
+  //     alert(e.message || "Failed to update status");
+  //   }
+  // };
+
   const onChangeStatus = async (row: SalesClosure, newStatus: ResumeStatus) => {
-    try {
-      await updateStatus(row.lead_id, newStatus);
+  try {
+    await updateStatus(row.lead_id, newStatus);
 
-      if (newStatus === "completed" && !row.rp_pdf_path) {
-        // Ask for a file only if there's no PDF yet
-        setUploadForLead(row.lead_id);
-        setReplacingOldPath(null);
-        fileRef.current?.click();
-        if (myTasksOpen) await fetchMyTasks();
-
-      } else {
-        setRows((rs) => rs.map((r) => (r.lead_id === row.lead_id ? { ...r, rp_status: newStatus } : r)));
-      }
-    } catch (e: any) {
-      alert(e.message || "Failed to update status");
+    if (newStatus === "completed" && !row.rp_pdf_path) {
+      setUploadForLead(row.lead_id);
+      setReplacingOldPath(null);
+      setUploadContext(myTasksOpen ? "myTasks" : "main"); // 👈
+      fileRef.current?.click();
+      if (myTasksOpen) await fetchMyTasks();
+    } else {
+      setRows((rs) => rs.map((r) => (r.lead_id === row.lead_id ? { ...r, rp_status: newStatus } : r)));
     }
-  };
+  } catch (e: any) {
+    alert(e.message || "Failed to update status");
+  }
+};
+
 
   const onReplacePdf = (row: SalesClosure) => {
     setUploadForLead(row.lead_id);
@@ -2130,38 +2158,78 @@ badge_value: r.badge_value ?? null,
     fileRef.current?.click();
   };
 
+  // const onFilePicked = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  //   const file = e.target.files?.[0] || null;
+  //   const leadId = uploadForLead;
+  //   const oldPath = replacingOldPath;
+  //   e.target.value = "";
+  //   setUploadForLead(null);
+  //   setReplacingOldPath(null);
+
+  //   if (!file || !leadId) return;
+
+  //   try {
+  //     const { path } = await uploadOrReplaceResume(leadId, file, oldPath || undefined);
+  //     await fetchData();
+  //     if (myTasksOpen) await fetchMyTasks();
+
+  //     alert("PDF uploaded.");
+  //   } catch (err: any) {
+  //     alert(err.message || "Upload failed");
+  //     // Optional: rollback UI if you had optimistically set status=completed
+  //     await fetchData();
+  //     if (myTasksOpen) await fetchMyTasks();
+
+  //   }
+  // };
+
+
   const onFilePicked = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0] || null;
-    const leadId = uploadForLead;
-    const oldPath = replacingOldPath;
-    e.target.value = "";
-    setUploadForLead(null);
-    setReplacingOldPath(null);
+  const file = e.target.files?.[0] || null;
+  const leadId = uploadForLead;
+  const oldPath = replacingOldPath;
 
-    if (!file || !leadId) return;
+  e.target.value = "";
+  setUploadForLead(null);
+  setReplacingOldPath(null);
 
-    try {
-      const { path } = await uploadOrReplaceResume(leadId, file, oldPath || undefined);
+  if (!file || !leadId) return;
+
+  try {
+    await uploadOrReplaceResume(leadId, file, oldPath || undefined);
+
+    // 🔁 Refresh the correct dataset & persist where we are
+    if (uploadContext === "myTasks") {
+      await fetchMyTasks();
+      setMyTasksOpen(true); // ensure dialog stays open
+    } else {
       await fetchData();
-      if (myTasksOpen) await fetchMyTasks();
-
-      alert("PDF uploaded.");
-    } catch (err: any) {
-      alert(err.message || "Upload failed");
-      // Optional: rollback UI if you had optimistically set status=completed
-      await fetchData();
-      if (myTasksOpen) await fetchMyTasks();
-
     }
-  };
+
+    alert("PDF uploaded.");
+  } catch (err: any) {
+    alert(err.message || "Upload failed");
+
+    // Keep user in the same place even on failure
+    if (uploadContext === "myTasks") {
+      await fetchMyTasks();
+      setMyTasksOpen(true);
+    } else {
+      await fetchData();
+    }
+  }
+};
+
 
   /* =========================
      UI
      ========================= */
 
-  const renderTable = (data: SalesClosure[]) => (
+  // const renderTable = (data: SalesClosure[]) => (
+  const renderTable = (data: SalesClosure[], ctx: "main" | "myTasks" = "main") => (
+
     <div className="rounded-md border mt-4">
-      <input ref={fileRef} type="file" accept="application/pdf" className="hidden" onChange={onFilePicked} />
+      {/* <input ref={fileRef} type="file" accept="application/pdf" className="hidden" onChange={onFilePicked} /> */}
 
       <Table>
         {/* <TableHeader>
@@ -2366,7 +2434,7 @@ badge_value: r.badge_value ?? null,
               </TableCell>
 
               {/* Resume PDF */}
-              <TableCell className="space-x-2 min-w-[220px]">
+              {/* <TableCell className="space-x-2 min-w-[220px]">
                 {row.rp_pdf_path ? (
                   <>
                     <Button variant="outline" size="sm" onClick={() => downloadResume(row.rp_pdf_path!)}>
@@ -2390,7 +2458,44 @@ badge_value: r.badge_value ?? null,
                 ) : (
                   <span className="text-gray-400 text-sm">—</span>
                 )}
-              </TableCell>
+              </TableCell> */}
+
+              {/* // Inside renderTable(..., ctx) */}
+{/* Resume PDF */}
+<TableCell className="space-x-2 min-w-[220px]">
+  {row.rp_pdf_path ? (
+    <>
+      <Button variant="outline" size="sm" onClick={() => downloadResume(row.rp_pdf_path!)}>Download</Button>
+      <Button
+        variant="secondary"
+        size="sm"
+        onClick={() => {
+          setUploadForLead(row.lead_id);
+          setReplacingOldPath(row.rp_pdf_path ?? null);
+          setUploadContext(ctx);              // 👈 remember where we came from
+          fileRef.current?.click();
+        }}
+      >
+        Replace
+      </Button>
+    </>
+  ) : row.rp_status === "completed" ? (
+    <Button
+      size="sm"
+      onClick={() => {
+        setUploadForLead(row.lead_id);
+        setReplacingOldPath(null);
+        setUploadContext(ctx);                // 👈 remember where we came from
+        fileRef.current?.click();
+      }}
+    >
+      Upload PDF
+    </Button>
+  ) : (
+    <span className="text-gray-400 text-sm">—</span>
+  )}
+</TableCell>
+
 
               {/* Closed At */}
               <TableCell>{formatDateLabel(row.closed_at)}</TableCell>
@@ -2529,6 +2634,8 @@ badge_value: r.badge_value ?? null,
   return (
     <ProtectedRoute allowedRoles={["Super Admin", "Resume Head", "Resume Associate"]}>
       <DashboardLayout>
+              <input ref={fileRef} type="file" accept="application/pdf" className="hidden" onChange={onFilePicked} />
+
         <div className="space-y-6">
           {/* <div className="flex items-center justify-between">
             <h1 className="text-3xl font-bold text-gray-900">Resume Page</h1>
@@ -2594,7 +2701,9 @@ badge_value: r.badge_value ?? null,
               <TabsList className="grid grid-cols-1 w-full sm:w-auto">
                 <TabsTrigger value="resume">Resumes</TabsTrigger>
               </TabsList>
-              <TabsContent value="resume">{renderTable(rows)}</TabsContent>
+              {/* <TabsContent value="resume">{renderTable(rows)}</TabsContent> */}
+              <TabsContent value="resume">{renderTable(sortedRows, "main")}</TabsContent>
+
             </Tabs>
           )}
         </div>
@@ -2674,7 +2783,12 @@ badge_value: r.badge_value ?? null,
         </Dialog>
 
 <Dialog open={myTasksOpen} onOpenChange={setMyTasksOpen}>
-  <DialogContent className="max-w-7xl overflow-scroll">
+  {/* <DialogContent className="max-w-7xl overflow-scroll"> */}
+  <DialogContent
+  className="max-w-7xl overflow-scroll"
+  onPointerDownOutside={(e) => e.preventDefault()}
+  onEscapeKeyDown={(e) => e.preventDefault()}
+>
     <DialogHeader>
       <DialogTitle>My Tasks</DialogTitle>
       <DialogDescription>
@@ -2688,7 +2802,9 @@ badge_value: r.badge_value ?? null,
       <div className="p-6 text-sm text-red-600">{myTasksError}</div>
     ) : (
       // reuse the same table with full actions
-      renderTable(mySortedRows)
+      // renderTable(mySortedRows)
+      renderTable(mySortedRows, "myTasks")
+
     )}
 
     <DialogFooter className="gap-2">
