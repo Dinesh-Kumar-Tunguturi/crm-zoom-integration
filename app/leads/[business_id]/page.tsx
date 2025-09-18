@@ -2487,28 +2487,33 @@ export default function LeadProfilePage() {
 
   // const isSuper = (user?.role || "") === "Super Admin" ||;
 
-  const EDIT_ROLES = new Set([
-    "Marketing",
-    "Sales",
-    "Super Admin",
-    "Finance",
-    "Accounts",
-    "Resume Head",
-    "Technical Head",
-    "Sales Associate",
-  ]);
-  const isSuper = EDIT_ROLES.has(user?.role ?? "");
+  // const EDIT_ROLES = new Set([
+  //   "Marketing",
+  //   "Sales",
+  //   "Super Admin",
+  //   "Finance",
+  //   "Accounts",
+  //   "Resume Head",
+  //   "Technical Head",
+  //   "Sales Associate",
+  // ]);
+  // const isSuper = EDIT_ROLES.has(user?.role ?? "");
 
   const allowedRoles = [
-    "Marketing",
-    "Sales",
-    "Super Admin",
-    "Finance",
-    "Accounts",
-    "Resume Head",
-    "Technical Head",
-    "Sales Associate",
-  ];
+  "Marketing",
+  "Sales",
+  "Super Admin",
+  "Finance",
+  "Accounts",
+  "Resume Head",
+  "Technical Head",
+  "Sales Associate",
+];
+
+const norm = (s?: string | null) => (s ?? "").trim().toLowerCase();
+const ALLOWED_EDIT = new Set(allowedRoles.map(norm));
+const canEdit = ALLOWED_EDIT.has(norm(user?.role));
+
 
   // =========================
   // ROLE GATING FOR ADD-ONS
@@ -2540,7 +2545,9 @@ export default function LeadProfilePage() {
   ]);
 
   const canViewAddonDetails = ADDON_VIEW_ROLES.has(roleKey);
-  const canEditAddons = canViewAddonDetails;
+  // const canEditAddons = canViewAddonDetails;
+
+  const canEditAddons = canEdit;
 
   const latestSaleHasPayment =
     !!latestSale &&
@@ -2686,7 +2693,8 @@ export default function LeadProfilePage() {
 
   // ✅ Save onboarding edits
   const saveOnboarding = async () => {
-    if (!onboardingForm?.id) return;
+    if (!canEdit) { alert("You don’t have permission to edit."); return; }
+  if (!onboardingForm?.id) return;
 
     setSavingOnboarding(true);
     const payload: any = {
@@ -2718,7 +2726,8 @@ export default function LeadProfilePage() {
 
   // ✅ Save add-ons (latest sale row)
   const saveAddons = async () => {
-    if (!saleForm?.id) return;
+    if (!canEdit) { alert("You don’t have permission to edit."); return; }
+  if (!saleForm?.id) return;
 
     setSavingSale(true);
     const payload = {
@@ -2857,29 +2866,25 @@ export default function LeadProfilePage() {
 
           {/* Client onboarding details */}
           <Card className="h-full col-span-2 row-span-1 overflow-scroll">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-2xl font-bold">Client onboarding details</CardTitle>
+           <CardHeader className="flex flex-row items-center justify-between">
+  <CardTitle className="text-2xl font-bold">Client onboarding details</CardTitle>
 
-              {isSuper && (
-                <div className="flex items-center gap-2">
-                  {isEditOnboarding ? (
-                    <>
-                      <Button className="bg-blue-600" onClick={saveOnboarding} disabled={savingOnboarding || !onboardingForm}>
-                        {savingOnboarding ? <Loader2 className="animate-spin mr-2" /> : null}
-                        Save
-                      </Button>
-                      <Button variant="outline" onClick={() => setIsEditOnboarding(false)}>
-                        Cancel
-                      </Button>
-                    </>
-                  ) : (
-                    <Button variant="outline" onClick={() => setIsEditOnboarding(true)}>
-                      Edit
-                    </Button>
-                  )}
-                </div>
-              )}
-            </CardHeader>
+  {canEdit && (
+    <div className="flex items-center gap-2">
+      {isEditOnboarding ? (
+        <>
+          <Button className="bg-blue-600" onClick={saveOnboarding} disabled={savingOnboarding || !onboardingForm}>
+            {savingOnboarding ? <Loader2 className="animate-spin mr-2" /> : null}
+            Save
+          </Button>
+          <Button variant="outline" onClick={() => setIsEditOnboarding(false)}>Cancel</Button>
+        </>
+      ) : (
+        <Button variant="outline" onClick={() => setIsEditOnboarding(true)}>Edit</Button>
+      )}
+    </div>
+  )}
+</CardHeader>
 
             <CardContent>
               {!onboarding ? (
@@ -3101,7 +3106,7 @@ export default function LeadProfilePage() {
           </Card>
 
           {/* Add-ons & Requirements (ROLE-GATED) */}
-          <Card className="h-full col-span-1 row-span-1 overflow-auto">
+          {/* <Card className="h-full col-span-1 row-span-1 overflow-auto">
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-2xl font-bold">Add-ons & Requirements</CardTitle>
 
@@ -3127,7 +3132,6 @@ export default function LeadProfilePage() {
             </CardHeader>
 
             <CardContent className="space-y-3 text-sm">
-              {/* LIMITED VIEW FOR NON-AUTHORIZED ROLES */}
               {!canViewAddonDetails ? (
                 <div className="flex items-center justify-between border rounded-md px-4 py-6">
                   <div className="text-base font-medium">Status</div>
@@ -3140,7 +3144,6 @@ export default function LeadProfilePage() {
                   ) : (
                     <div className="space-y-3">
                       <div className="grid grid-cols-2 gap-2">
-                        {/* Resume */}
                         <div className="flex items-center justify-between border rounded-md px-3 py-2">
                           <span className="font-medium">Resume</span>
                           {isEditAddons ? (
@@ -3154,7 +3157,6 @@ export default function LeadProfilePage() {
                           )}
                         </div>
 
-                        {/* LinkedIn */}
                         <div className="flex items-center justify-between border rounded-md px-3 py-2">
                           <span className="font-medium">LinkedIn</span>
                           {isEditAddons ? (
@@ -3168,7 +3170,6 @@ export default function LeadProfilePage() {
                           )}
                         </div>
 
-                        {/* Portfolio */}
                         <div className="flex items-center justify-between border rounded-md px-3 py-2">
                           <span className="font-medium">Portfolio</span>
                           {isEditAddons ? (
@@ -3182,7 +3183,6 @@ export default function LeadProfilePage() {
                           )}
                         </div>
 
-                        {/* GitHub */}
                         <div className="flex items-center justify-between border rounded-md px-3 py-2">
                           <span className="font-medium">GitHub</span>
                           {isEditAddons ? (
@@ -3196,7 +3196,6 @@ export default function LeadProfilePage() {
                           )}
                         </div>
 
-                        {/* Custom */}
                         <div className="flex items-center justify-between border rounded-md px-3 py-2">
                           {isEditAddons ? (
                             <Input
@@ -3219,7 +3218,6 @@ export default function LeadProfilePage() {
                           )}
                         </div>
 
-                        {/* Job applications count */}
                         <div className="flex items-center justify-between border rounded-md px-3 py-2">
                           <span className="text-gray-700">job applications:</span>
                           {isEditAddons ? (
@@ -3238,7 +3236,6 @@ export default function LeadProfilePage() {
                         </div>
                       </div>
 
-                      {/* Commitments */}
                       <div className="border rounded-md p-3">
                         <div className="font-medium mb-1">Commitments</div>
                         {isEditAddons ? (
@@ -3254,7 +3251,6 @@ export default function LeadProfilePage() {
                         )}
                       </div>
 
-                      {/* Badge Value */}
                       <div className="flex items-center justify-between border rounded-md px-3 py-2">
                         <span className="font-medium">Badge</span>
                         {isEditAddons ? (
@@ -3275,7 +3271,377 @@ export default function LeadProfilePage() {
                 </>
               )}
             </CardContent>
-          </Card>
+          </Card> */}
+
+
+          <Card className="h-full col-span-1 row-span-1 overflow-auto">
+  <CardHeader className="flex flex-row items-center justify-between">
+    <CardTitle className="text-2xl font-bold">Add-ons & Requirements</CardTitle>
+
+    {canEditAddons && saleHistory.length > 0 && (
+      <div className="flex items-center gap-2">
+        {isEditAddons ? (
+          <>
+            <Button className="bg-blue-600" onClick={saveAddons} disabled={savingSale || !saleForm}>
+              {savingSale ? <Loader2 className="animate-spin mr-2" /> : null}
+              Save
+            </Button>
+            <Button variant="outline" onClick={() => setIsEditAddons(false)}>
+              Cancel
+            </Button>
+          </>
+        ) : (
+          <Button variant="outline" onClick={() => setIsEditAddons(true)}>
+            Edit
+          </Button>
+        )}
+      </div>
+    )}
+  </CardHeader>
+
+  {/* <CardContent className="space-y-3 text-sm">
+    {saleHistory.length === 0 ? (
+      <div className="text-gray-500 italic">No add-ons or commitments recorded yet.</div>
+    ) : (() => {
+        const latest = saleHistory[saleHistory.length - 1];
+
+        return (
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-2">
+              <div className="flex items-center justify-between border rounded-md px-3 py-2">
+                <span className="font-medium">Resume</span>
+                {allowedRoles.includes(user?.role || "") ? (
+                  isEditAddons ? (
+                    <Input
+                      className="w-24 h-8"
+                      value={saleForm?.resume_sale_value ?? ""}
+                      onChange={(e) => setSaleForm((p: any) => ({ ...p, resume_sale_value: e.target.value }))}
+                    />
+                  ) : (
+                    <span className="text-gray-700">{money(latest?.resume_sale_value)}</span>
+                  )
+                ) : (
+                  <Badge className="bg-green-100 text-green-700 border-green-200">Paid</Badge>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between border rounded-md px-3 py-2">
+                <span className="font-medium">LinkedIn</span>
+                {allowedRoles.includes(user?.role || "") ? (
+                  isEditAddons ? (
+                    <Input
+                      className="w-24 h-8"
+                      value={saleForm?.linkedin_sale_value ?? ""}
+                      onChange={(e) => setSaleForm((p: any) => ({ ...p, linkedin_sale_value: e.target.value }))}
+                    />
+                  ) : (
+                    <span className="text-gray-700">{money(latest?.linkedin_sale_value)}</span>
+                  )
+                ) : (
+                  <Badge className="bg-green-100 text-green-700 border-green-200">Paid</Badge>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between border rounded-md px-3 py-2">
+                <span className="font-medium">Portfolio</span>
+                {allowedRoles.includes(user?.role || "") ? (
+                  isEditAddons ? (
+                    <Input
+                      className="w-24 h-8"
+                      value={saleForm?.portfolio_sale_value ?? ""}
+                      onChange={(e) => setSaleForm((p: any) => ({ ...p, portfolio_sale_value: e.target.value }))}
+                    />
+                  ) : (
+                    <span className="text-gray-700">{money(latest?.portfolio_sale_value)}</span>
+                  )
+                ) : (
+                  <Badge className="bg-green-100 text-green-700 border-green-200">Paid</Badge>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between border rounded-md px-3 py-2">
+                <span className="font-medium">GitHub</span>
+                {allowedRoles.includes(user?.role || "") ? (
+                  isEditAddons ? (
+                    <Input
+                      className="w-24 h-8"
+                      value={saleForm?.github_sale_value ?? ""}
+                      onChange={(e) => setSaleForm((p: any) => ({ ...p, github_sale_value: e.target.value }))}
+                    />
+                  ) : (
+                    <span className="text-gray-700">{money(latest?.github_sale_value)}</span>
+                  )
+                ) : (
+                  <Badge className="bg-green-100 text-green-700 border-green-200">Paid</Badge>
+                )}
+              </div>
+
+             
+              <div className="flex items-center justify-between border rounded-md px-3 py-2">
+                <span className="text-gray-700">{latest?.custom_label || "Custom add on sales"}</span>
+                {allowedRoles.includes(user?.role || "") ? (
+                  isEditAddons ? (
+                    <Input
+                      className="mr-2"
+                      value={saleForm?.custom_label ?? ""}
+                      onChange={(e) => setSaleForm((p: any) => ({ ...p, custom_label: e.target.value }))}
+                      placeholder="Custom add on sales"
+                    />
+                  ) : (
+                    <span className="text-gray-700">{money(latest?.custom_sale_value)}</span>
+                  )
+                ) : (
+                  <Badge className="bg-green-100 text-green-700 border-green-200">Paid</Badge>
+                )}
+              </div>
+            </div>
+
+            <div className="border rounded-md p-3">
+              <div className="font-medium mb-1">Commitments</div>
+              {isEditAddons ? (
+                <Textarea
+                  rows={3}
+                  value={saleForm?.commitments ?? ""}
+                  onChange={(e) => setSaleForm((p: any) => ({ ...p, commitments: e.target.value }))}
+                />
+              ) : (
+                <div className="text-gray-700 whitespace-pre-wrap">
+                  {latest?.commitments?.trim() ? latest.commitments : "—"}
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between border rounded-md px-3 py-2">
+              <span className="font-medium">Badge</span>
+              {isEditAddons ? (
+                <Input
+                  className="w-24 h-8"
+                  value={saleForm?.badge_value ?? ""}
+                  onChange={(e) => setSaleForm((p: any) => ({ ...p, badge_value: e.target.value }))}
+                  placeholder="0.00"
+                />
+              ) : (
+                <span className="text-gray-700">{money(latest?.badge_value)}</span>
+              )}
+            </div>
+
+            <div className="text-xs text-gray-500">Showing latest sale/renewal add-ons.</div>
+          </div>
+        );
+    })()}
+  </CardContent> */}
+
+
+<CardContent className="space-y-3 text-sm">
+  {saleHistory.length === 0 ? (
+    <div className="text-gray-500 italic">
+      No add-ons or commitments recorded yet.
+    </div>
+  ) : (() => {
+      const latest = saleHistory[saleHistory.length - 1];
+
+      return (
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-2">
+            {/* Resume */}
+            <div className="flex items-center justify-between border rounded-md px-3 py-2">
+              <span className="font-medium">Resume</span>
+              {allowedRoles.includes(user?.role || "") ? (
+                isEditAddons ? (
+                  <Input
+                    className="w-24 h-8"
+                    value={saleForm?.resume_sale_value ?? ""}
+                    onChange={(e) =>
+                      setSaleForm((p: any) => ({
+                        ...p,
+                        resume_sale_value: e.target.value,
+                      }))
+                    }
+                  />
+                ) : (
+                  <span className="text-gray-700">
+                    {money(latest?.resume_sale_value)}
+                  </span>
+                )
+              ) : latest?.resume_sale_value ? (
+                <Badge className="bg-green-100 text-green-700 border-green-200">
+                  Paid
+                </Badge>
+              ) : (
+                <span className="text-gray-400">—</span>
+              )}
+            </div>
+
+            {/* LinkedIn */}
+            <div className="flex items-center justify-between border rounded-md px-3 py-2">
+              <span className="font-medium">LinkedIn</span>
+              {allowedRoles.includes(user?.role || "") ? (
+                isEditAddons ? (
+                  <Input
+                    className="w-24 h-8"
+                    value={saleForm?.linkedin_sale_value ?? ""}
+                    onChange={(e) =>
+                      setSaleForm((p: any) => ({
+                        ...p,
+                        linkedin_sale_value: e.target.value,
+                      }))
+                    }
+                  />
+                ) : (
+                  <span className="text-gray-700">
+                    {money(latest?.linkedin_sale_value)}
+                  </span>
+                )
+              ) : latest?.linkedin_sale_value ? (
+                <Badge className="bg-green-100 text-green-700 border-green-200">
+                  Paid
+                </Badge>
+              ) : (
+                <span className="text-gray-400">—</span>
+              )}
+            </div>
+
+            {/* Portfolio */}
+            <div className="flex items-center justify-between border rounded-md px-3 py-2">
+              <span className="font-medium">Portfolio</span>
+              {allowedRoles.includes(user?.role || "") ? (
+                isEditAddons ? (
+                  <Input
+                    className="w-24 h-8"
+                    value={saleForm?.portfolio_sale_value ?? ""}
+                    onChange={(e) =>
+                      setSaleForm((p: any) => ({
+                        ...p,
+                        portfolio_sale_value: e.target.value,
+                      }))
+                    }
+                  />
+                ) : (
+                  <span className="text-gray-700">
+                    {money(latest?.portfolio_sale_value)}
+                  </span>
+                )
+              ) : latest?.portfolio_sale_value ? (
+                <Badge className="bg-green-100 text-green-700 border-green-200">
+                  Paid
+                </Badge>
+              ) : (
+                <span className="text-gray-400">—</span>
+              )}
+            </div>
+
+            {/* GitHub */}
+            <div className="flex items-center justify-between border rounded-md px-3 py-2">
+              <span className="font-medium">GitHub</span>
+              {allowedRoles.includes(user?.role || "") ? (
+                isEditAddons ? (
+                  <Input
+                    className="w-24 h-8"
+                    value={saleForm?.github_sale_value ?? ""}
+                    onChange={(e) =>
+                      setSaleForm((p: any) => ({
+                        ...p,
+                        github_sale_value: e.target.value,
+                      }))
+                    }
+                  />
+                ) : (
+                  <span className="text-gray-700">
+                    {money(latest?.github_sale_value)}
+                  </span>
+                )
+              ) : latest?.github_sale_value ? (
+                <Badge className="bg-green-100 text-green-700 border-green-200">
+                  Paid
+                </Badge>
+              ) : (
+                <span className="text-gray-400">—</span>
+              )}
+            </div>
+
+            {/* Custom */}
+            <div className="flex items-center justify-between border rounded-md px-3 py-2">
+              <span className="text-gray-700">
+                {latest?.custom_label || "Custom add on sales"}
+              </span>
+              {allowedRoles.includes(user?.role || "") ? (
+                isEditAddons ? (
+                  <Input
+                    className="mr-2"
+                    value={saleForm?.custom_label ?? ""}
+                    onChange={(e) =>
+                      setSaleForm((p: any) => ({
+                        ...p,
+                        custom_label: e.target.value,
+                      }))
+                    }
+                    placeholder="Custom add on sales"
+                  />
+                ) : (
+                  <span className="text-gray-700">
+                    {money(latest?.custom_sale_value)}
+                  </span>
+                )
+              ) : latest?.custom_sale_value ? (
+                <Badge className="bg-green-100 text-green-700 border-green-200">
+                  Paid
+                </Badge>
+              ) : (
+                <span className="text-gray-400">—</span>
+              )}
+            </div>
+          </div>
+
+          {/* Commitments */}
+          <div className="border rounded-md p-3">
+            <div className="font-medium mb-1">Commitments</div>
+            {isEditAddons ? (
+              <Textarea
+                rows={3}
+                value={saleForm?.commitments ?? ""}
+                onChange={(e) =>
+                  setSaleForm((p: any) => ({
+                    ...p,
+                    commitments: e.target.value,
+                  }))
+                }
+              />
+            ) : (
+              <div className="text-gray-700 whitespace-pre-wrap">
+                {latest?.commitments?.trim() ? latest.commitments : "—"}
+              </div>
+            )}
+          </div>
+
+          {/* Badge Value */}
+          <div className="flex items-center justify-between border rounded-md px-3 py-2">
+            <span className="font-medium">Badge</span>
+            {isEditAddons ? (
+              <Input
+                className="w-24 h-8"
+                value={saleForm?.badge_value ?? ""}
+                onChange={(e) =>
+                  setSaleForm((p: any) => ({
+                    ...p,
+                    badge_value: e.target.value,
+                  }))
+                }
+                placeholder="0.00"
+              />
+            ) : (
+              <span className="text-gray-700">{money(latest?.badge_value)}</span>
+            )}
+          </div>
+
+          <div className="text-xs text-gray-500">
+            Showing latest sale/renewal add-ons.
+          </div>
+        </div>
+      );
+  })()}
+</CardContent>
+</Card>
+
 
           {/*  Client Feedback (Left, Bottom) */}
           <Card className="h-full col-span-1 row-span-1">
