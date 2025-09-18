@@ -903,6 +903,7 @@ const [latestOnboardRowId, setLatestOnboardRowId] = useState<string | null>(null
 
 // form values in the dialog
 const [obFullName, setObFullName] = useState("");
+const [obPersonalEmail, setObPersonalEmail] = useState("");
 const [obCompanyEmail, setObCompanyEmail] = useState("");
 const [obCallablePhone, setObCallablePhone] = useState("");
 const [obJobRolesText, setObJobRolesText] = useState("");      // comma-separated
@@ -978,9 +979,7 @@ const csvToArray = (s: string) => s.split(",").map(v => v.trim()).filter(Boolean
 
   // If still empty, don’t spam console — just set empty list.
   setResumeTeamMembers(members);
-  // Optional: only log a single concise message if we truly got nothing and had an error.
-  // (Prevents `{}` noise)
-  // if (members.length === 0 && errMsg) console.warn("No resume team members available:", errMsg);
+
 };
 
 // ---- Sorting ----
@@ -1281,6 +1280,10 @@ const fetchData = async (opts?: { assigneeEmail?: string | null; unassigned?: bo
 };
 
 
+const validateEmail = (email: string) => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+};
 
   /* =========================
      Gate + initial load
@@ -1297,27 +1300,7 @@ const fetchData = async (opts?: { assigneeEmail?: string | null; unassigned?: bo
     Promise.all([fetchTeamMembers(), fetchData()]).finally(() => setLoading(false));
   }, [user, router]);
 
-  /* =========================
-     Onboarding date updates
-     ========================= */
-
-  // const updateOnboardedDate = async (leadId: string, date: string) => {
-  //   const { error } = await supabase
-  //     .from("sales_closure")
-  //     .update({ onboarded_date: date })
-  //     .eq("lead_id", leadId);
-
-  //   if (error) {
-  //     console.error("Error updating onboarded_date", error);
-  //     alert(error.message || "Failed to update onboarded date");
-  //   } else {
-  //     alert("Onboarded date updated successfully!");
-  //     setShowDatePicker(false);
-  //     setSelectedDate(null);
-  //     setCurrentLeadId(null);
-  //     await fetchData();
-  //   }
-  // };
+  
 
   const loadLatestOnboardingForLead = async (leadId: string, fallbackEmail?: string) => {
   setDialogLoading(true);
@@ -1347,11 +1330,14 @@ const fetchData = async (opts?: { assigneeEmail?: string | null; unassigned?: bo
   .limit(1)
   .maybeSingle();
 
+  
+
 
   // 4b) Prefill form from DB (or sane defaults)
 if (!error && row) {
   setLatestOnboardRowId(row.id);
   setObFullName(row.full_name ?? "");
+  setObPersonalEmail(row.personal_email ?? "");
   setObCompanyEmail(row.company_email ?? "");
   setObCallablePhone(row.callable_phone ?? "");
   setObJobRolesText(csvFromArray(row.job_role_preferences));
@@ -1369,6 +1355,7 @@ if (!error && row) {
 } else {
   setLatestOnboardRowId(null);
   setObFullName("");
+  setObPersonalEmail("");
   setObCompanyEmail("");
   setObCallablePhone("");
   setObJobRolesText("");
@@ -1399,236 +1386,6 @@ const handleOnboardClick = async (row: SalesClosure) => {
   await loadLatestOnboardingForLead(row.lead_id, row.email);
 };
 
-  // const handleSubmitDate = () => {
-  //   if (selectedDate && currentLeadId) {
-  //     updateOnboardedDate(currentLeadId, selectedDate);
-  //   } else {
-  //     alert("Please select a date.");
-  //   }
-  // };
-
-
-  // Writes/updates a pending_clients row using latest onboarding row + lead's email
-// const writePendingClientFromLead = async (leadId: string) => {
-//   // a) Latest onboarding details for the lead
-//   const { data: ob, error: obErr } = await supabase
-//     .from("client_onborading_details")
-//     .select(`
-//       full_name,
-//       whatsapp_number,
-//       callable_phone,
-//       company_email,
-//       job_role_preferences,
-//       salary_range,
-//       location_preferences,
-//       work_auth_details,
-//       created_at
-//     `)
-//     .eq("lead_id", leadId)
-//     .order("created_at", { ascending: false })
-//     .limit(1)
-//     .maybeSingle();
-
-//   if (obErr) throw obErr;
-//   if (!ob) throw new Error("No onboarding details found for this client.");
-
-//   // b) Personal email comes from leads.email (via business_id == leadId)
-//   const { data: lead, error: leadErr } = await supabase
-//     .from("leads")
-//     .select("email")
-//     .eq("business_id", leadId)
-//     .maybeSingle();
-
-//   if (leadErr) throw leadErr;
-//   if (!lead?.email) throw new Error("Lead record missing email.");
-
-//   const personalEmail = lead.email;
-
-//   // c) If a row already exists for this personal_email, update; else insert (preserve created_at on first insert)
-//   const { data: existing, error: existErr } = await supabase
-//     .from("pending_clients")
-//     .select("id, created_at")
-//     .eq("personal_email", personalEmail)
-//     .maybeSingle();
-
-//   if (existErr && (existErr as any).code !== "PGRST116") throw existErr;
-
-//   const basePayload = {
-//     full_name: ob.full_name,
-//     personal_email: personalEmail,
-//     whatsapp_number: ob.whatsapp_number ?? null,
-//     callable_phone: ob.callable_phone ?? null,
-//     company_email: ob.company_email ?? null,
-//     job_role_preferences: ob.job_role_preferences ?? null,
-//     salary_range: ob.salary_range ?? null,
-//     location_preferences: ob.location_preferences ?? null,
-//     work_auth_details: ob.work_auth_details ?? null,
-//     submitted_by: user?.id ?? null, // assumes your auth-provider exposes auth uid here
-//   } as const;
-
-//   // Include created_at only on first insert to keep original timestamp stable
-//   if (!existing) {
-//     const { error: insErr } = await supabase
-//       .from("pending_clients")
-//       .upsert(
-//         {
-//           ...basePayload,
-//           created_at: ob.created_at ?? new Date().toISOString(),
-//         },
-//         { onConflict: "personal_email" }
-//       );
-//     if (insErr) throw insErr;
-//   } else {
-//     const { error: updErr } = await supabase
-//       .from("pending_clients")
-//       .upsert(basePayload, { onConflict: "personal_email" });
-//     if (updErr) throw updErr;
-//   }
-// };
-
-
-// // Writes/updates Project-B.pending_clients via server API
-// const writePendingClientFromLead = async (leadId: string) => {
-//   // a) Read latest onboarding details from Project-A (unchanged)
-//   const { data: ob, error: obErr } = await supabase
-//     .from("client_onborading_details") // keep your existing table name
-//     .select(`
-//       full_name,
-//       whatsapp_number,
-//       callable_phone,
-//       company_email,
-//       job_role_preferences,
-//       salary_range,
-//       location_preferences,
-//       work_auth_details,
-//       created_at, 
-//       lead_id
-//     `)
-//     .eq("lead_id", leadId)
-//     .order("created_at", { ascending: false })
-//     .limit(1)
-//     .maybeSingle();
-//     console.log("Onboarding details:", ob);
-//   if (obErr) throw obErr;
-//   if (!ob) throw new Error("No onboarding details found for this client.");
-
-//   // b) Get personal email from Project-A leads
-//   const { data: lead, error: leadErr } = await supabase
-//     .from("leads")
-//     .select("email")
-//     .eq("business_id", leadId)
-//     .maybeSingle();
-//   if (leadErr) throw leadErr;
-//   if (!lead?.email) throw new Error("Lead record missing email.");
-//   const personalEmail = lead.email as string;
-
-//   // c) Compose payload for Project-B
-//   const pcPayload = {
-//     full_name: ob.full_name,
-//     personal_email: personalEmail,
-//     whatsapp_number: ob.whatsapp_number ?? null,
-//     callable_phone: ob.callable_phone ?? null,
-//     company_email: ob.company_email ?? null,
-//     job_role_preferences: ob.job_role_preferences ?? null,
-//     salary_range: ob.salary_range ?? null,
-//     location_preferences: ob.location_preferences ?? null,
-//     work_auth_details: ob.work_auth_details ?? null,
-//     submitted_by: null,                 // ⚠ if FK won't match in Project-B, this can be null
-//     created_at: ob.created_at ?? new Date().toISOString(), // only used on first insert
-   
-//   };
-//   console.log("Pending client payload:", pcPayload);
-
-//   // d) Send to our server route (writes into Project-B)
-//   const res = await fetch("/api/pending-clients/upsert", {
-//     method: "POST",
-//     headers: { "Content-Type": "application/json" },
-//     body: JSON.stringify(pcPayload),
-//   });
-//   if (!res.ok) {
-//     const j = await res.json().catch(() => ({}));
-//     throw new Error(j.error || "Failed to upsert pending_client in Project-B");
-//   }
-// };
-
-
-// Writes/updates Project-B.pending_clients via server API
-// const writePendingClientFromLead = async (leadId: string) => {
-//   // a) Read latest onboarding details from Project-A
-//   const { data: ob, error: obErr } = await supabase
-//     .from("client_onborading_details")
-//     .select(`
-//       full_name,
-//       whatsapp_number,
-//       callable_phone,
-//       company_email,
-//       job_role_preferences,
-//       salary_range,
-//       location_preferences,
-//       work_auth_details,
-//       created_at,
-//       lead_id,
-//       needs_sponsorship,
-//       visatypes
-//     `)
-//     .eq("lead_id", leadId)
-//     .order("created_at", { ascending: false })
-//     .limit(1)
-//     .maybeSingle();
-
-//     console.log("Onboarding details:", ob);
-//   if (obErr) throw obErr;
-//   if (!ob) throw new Error("No onboarding details found for this client.");
-
-//   // b) Get personal email from leads
-//   const { data: lead, error: leadErr } = await supabase
-//     .from("leads")
-//     .select("email")
-//     .eq("business_id", leadId)
-//     .maybeSingle();
-//   if (leadErr) throw leadErr;
-//   if (!lead?.email) throw new Error("Lead record missing email.");
-//   const personalEmail = lead.email as string;
-
-//   // c) Normalize visa type and sponsorship from onboarding row
-//   const visaValue =
-//     ob.visatypes ?? (ob as any).visaType ?? null; // any of the spellings
-//   const sponsorshipValue =
-//     typeof ob.needs_sponsorship === "boolean" ? ob.needs_sponsorship : null;
-
-//   // d) Compose payload for Project-B (pending_clients)
-//   const pcPayload = {
-//     full_name: ob.full_name,
-//     personal_email: personalEmail,
-//     whatsapp_number: ob.whatsapp_number ?? null,
-//     callable_phone: ob.callable_phone ?? null,
-//     company_email: ob.company_email ?? null,
-//     job_role_preferences: ob.job_role_preferences ?? null,
-//     salary_range: ob.salary_range ?? null,
-//     location_preferences: ob.location_preferences ?? null,
-//     work_auth_details: ob.work_auth_details ?? null,
-
-//     // ✅ NEW fields going to pending_clients:
-//     visa_type: ob.visatypes,             // maps from visatypes/visa_type/visaType
-//     sponsorship: ob.needs_sponsorship,    // maps from needs_sponsorship
-//     applywizz_id: ob.lead_id,             // optional but recommended
-
-//     // Keep created_at only for insert (handled in the API below)
-//     created_at: ob.created_at ?? new Date().toISOString(),
-//   };
-//   console.log("Pending client payload:", pcPayload);
-
-//   // e) Call server route that writes into pending_clients
-//   const res = await fetch("/api/pending-clients/upsert", {
-//     method: "POST",
-//     headers: { "Content-Type": "application/json" },
-//     body: JSON.stringify(pcPayload),
-//   });
-//   if (!res.ok) {
-//     const j = await res.json().catch(() => ({}));
-//     throw new Error(j.error || "Failed to upsert pending_client in Project-B");
-//   }
-// };
 
 
 // Writes/updates Project-B.pending_clients via server API
@@ -1639,6 +1396,7 @@ const writePendingClientFromLead = async (leadId: string) => {
     .select(`
       full_name,
       whatsapp_number,
+    personal_email,
       callable_phone,
       company_email,
       job_role_preferences,
@@ -1657,20 +1415,17 @@ const writePendingClientFromLead = async (leadId: string) => {
   if (obErr) throw obErr;
   if (!ob) throw new Error("No onboarding details found for this client.");
 
-  // b) Get personal email from leads
-  const { data: lead, error: leadErr } = await supabase
-    .from("leads")
-    .select("email")
-    .eq("business_id", leadId)
-    .maybeSingle();
-  if (leadErr) throw leadErr;
-  if (!lead?.email) throw new Error("Lead record missing email.");
-  const personalEmail = lead.email as string;
+  
+
+
+
+// const personalEmail = lead?.email || "not given"; // Default to "not given" if email is missing
+
 
   // c) ✅ Get latest badge_value from sales_closure for this lead
   const { data: scRow, error: scErr } = await supabase
     .from("sales_closure")
-    .select("badge_value, closed_at")
+    .select("badge_value, closed_at, email")
     .eq("lead_id", leadId)
     .order("closed_at", { ascending: false, nullsFirst: false })
     .limit(1)
@@ -1684,7 +1439,7 @@ const writePendingClientFromLead = async (leadId: string) => {
   // d) Compose payload for pending_clients
   const pcPayload = {
     full_name: ob.full_name,
-    personal_email: personalEmail,
+    personal_email: ob.personal_email,
     whatsapp_number: ob.whatsapp_number ?? null,
     callable_phone: ob.callable_phone ?? null,
     company_email: ob.company_email ?? null,
@@ -1720,7 +1475,103 @@ const writePendingClientFromLead = async (leadId: string) => {
 
 
 
-  const saveOnboardAndDetails = async () => {
+//   const saveOnboardAndDetails = async () => {
+//   if (!currentLeadId || !currentSaleId) {
+//     alert("Missing context to save."); 
+//     return;
+//   }
+//   if (!obDate) {
+//     alert("Please choose an Onboarded Date.");
+//     return;
+//   }
+
+//   setDialogLoading(true);
+//   try {
+   
+
+
+// const payload = {
+//   full_name: obFullName || null,
+//   company_email: obCompanyEmail || null,
+//   personal_email: obPersonalEmail, // ✅ added here
+//   callable_phone: obCallablePhone || null,
+//   job_role_preferences: csvToArray(obJobRolesText),
+//   location_preferences: csvToArray(obLocationsText),
+//   salary_range: obSalaryRange || null,
+//   work_auth_details: obWorkAuth || null,
+//   needs_sponsorship: obNeedsSponsorship,
+//   full_address: obFullAddress || null,
+//   linkedin_url: obLinkedInUrl || null,
+//   date_of_birth: obDob || null,
+//   lead_id: currentLeadId,
+// };
+
+
+// if (latestOnboardRowId) {
+//   console.log("Updating data", payload);
+//   const { error: updErr } = await supabase
+//     .from("client_onborading_details")
+//     .update(payload)
+//     .eq("id", latestOnboardRowId);
+//   if (updErr) throw updErr;
+// } else {
+//   // insert (also set personal_email from sale row’s email like before)
+//   const saleRow = rows.find(r => r.id === currentSaleId);
+//   const personalEmail = saleRow?.email ?? "";
+
+//   const { error: insErr } = await supabase
+//     .from("client_onborading_details")
+//     .insert({
+//       ...payload,
+//       personal_email: personalEmail,
+//     });
+//   if (insErr) throw insErr;
+// }
+
+// // UPDATE sales_closure: onboarded_date + company_application_email
+// const { error: saleErr } = await supabase
+//   .from("sales_closure")
+//   .update({
+//     onboarded_date: obDate,
+//     company_application_email: obCompanyEmail || null,
+//   })
+//   .eq("id", currentSaleId);
+// if (saleErr) throw saleErr;
+
+
+
+// // 🔹 NEW: Mirror data into pending_clients
+// await writePendingClientFromLead(currentLeadId);
+
+//     // c) Refresh table with current filter preserved
+//     await fetchData(
+//       assigneeFilter === "__all__"
+//         ? undefined
+//         : assigneeFilter === "__unassigned__"
+//         ? { unassigned: true }
+//         : { assigneeEmail: assigneeFilter }
+//     );
+
+//     setShowOnboardDialog(false);
+//     setCurrentLeadId(null);
+//     setCurrentSaleId(null);
+//     setLatestOnboardRowId(null);
+//     setObDate("");
+//   } catch (e: any) {
+//     console.error(e);
+//     alert(e?.message || "Failed to save onboarding details");
+//   } finally {
+//     setDialogLoading(false);
+//   }
+// };
+
+
+
+const saveOnboardAndDetails = async () => {
+
+  
+   
+
   if (!currentLeadId || !currentSaleId) {
     alert("Missing context to save."); 
     return;
@@ -1730,63 +1581,81 @@ const writePendingClientFromLead = async (leadId: string) => {
     return;
   }
 
+  // // Validate the email format
+  
+
   setDialogLoading(true);
   try {
-    // a) Upsert latest onboarding details (update latest row if exists, else insert a new one)
- const payload = {
-  full_name: obFullName || null,
-  company_email: obCompanyEmail || null,
-  callable_phone: obCallablePhone || null,
-  job_role_preferences: csvToArray(obJobRolesText),
-  location_preferences: csvToArray(obLocationsText),
-  salary_range: obSalaryRange || null,
-  work_auth_details: obWorkAuth || null,
-  // NEW fields
-  needs_sponsorship: obNeedsSponsorship,
-  full_address: obFullAddress || null,
-  linkedin_url: obLinkedInUrl || null,
-  date_of_birth: obDob || null, // 'YYYY-MM-DD'
-  // key
-  lead_id: currentLeadId,
-};
 
-if (latestOnboardRowId) {
-  console.log("Updating data", payload);
-  const { error: updErr } = await supabase
-    .from("client_onborading_details")
-    .update(payload)
-    .eq("id", latestOnboardRowId);
-  if (updErr) throw updErr;
-} else {
-  // insert (also set personal_email from sale row’s email like before)
-  const saleRow = rows.find(r => r.id === currentSaleId);
-  const personalEmail = saleRow?.email ?? "";
+ const { data: lead, error: leadErr } = await supabase
+  .from("client_onborading_details")
+  .select("personal_email")
+  .eq("lead_id", currentLeadId)
+  .maybeSingle();
 
-  const { error: insErr } = await supabase
-    .from("client_onborading_details")
-    .insert({
-      ...payload,
-      personal_email: personalEmail || "",
-    });
-  if (insErr) throw insErr;
-}
+  if (!leadErr && lead) {
 
-// UPDATE sales_closure: onboarded_date + company_application_email
-const { error: saleErr } = await supabase
-  .from("sales_closure")
-  .update({
-    onboarded_date: obDate,
-    company_application_email: obCompanyEmail || null,
-  })
-  .eq("id", currentSaleId);
-if (saleErr) throw saleErr;
+  setObPersonalEmail(lead.personal_email);
+  }
+ 
+if (leadErr) throw leadErr;
+if (!validateEmail(obPersonalEmail)) {
+    alert("Invalid email format.");
+    return;
+  }
 
 
+    // Prepare the payload for client_onboarding_details
+    const payload = {
+      full_name: obFullName || null,
+      company_email: obCompanyEmail || null,
+      personal_email: obPersonalEmail, // Ensure the email is valid
+      callable_phone: obCallablePhone || null,
+      job_role_preferences: csvToArray(obJobRolesText),
+      location_preferences: csvToArray(obLocationsText),
+      salary_range: obSalaryRange || null,
+      work_auth_details: obWorkAuth || null,
+      needs_sponsorship: obNeedsSponsorship,
+      full_address: obFullAddress || null,
+      linkedin_url: obLinkedInUrl || null,
+      date_of_birth: obDob || null,
+      lead_id: currentLeadId,
+    };
 
-// 🔹 NEW: Mirror data into pending_clients
-await writePendingClientFromLead(currentLeadId);
+    // Update or insert into client_onboarding_details
+    if (latestOnboardRowId) {
+      const { error: updErr } = await supabase
+        .from("client_onborading_details")
+        .update(payload)
+        .eq("id", latestOnboardRowId);
+      if (updErr) throw updErr;
+    } else {
+      const saleRow = rows.find(r => r.id === currentSaleId);
+      const personalEmail = saleRow?.email ?? "";
 
-    // c) Refresh table with current filter preserved
+      const { error: insErr } = await supabase
+        .from("client_onborading_details")
+        .insert({
+          ...payload,
+          personal_email: personalEmail,
+        });
+      if (insErr) throw insErr;
+    }
+
+    // UPDATE sales_closure with onboarded_date
+    const { error: saleErr } = await supabase
+      .from("sales_closure")
+      .update({
+        onboarded_date: obDate,
+        company_application_email: obCompanyEmail || null,
+      })
+      .eq("id", currentSaleId);
+    if (saleErr) throw saleErr;
+
+    // Mirror data into pending_clients
+    await writePendingClientFromLead(currentLeadId);
+
+    // Refresh table with current filter preserved
     await fetchData(
       assigneeFilter === "__all__"
         ? undefined
@@ -2114,24 +1983,7 @@ badge_value: r.badge_value ?? null,
     }
   };
 
-  // const onChangeStatus = async (row: SalesClosure, newStatus: ResumeStatus) => {
-  //   try {
-  //     await updateStatus(row.lead_id, newStatus);
-
-  //     if (newStatus === "completed" && !row.rp_pdf_path) {
-  //       // Ask for a file only if there's no PDF yet
-  //       setUploadForLead(row.lead_id);
-  //       setReplacingOldPath(null);
-  //       fileRef.current?.click();
-  //       if (myTasksOpen) await fetchMyTasks();
-
-  //     } else {
-  //       setRows((rs) => rs.map((r) => (r.lead_id === row.lead_id ? { ...r, rp_status: newStatus } : r)));
-  //     }
-  //   } catch (e: any) {
-  //     alert(e.message || "Failed to update status");
-  //   }
-  // };
+  
 
   const onChangeStatus = async (row: SalesClosure, newStatus: ResumeStatus) => {
   try {
@@ -2158,30 +2010,7 @@ badge_value: r.badge_value ?? null,
     fileRef.current?.click();
   };
 
-  // const onFilePicked = async (e: React.ChangeEvent<HTMLInputElement>) => {
-  //   const file = e.target.files?.[0] || null;
-  //   const leadId = uploadForLead;
-  //   const oldPath = replacingOldPath;
-  //   e.target.value = "";
-  //   setUploadForLead(null);
-  //   setReplacingOldPath(null);
-
-  //   if (!file || !leadId) return;
-
-  //   try {
-  //     const { path } = await uploadOrReplaceResume(leadId, file, oldPath || undefined);
-  //     await fetchData();
-  //     if (myTasksOpen) await fetchMyTasks();
-
-  //     alert("PDF uploaded.");
-  //   } catch (err: any) {
-  //     alert(err.message || "Upload failed");
-  //     // Optional: rollback UI if you had optimistically set status=completed
-  //     await fetchData();
-  //     if (myTasksOpen) await fetchMyTasks();
-
-  //   }
-  // };
+  
 
 
   const onFilePicked = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -2221,24 +2050,13 @@ badge_value: r.badge_value ?? null,
 };
 
 
-  /* =========================
-     UI
-     ========================= */
-
-  // const renderTable = (data: SalesClosure[]) => (
+ 
   const renderTable = (data: SalesClosure[], ctx: "main" | "myTasks" = "main") => (
 
     <div className="rounded-md border mt-4">
-      {/* <input ref={fileRef} type="file" accept="application/pdf" className="hidden" onChange={onFilePicked} /> */}
 
       <Table>
-        {/* <TableHeader>
-          <TableRow>
-            {RESUME_COLUMNS.map((c) => (
-              <TableHead key={c}>{c}</TableHead>
-            ))}
-          </TableRow>
-        </TableHeader> */}
+       
         <TableHeader>
   <TableRow>
     <TableHead>S.No</TableHead>
@@ -2433,34 +2251,7 @@ badge_value: r.badge_value ?? null,
                 </Select>
               </TableCell>
 
-              {/* Resume PDF */}
-              {/* <TableCell className="space-x-2 min-w-[220px]">
-                {row.rp_pdf_path ? (
-                  <>
-                    <Button variant="outline" size="sm" onClick={() => downloadResume(row.rp_pdf_path!)}>
-                      Download
-                    </Button>
-                    <Button variant="secondary" size="sm" onClick={() => onReplacePdf(row)}>
-                      Replace
-                    </Button>
-                  </>
-                ) : row.rp_status === "completed" ? (
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      setUploadForLead(row.lead_id);
-                      setReplacingOldPath(null);
-                      fileRef.current?.click();
-                    }}
-                  >
-                    Upload PDF
-                  </Button>
-                ) : (
-                  <span className="text-gray-400 text-sm">—</span>
-                )}
-              </TableCell> */}
-
-              {/* // Inside renderTable(..., ctx) */}
+             
 {/* Resume PDF */}
 <TableCell className="space-x-2 min-w-[220px]">
   {row.rp_pdf_path ? (
@@ -2708,27 +2499,7 @@ badge_value: r.badge_value ?? null,
           )}
         </div>
 
-        {/* Date Picker Modal for Onboarding */}
-        {/* {showDatePicker && (
-          <Dialog open={showDatePicker} onOpenChange={setShowDatePicker}>
-            <DialogContent className="max-w-sm">
-              <DialogHeader>
-                <DialogTitle>Select Onboard Date</DialogTitle>
-                <DialogDescription>Please select the date to onboard the client.</DialogDescription>
-              </DialogHeader>
-              <input
-                type="date"
-                value={selectedDate || ""}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="w-full p-2 border rounded-md"
-              />
-              <DialogFooter>
-                <Button onClick={() => setShowDatePicker(false)}>Cancel</Button>
-                <Button onClick={handleSubmitDate}>Submit</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        )} */}
+      
 
         {/* Requirements Dialog */}
         <Dialog open={reqDialogOpen} onOpenChange={setReqDialogOpen}>
@@ -2839,6 +2610,28 @@ badge_value: r.badge_value ?? null,
             <Input value={obCompanyEmail} onChange={(e) => setObCompanyEmail(e.target.value)} />
           </div>
         </div>
+
+{/* Personal & Company Email */}
+{/* <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+  <div className="space-y-1.5">
+    <Label>Personal Email</Label>
+    <Input
+      type="email"
+      value={obPersonalEmail}
+      onChange={(e) => setObPersonalEmail(e.target.value)}
+      placeholder="example@gmail.com"
+    />
+  </div>
+  <div className="space-y-1.5">
+    <Label>Company Email</Label>
+    <Input
+      type="email"
+      value={obCompanyEmail}
+      onChange={(e) => setObCompanyEmail(e.target.value)}
+      placeholder="name@company.com"
+    />
+  </div>
+</div> */}
 
         {/* Phones & Date */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
