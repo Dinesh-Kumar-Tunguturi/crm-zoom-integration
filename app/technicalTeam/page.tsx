@@ -3297,7 +3297,7 @@ const handleImportSubmit = async () => {
       </Table>
     </div>
   );
-// yeah its working
+// yeah its working again
   const renderGithubTable = (rows: SalesClosure[]) => (
     <div className="rounded-md border mt-4">
       <Table>
