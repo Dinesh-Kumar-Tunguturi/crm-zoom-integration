@@ -3181,21 +3181,21 @@ const handleImportSubmit = async () => {
               <TableCell className="max-w-[220px] truncate">
                 {sale.leads?.name && (
                   <a
-                    href={`https://${sale.leads?.name
+                    href={`https://applywizz-${sale.leads?.name
                       .toLowerCase()
-                      .replace(/[^a-z0-9]/g, "")}-applywizz.vercel.app/`}
+                      .replace(/[^a-z0-9]/g, "")}.vercel.app/`}
                     target="_blank"
                     rel="noreferrer"
                     className="text-blue-600 underline block truncate"
-                    title={`https://${sale.leads?.name
+                    title={`https://applywizz-${sale.leads?.name
                       .toLowerCase()
-                      .replace(/[^a-z0-9]/g, "")}-applywizz.vercel.app/`}
+                      .replace(/[^a-z0-9]/g, "")}.vercel.app/`}
                   >
-                    https://
+                    https://applywizz-
                     {sale.leads?.name
                       .toLowerCase()
                       .replace(/[^a-z0-9]/g, "")}
-                    -applywizz.vercel.app/
+                    .vercel.app/
                   </a>
                 )}
               </TableCell>
