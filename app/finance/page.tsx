@@ -423,28 +423,55 @@ export default function FinancePage() {
 
 
 
+  // const filteredSales = sales.filter((sale) => {
+  //   const matchesSearch =
+  //     sale.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  //     sale.lead_id.toLowerCase().includes(searchTerm.toLowerCase());
+
+  //   const matchesStatus = statusFilter === "All" || sale.finance_status === statusFilter;
+
+  //   if (followUpFilter === "Today") {
+  //     const closedDate = new Date(sale.closed_at);
+  //     closedDate.setHours(0, 0, 0, 0);
+
+  //     const today = new Date();
+  //     today.setHours(0, 0, 0, 0);
+  //     const subscriptionCycle = sale.subscription_cycle;
+  //     const targetDate = new Date(today);
+  //     targetDate.setDate(today.getDate() - subscriptionCycle); // 25 days ago
+
+  //     return closedDate <= targetDate && matchesSearch && matchesStatus;
+  //   }
+
+  //   return matchesSearch && matchesStatus;
+  // });
+
   const filteredSales = sales.filter((sale) => {
-    const matchesSearch =
-      sale.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      sale.lead_id.toLowerCase().includes(searchTerm.toLowerCase());
+  const matchesSearch =
+    sale.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    sale.lead_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (sale.leads?.name ?? "").toLowerCase().includes(searchTerm.toLowerCase()) || // ✅ search by name
+    (sale.leads?.phone ?? "").toLowerCase().includes(searchTerm.toLowerCase());  // ✅ search by phone
 
-    const matchesStatus = statusFilter === "All" || sale.finance_status === statusFilter;
+  const matchesStatus = statusFilter === "All" || sale.finance_status === statusFilter;
 
-    if (followUpFilter === "Today") {
-      const closedDate = new Date(sale.closed_at);
-      closedDate.setHours(0, 0, 0, 0);
+  if (followUpFilter === "Today") {
+    // due = onboarded_date + subscription_cycle
+    if (!sale.onboarded_date || !sale.subscription_cycle) return false;
+    const start = new Date(sale.onboarded_date);
+    const due = new Date(start);
+    due.setHours(0,0,0,0);
+    due.setDate(due.getDate() + sale.subscription_cycle);
 
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const subscriptionCycle = sale.subscription_cycle;
-      const targetDate = new Date(today);
-      targetDate.setDate(today.getDate() - subscriptionCycle); // 25 days ago
+    const today = new Date();
+    today.setHours(0,0,0,0);
 
-      return closedDate <= targetDate && matchesSearch && matchesStatus;
-    }
+    // show “due today” and “overdue”
+    return (due.getTime() <= today.getTime()) && matchesSearch && matchesStatus;
+  }
 
-    return matchesSearch && matchesStatus;
-  });
+  return matchesSearch && matchesStatus;
+});
 
   function handleSort(field: string) {
     if (sortField === field) {
@@ -472,6 +499,12 @@ export default function FinancePage() {
         ? nameA.localeCompare(nameB)
         : nameB.localeCompare(nameA);
     }
+
+    if (sortField === "name") {
+    const nameA = (a.leads?.name ?? "").toLowerCase();
+    const nameB = (b.leads?.name ?? "").toLowerCase();
+    return sortOrder === "asc" ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
+  }
 
     if (sortField === "sale_value") {
       return sortOrder === "asc"

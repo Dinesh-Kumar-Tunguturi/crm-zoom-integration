@@ -739,7 +739,13 @@ export default function AccountManagementPage() {
     const { data, error } = await supabase
       .from("profiles")
       .select("full_name, user_email, roles")
-      .eq("roles", "Accounts Associate");
+      .in("roles", ["Sales Associate", "Accounts Associate","Admin","Resume Head","Finance","Sales","Accounts"]);
+
+
+      // .in("roles",["Sales Associate","Admin"]);
+
+
+
     if (error) {
       console.error("Failed to load Accounts Associates:", error);
       return;
@@ -793,7 +799,7 @@ export default function AccountManagementPage() {
     <>
       {pageLoading && <FullScreenLoader />}
       {/* Allow all three roles into the page (include Admin for robustness) */}
-      <ProtectedRoute allowedRoles={["Super Admin", "Admin", "Account Management", "Accounts", "Accounts Associate"]}>
+      <ProtectedRoute allowedRoles={["Super Admin", "Admin", "Account Management", "Accounts", "Sales", "Sales Associate"]}>
         <DashboardLayout>
           <div className="space-y-6">
             <div className="flex justify-between items-center">

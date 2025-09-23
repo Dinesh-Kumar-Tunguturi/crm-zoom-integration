@@ -384,9 +384,9 @@ const accessMap: Record<UserRole, string[]> = {
   "Account Management": ["account-management","onboard"],
   Finance: ["finance","onboard"],                     // keep as-is unless you want Onboard here too
   "Marketing Associate": ["marketingAssociates"],
-  "Sales Associate": ["sales","Sales Associate","onboard"],
+  "Sales Associate": ["sales","Sales Associate","onboard","account-management"],
   "Finance Associate": ["finance-associates"],
-  "Accounts Associate": ["account-management"],
+  "Accounts Associate": ["account-management",],
   "Technical Head": ["technical","onboard"],
   "Technical Associate": ["technical-associate"],
   "Resume Head": ["resume","onboard"],
