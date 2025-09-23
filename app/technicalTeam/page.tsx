@@ -3178,7 +3178,7 @@ const handleImportSubmit = async () => {
                   </Select>
                 )}
               </TableCell>
-              <TableCell className="max-w-[220px] truncate">
+              {/* <TableCell className="max-w-[220px] truncate">
                 {sale.leads?.name && (
                   <a
                     href={`https://${sale.leads?.name
@@ -3196,6 +3196,28 @@ const handleImportSubmit = async () => {
                       .toLowerCase()
                       .replace(/[^a-z0-9]/g, "")}
                     -applywizz.vercel.app/
+                  </a>
+                )}
+              </TableCell> */}
+
+               <TableCell className="max-w-[220px] truncate">
+                {sale.leads?.name && (
+                  <a
+                    href={`https://applywizz-${sale.leads?.name
+                      .toLowerCase()
+                      .replace(/[^a-z0-9]/g, "")}.vercel.app/`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-blue-600 underline block truncate"
+                    title={`https://applywizz-${sale.leads?.name
+                      .toLowerCase()
+                      .replace(/[^a-z0-9]/g, "")}.vercel.app/`}
+                  >
+                    https://applywizz-
+                    {sale.leads?.name
+                      .toLowerCase()
+                      .replace(/[^a-z0-9]/g, "")}
+                    .vercel.app/
                   </a>
                 )}
               </TableCell>
