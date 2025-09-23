@@ -2335,6 +2335,21 @@ badge_value: r.badge_value ?? null,
       </a>
     ) : row.leads?.name ? (
       // fallback: generate from name
+      // <a
+      //   href={`https://${(row.leads?.name || "")
+      //     .toLowerCase()
+      //     .replace(/[^a-z0-9]/g, "")}-applywizz.vercel.app/`}
+      //   target="_blank"
+      //   rel="noreferrer"
+      //   className="text-blue-600 underline block truncate"
+      //   title={`https://${(row.leads?.name || "")
+      //     .toLowerCase()
+      //     .replace(/[^a-z0-9]/g, "")}-applywizz.vercel.app/`}
+      // >
+      //   https://{(row.leads?.name || "").toLowerCase().replace(/[^a-z0-9]/g, "")}
+      //   -applywizz.vercel.app/
+      // </a>
+
       <a
         href={`https://applywizz-${(row.leads?.name || "")
           .toLowerCase()
