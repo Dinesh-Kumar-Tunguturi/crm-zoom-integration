@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { User, DollarSign, TrendingUp, TrendingDown, Pause } from "lucide-react";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -16,7 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner"; // or wherever your toast system comes from
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
-import { MoreVertical } from "lucide-react"; // or use any icon you like
+import { MoreVertical, } from "lucide-react"; // or use any icon you like
 
 
 import {
@@ -210,6 +211,23 @@ export default function FinancePage() {
   const [salesData, setSalesData] = useState<SalesClosureData[]>([]);
 
 
+  const [companyApplicationEmail, setCompanyApplicationEmail] = useState('');
+
+  const [onboardingDate, setOnboardingDate] = useState<Date | null>(null);
+  const [autoTotal, setAutoTotal] = useState(0);
+  const [referrerId, setReferrerId] = useState('');
+  const [referrerName, setReferrerName] = useState('');
+  const [coursesValue, setCoursesValue] = useState('');
+  const [noOfJobApps, setNoOfJobApps] = useState('');
+  const [badgeValue, setBadgeValue] = useState('');
+  const [customLabel, setCustomLabel] = useState('');
+  const [customValue, setCustomValue] = useState('');
+  const [commitments, setCommitments] = useState('');
+  const [closerName, setCloserName] = useState('');
+
+
+
+
   const monthlyRevenues: { month: string; amount: number }[] = [];
 
   const [monthlyBreakdown, setMonthlyBreakdown] = useState<
@@ -342,6 +360,7 @@ export default function FinancePage() {
   // 🧾 Client Fields
   const [clientName, setClientName] = useState("");
   const [clientEmail, setClientEmail] = useState("");
+  const [clientId, setClientId] = useState("");
   const [contactNumber, setContactNumber] = useState("");
   const [startDate, setStartDate] = useState("");
   const [city, setCity] = useState("");
@@ -422,56 +441,32 @@ export default function FinancePage() {
   }, [startDate, subscriptionCycle]);
 
 
-
-  // const filteredSales = sales.filter((sale) => {
-  //   const matchesSearch =
-  //     sale.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-  //     sale.lead_id.toLowerCase().includes(searchTerm.toLowerCase());
-
-  //   const matchesStatus = statusFilter === "All" || sale.finance_status === statusFilter;
-
-  //   if (followUpFilter === "Today") {
-  //     const closedDate = new Date(sale.closed_at);
-  //     closedDate.setHours(0, 0, 0, 0);
-
-  //     const today = new Date();
-  //     today.setHours(0, 0, 0, 0);
-  //     const subscriptionCycle = sale.subscription_cycle;
-  //     const targetDate = new Date(today);
-  //     targetDate.setDate(today.getDate() - subscriptionCycle); // 25 days ago
-
-  //     return closedDate <= targetDate && matchesSearch && matchesStatus;
-  //   }
-
-  //   return matchesSearch && matchesStatus;
-  // });
-
   const filteredSales = sales.filter((sale) => {
-  const matchesSearch =
-    sale.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    sale.lead_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (sale.leads?.name ?? "").toLowerCase().includes(searchTerm.toLowerCase()) || // ✅ search by name
-    (sale.leads?.phone ?? "").toLowerCase().includes(searchTerm.toLowerCase());  // ✅ search by phone
+    const matchesSearch =
+      sale.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      sale.lead_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (sale.leads?.name ?? "").toLowerCase().includes(searchTerm.toLowerCase()) || // ✅ search by name
+      (sale.leads?.phone ?? "").toLowerCase().includes(searchTerm.toLowerCase());  // ✅ search by phone
 
-  const matchesStatus = statusFilter === "All" || sale.finance_status === statusFilter;
+    const matchesStatus = statusFilter === "All" || sale.finance_status === statusFilter;
 
-  if (followUpFilter === "Today") {
-    // due = onboarded_date + subscription_cycle
-    if (!sale.onboarded_date || !sale.subscription_cycle) return false;
-    const start = new Date(sale.onboarded_date);
-    const due = new Date(start);
-    due.setHours(0,0,0,0);
-    due.setDate(due.getDate() + sale.subscription_cycle);
+    if (followUpFilter === "Today") {
+      // due = onboarded_date + subscription_cycle
+      if (!sale.onboarded_date || !sale.subscription_cycle) return false;
+      const start = new Date(sale.onboarded_date);
+      const due = new Date(start);
+      due.setHours(0, 0, 0, 0);
+      due.setDate(due.getDate() + sale.subscription_cycle);
 
-    const today = new Date();
-    today.setHours(0,0,0,0);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
 
-    // show “due today” and “overdue”
-    return (due.getTime() <= today.getTime()) && matchesSearch && matchesStatus;
-  }
+      // show “due today” and “overdue”
+      return (due.getTime() <= today.getTime()) && matchesSearch && matchesStatus;
+    }
 
-  return matchesSearch && matchesStatus;
-});
+    return matchesSearch && matchesStatus;
+  });
 
   function handleSort(field: string) {
     if (sortField === field) {
@@ -501,10 +496,10 @@ export default function FinancePage() {
     }
 
     if (sortField === "name") {
-    const nameA = (a.leads?.name ?? "").toLowerCase();
-    const nameB = (b.leads?.name ?? "").toLowerCase();
-    return sortOrder === "asc" ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
-  }
+      const nameA = (a.leads?.name ?? "").toLowerCase();
+      const nameB = (b.leads?.name ?? "").toLowerCase();
+      return sortOrder === "asc" ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
+    }
 
     if (sortField === "sale_value") {
       return sortOrder === "asc"
@@ -568,6 +563,14 @@ export default function FinancePage() {
         </Badge>
       );
     }
+  }
+
+  const nextRenewalDate =
+    onboardingDate !== null
+      ? new Date(onboardingDate)
+      : null;
+  if (nextRenewalDate !== null) {
+    nextRenewalDate.setDate(nextRenewalDate.getDate() + parseInt(subscriptionCycle, 10));
   }
 
 
@@ -764,56 +767,112 @@ export default function FinancePage() {
   }
 
   async function handlePaymentClose() {
-    if (!selectedSaleId || !paymentAmount || !onboardDate || !subscriptionMonths) {
-      alert("Please fill all fields.");
+
+    // Ensure paymentAmount has a valid value
+    const validPaymentAmount = parseFloat(paymentAmount || "0");
+    if (isNaN(validPaymentAmount)) {
+      alert("Please provide a valid payment amount.");
       return;
     }
 
-    const cycleDays = subscriptionMonths === "0.5"
-      ? 15
-      : parseInt(subscriptionMonths) * 30;
+    // Calculate Total Amount
+    const totalAmount = (
+      validPaymentAmount +
+      parseFloat(resumeValue || "0") +
+      parseFloat(portfolioValue || "0") +
+      parseFloat(linkedinValue || "0") +
+      parseFloat(githubValue || "0") +
+      parseFloat(coursesValue || "0") +
+      parseFloat(customValue || "0") +
+      parseFloat(badgeValue || "0")
+    ).toFixed(2);
 
-    try {
-      // Find the original record for that sale ID
-      const original = sales.find(s => s.id === selectedSaleId);
-      if (!original) throw new Error("Original record not found");
+    // Calculate Next Renewal Date
 
-      const { leads, id, oldest_sale_done_at, ...cleanOriginal } = original; // 🧼 remove frontend-only field and id
-      const newRow = {
-        ...cleanOriginal,
-        sale_value: parseFloat(paymentAmount),
-        closed_at: paymentDate.toISOString(),
-        onboarded_date: onboardDate.toISOString().slice(0, 10),
-        subscription_cycle: cycleDays,
-        finance_status: "Paid",
-      };
+    const nextRenewalDate =
+      onboardingDate !== null
+        ? new Date(onboardingDate)
+        : null;
+    if (nextRenewalDate !== null) {
+      nextRenewalDate.setDate(nextRenewalDate.getDate() + parseInt(subscriptionCycle, 10));
+    }
+
+    console.log("Selected Sale ID: ", selectedSaleId);
+    console.log("Client Name: ", clientName);
+    console.log("Client Email: ", clientEmail);
+    // console.log("application value Amount: ", subscriptionSaleValue);
+    console.log("application value Amount: ", adjustedTotalAmount);
+
+    adjustedTotalAmount
+    console.log("Total Amount with addons: ", subscription_puls_addons);
+
+    // Validate required fields
+    if (!clientId) {
+      alert("Sale ID is missing.");
+      return;
+    }
+    if (!onboardingDate) {
+      alert("Please fill onboardingDate field.");
+      return;
+    }
+    if (!subscriptionCycle) {
+      alert("Please fill subscriptionCycle field.");
+      return;
+    }
+    if (!clientName) {
+      alert("Please fill clientName field.");
+      return;
+    }
+    if (!clientEmail) {
+      alert("Please fill clientEmail field.");
+      return;
+    }
+    if (!subscription_puls_addons) {
+      alert("Please fill subscriptionSaleValue field.");
+      return;
+    }
 
 
-      const { error } = await supabase
-        .from("sales_closure")
-        .insert(newRow);
+    // Insert a new record into the sales_closure table
+    const { data, error } = await supabase.from("sales_closure").insert({
+      lead_id: clientId,  // Use the lead_id associated with the sale
+      email: clientEmail,
+      lead_name: clientName,
+      sale_value: parseFloat(subscription_puls_addons.toString()),  // Store totalAmount in sale_value
+      subscription_cycle: parseInt(subscriptionCycle),
+      closed_at: onboardingDate.toISOString(),
+      finance_status: "Paid",  // Set status as Paid
+      company_application_email: companyApplicationEmail,
+      // contact_number: contactNumber,
+      payment_mode: paymentMode,
+      application_sale_value: parseFloat(adjustedTotalAmount.toString()),  // Store paymentAmount in application_sale_value
+      no_of_job_applications: parseInt(noOfJobApps || "0"),
+      onboarded_date: onboardingDate.toISOString(),
+      resume_sale_value: parseFloat(resumeValue || "0"),
+      linkedin_sale_value: parseFloat(linkedinValue || "0"),
+      github_sale_value: parseFloat(githubValue || "0"),
+      portfolio_sale_value: parseFloat(portfolioValue || "0"),
+      courses_sale_value: parseFloat(coursesValue || "0"),
+      badge_value: parseFloat(badgeValue || "0"),
+      custom_label: customLabel,
+      custom_sale_value: parseFloat(customValue || "0"),
+      commitments: commitments,
+      account_assigned_name: closerName,
+      // next_renewal_date: nextRenewalDate.toISOString(),  // Store next renewal date
+    });
 
-      if (error) throw error;
-
-      // Optional: push to frontend immediately
-      setSales((prev) => [{ ...newRow, id: "temp-" + Math.random().toString(36).substr(2, 9) } as SalesClosure, ...prev]);
-      setAllSales((prev) => [{ ...newRow, id: "temp-" + Math.random().toString(36).substr(2, 9) } as SalesClosure, ...prev]);
-
-      alert("✅ Payment recorded and new row inserted!");
-
-      // Cleanup
+    // Check if there was an error
+    if (error) {
+      console.error("Error inserting payment record:", error);
+      alert("Failed to record payment.");
+    } else {
+      alert("Payment recorded successfully!");
       setShowPaymentDialog(false);
-      setSelectedSaleId(null);
       setPaymentAmount("");
-      setOnboardDate(null);
-      setSubscriptionMonths("");
-
-    } catch (err: any) {
-      console.error("❌ Payment insert failed", err.message || err);
-      alert("Failed to save payment.");
+      setOnboardingDate(null);
+      setSubscriptionCycle("");
     }
   }
-
 
   async function insertZeroSaleRow(sale: SalesClosure, status: FinanceStatus) {
     await supabase.from("sales_closure").insert({
@@ -927,6 +986,52 @@ export default function FinancePage() {
     }
   }
 
+  const handlePaymentDialogOpen = async (selectedLeadId: string) => {
+    const { data, error } = await supabase
+      .from("sales_closure")
+      .select("*")
+      .eq("lead_id", selectedLeadId)
+      .order("closed_at", { ascending: false })
+      .limit(1);
+
+    if (error) {
+      console.error("Error fetching sale record:", error);
+      return;
+    }
+
+    if (data && data.length > 0) {
+      const saleRecord = data[0];
+      setClientId(saleRecord.lead_id);
+      setClientName(saleRecord.lead_name || "");
+      setClientEmail(saleRecord.email || "");
+      setCompanyApplicationEmail(saleRecord.company_application_email || "");
+      setContactNumber(saleRecord.contact_number || "");
+      setCity(saleRecord.city || "");
+      setOnboardingDate(new Date(saleRecord.closed_at));
+      setPaymentMode(saleRecord.payment_mode || "");
+      setSubscriptionCycle(saleRecord.subscription_cycle.toString());
+      setSubscriptionSaleValue(saleRecord.application_sale_value.toString());
+      setAutoTotal(saleRecord.sale_value);  // Calculate auto total if required
+      setSubscriptionSource(saleRecord.source || "");
+      setReferrerId(saleRecord.referrer_id || "");
+      setReferrerName(saleRecord.referrer_name || "");
+      setResumeValue(saleRecord.resume_sale_value || "");
+      setPortfolioValue(saleRecord.portfolio_sale_value || "");
+      setLinkedinValue(saleRecord.linkedin_sale_value || "");
+      setGithubValue(saleRecord.github_sale_value || "");
+      setCoursesValue(saleRecord.courses_sale_value || "");
+      setNoOfJobApps(saleRecord.no_of_job_applications || "");
+      setBadgeValue(saleRecord.badge_value || "");
+      setCustomLabel(saleRecord.custom_label || "");
+      setCustomValue(saleRecord.custom_sale_value || "");
+      setCommitments(saleRecord.commitments || "");
+      setCloserName(saleRecord.account_assigned_name || "");
+      setShowPaymentDialog(true);
+    }
+  };
+
+
+
   function calculateNextRenewal(onboarded: string | undefined, cycle: number): string {
     if (!onboarded || !cycle) return "-";
 
@@ -935,7 +1040,59 @@ export default function FinancePage() {
 
     return start.toLocaleDateString("en-GB"); // Format: dd/mm/yyyy
   }
+  const totalAmount = (
+    parseFloat(subscriptionSaleValue)
 
+  );
+
+  // Adjust the total based on the subscription cycle
+  let adjustedTotalAmount = 0;
+  switch (subscriptionCycle) {
+    case "15": // 15 Days
+      adjustedTotalAmount = totalAmount * 0.5; // 15 days = half of the subscription sale value
+      break;
+    case "30": // 1 Month
+      adjustedTotalAmount = totalAmount; // 1 month = full value
+      break;
+    case "60": // 2 Months
+      adjustedTotalAmount = totalAmount * 2; // 2 months = double the subscription sale value
+      break;
+    case "90": // 3 Months
+      adjustedTotalAmount = totalAmount * 3; // 3 months = triple the subscription sale value
+      break;
+    default:
+      adjustedTotalAmount = totalAmount;
+      break;
+  }
+
+  // Format the result with two decimal places
+  const subscription_puls_addons = adjustedTotalAmount + parseFloat(resumeValue) +
+    parseFloat(portfolioValue) +
+    parseFloat(linkedinValue) +
+    parseFloat(githubValue) +
+    parseFloat(coursesValue) +
+    parseFloat(customValue) +
+    parseFloat(badgeValue);
+  const formattedTotalAmount = subscription_puls_addons.toFixed(2);
+
+  // Now use formattedTotalAmount in your input field
+
+  const calculateAutoTotal = (cycle: string, saleValue: string) => {
+    const value = parseFloat(saleValue || "0");
+
+    switch (cycle) {
+      case "15":
+        return (value * 0.5).toFixed(2); // 15 Days
+      case "30":
+        return value.toFixed(2); // 1 Month
+      case "60":
+        return (value * 2).toFixed(2); // 2 Months
+      case "90":
+        return (value * 3).toFixed(2); // 3 Months
+      default:
+        return "0.00";
+    }
+  };
 
 
   return (
@@ -1427,228 +1584,218 @@ export default function FinancePage() {
     - MessageSquare icon and Popover components imported
 */}
 
-<Table>
-  <TableHeader>
-    <TableRow>
-      <TableHead>S.No</TableHead>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>S.No</TableHead>
 
-      <TableHead
-        className="cursor-pointer items-center gap-1"
-        onClick={() => handleSort("lead_id")}
-      >
-        <div className="flex flex-center gap-1">
-          ClientID
-          <span
-            className={`text-xs leading-none ${
-              sortField === "lead_id" && sortOrder === "desc"
-                ? "text-blue-600"
-                : "text-gray-400"
-            }`}
-          >
-            ▲
-          </span>
-          <span
-            className={`text-xs leading-none ${
-              sortField === "lead_id" && sortOrder === "asc"
-                ? "text-blue-600"
-                : "text-gray-400"
-            }`}
-          >
-            ▼
-          </span>
-        </div>
-      </TableHead>
+                    <TableHead
+                      className="cursor-pointer items-center gap-1"
+                      onClick={() => handleSort("lead_id")}
+                    >
+                      <div className="flex flex-center gap-1">
+                        ClientID
+                        <span
+                          className={`text-xs leading-none ${sortField === "lead_id" && sortOrder === "desc"
+                              ? "text-blue-600"
+                              : "text-gray-400"
+                            }`}
+                        >
+                          ▲
+                        </span>
+                        <span
+                          className={`text-xs leading-none ${sortField === "lead_id" && sortOrder === "asc"
+                              ? "text-blue-600"
+                              : "text-gray-400"
+                            }`}
+                        >
+                          ▼
+                        </span>
+                      </div>
+                    </TableHead>
 
-      <TableHead
-        className="cursor-pointer items-center gap-1"
-        onClick={() => handleSort("name")}
-      >
-        <div className="flex flex-center gap-1">
-          Name
-          <span
-            className={`text-xs leading-none ${
-              sortField === "name" && sortOrder === "desc"
-                ? "text-blue-600"
-                : "text-gray-400"
-            }`}
-          >
-            ▲
-          </span>
-          <span
-            className={`text-xs leading-none ${
-              sortField === "name" && sortOrder === "asc"
-                ? "text-blue-600"
-                : "text-gray-400"
-            }`}
-          >
-            ▼
-          </span>
-        </div>
-      </TableHead>
+                    <TableHead
+                      className="cursor-pointer items-center gap-1"
+                      onClick={() => handleSort("name")}
+                    >
+                      <div className="flex flex-center gap-1">
+                        Name
+                        <span
+                          className={`text-xs leading-none ${sortField === "name" && sortOrder === "desc"
+                              ? "text-blue-600"
+                              : "text-gray-400"
+                            }`}
+                        >
+                          ▲
+                        </span>
+                        <span
+                          className={`text-xs leading-none ${sortField === "name" && sortOrder === "asc"
+                              ? "text-blue-600"
+                              : "text-gray-400"
+                            }`}
+                        >
+                          ▼
+                        </span>
+                      </div>
+                    </TableHead>
 
-      <TableHead>Email</TableHead>
-      <TableHead>Phone</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Phone</TableHead>
 
-      <TableHead
-        className="cursor-pointer items-center gap-1"
-        onClick={() => handleSort("sale_value")}
-      >
-        <div className="flex flex-center gap-1">
-          Sale value
-          <span
-            className={`text-xs leading-none ${
-              sortField === "sale_value" && sortOrder === "desc"
-                ? "text-blue-600"
-                : "text-gray-400"
-            }`}
-          >
-            ▲
-          </span>
-          <span
-            className={`text-xs leading-none ${
-              sortField === "sale_value" && sortOrder === "asc"
-                ? "text-blue-600"
-                : "text-gray-400"
-            }`}
-          >
-            ▼
-          </span>
-        </div>
-      </TableHead>
+                    <TableHead
+                      className="cursor-pointer items-center gap-1"
+                      onClick={() => handleSort("sale_value")}
+                    >
+                      <div className="flex flex-center gap-1">
+                        Sale value
+                        <span
+                          className={`text-xs leading-none ${sortField === "sale_value" && sortOrder === "desc"
+                              ? "text-blue-600"
+                              : "text-gray-400"
+                            }`}
+                        >
+                          ▲
+                        </span>
+                        <span
+                          className={`text-xs leading-none ${sortField === "sale_value" && sortOrder === "asc"
+                              ? "text-blue-600"
+                              : "text-gray-400"
+                            }`}
+                        >
+                          ▼
+                        </span>
+                      </div>
+                    </TableHead>
 
-      <TableHead>Subscription Cycle</TableHead>
-      <TableHead>Assigned To</TableHead>
-      <TableHead>Stage</TableHead>
+                    <TableHead>Subscription Cycle</TableHead>
+                    <TableHead>Assigned To</TableHead>
+                    <TableHead>Stage</TableHead>
 
-      <TableHead
-        className="cursor-pointer items-center gap-1"
-        onClick={() => handleSort("oldest_sale_done_at")}
-      >
-        <div className="flex flex-center gap-1">
-          SaledoneAt
-          <span
-            className={`text-xs leading-none ${
-              sortField === "oldest_sale_done_at" && sortOrder === "desc"
-                ? "text-blue-600"
-                : "text-gray-400"
-            }`}
-          >
-            ▲
-          </span>
-          <span
-            className={`text-xs leading-none ${
-              sortField === "oldest_sale_done_at" && sortOrder === "asc"
-                ? "text-blue-600"
-                : "text-gray-400"
-            }`}
-          >
-            ▼
-          </span>
-        </div>
-      </TableHead>
+                    <TableHead
+                      className="cursor-pointer items-center gap-1"
+                      onClick={() => handleSort("oldest_sale_done_at")}
+                    >
+                      <div className="flex flex-center gap-1">
+                        SaledoneAt
+                        <span
+                          className={`text-xs leading-none ${sortField === "oldest_sale_done_at" && sortOrder === "desc"
+                              ? "text-blue-600"
+                              : "text-gray-400"
+                            }`}
+                        >
+                          ▲
+                        </span>
+                        <span
+                          className={`text-xs leading-none ${sortField === "oldest_sale_done_at" && sortOrder === "asc"
+                              ? "text-blue-600"
+                              : "text-gray-400"
+                            }`}
+                        >
+                          ▼
+                        </span>
+                      </div>
+                    </TableHead>
 
-      <TableHead
-        className="cursor-pointer items-center gap-1"
-        onClick={() => handleSort("onboarded_date")}
-      >
-        <div className="flex flex-center gap-1">
-          Onboarded/lastPaymentAt
-          <span
-            className={`text-xs leading-none ${
-              sortField === "onboarded_date" && sortOrder === "desc"
-                ? "text-blue-600"
-                : "text-gray-400"
-            }`}
-          >
-            ▲
-          </span>
-          <span
-            className={`text-xs leading-none ${
-              sortField === "onboarded_date" && sortOrder === "asc"
-                ? "text-blue-600"
-                : "text-gray-400"
-            }`}
-          >
-            ▼
-          </span>
-        </div>
-      </TableHead>
+                    <TableHead
+                      className="cursor-pointer items-center gap-1"
+                      onClick={() => handleSort("onboarded_date")}
+                    >
+                      <div className="flex flex-center gap-1">
+                        Onboarded/lastPaymentAt
+                        <span
+                          className={`text-xs leading-none ${sortField === "onboarded_date" && sortOrder === "desc"
+                              ? "text-blue-600"
+                              : "text-gray-400"
+                            }`}
+                        >
+                          ▲
+                        </span>
+                        <span
+                          className={`text-xs leading-none ${sortField === "onboarded_date" && sortOrder === "asc"
+                              ? "text-blue-600"
+                              : "text-gray-400"
+                            }`}
+                        >
+                          ▼
+                        </span>
+                      </div>
+                    </TableHead>
 
-      <TableHead>Next Renewal Date</TableHead>
-      <TableHead>Deadline</TableHead>
-      <TableHead>Actions</TableHead>
-      <TableHead>Reason</TableHead>
-    </TableRow>
-  </TableHeader>
+                    <TableHead>Next Renewal Date</TableHead>
+                    <TableHead>Deadline</TableHead>
+                    <TableHead>Actions</TableHead>
+                    <TableHead>Reason</TableHead>
+                  </TableRow>
+                </TableHeader>
 
-  <TableBody>
-   {sortedSales.length > 0 ? (
-  sortedSales.map((sale, idx) => {
-    // Treat these statuses as "finalized"
-    const stage = String(sale.finance_status || "").trim().toLowerCase();
-    const isFinalized = ["closed", "unpaid", "got placed"].includes(stage);
+                <TableBody>
+                  {sortedSales.length > 0 ? (
+                    sortedSales.map((sale, idx) => {
+                      // Treat these statuses as "finalized"
+                      const stage = String(sale.finance_status || "").trim().toLowerCase();
+                      const isFinalized = ["closed", "unpaid", "got placed"].includes(stage);
 
-        return (
-          <TableRow key={sale.id}>
-            <TableCell>{idx + 1}</TableCell>
+                      return (
+                        <TableRow key={sale.id}>
+                          <TableCell>{idx + 1}</TableCell>
 
-            <TableCell className="font-medium">{sale.lead_id}</TableCell>
+                          <TableCell className="font-medium">{sale.lead_id}</TableCell>
 
-            <TableCell
-              className="font-medium max-w-[150px] break-words whitespace-normal cursor-pointer text-blue-600 hover:underline"
-              onClick={() => window.open(`/leads/${sale.lead_id}`, "_blank")}
-            >
-              {sale.leads?.name ?? "-"}
-            </TableCell>
+                          <TableCell
+                            className="font-medium max-w-[150px] break-words whitespace-normal cursor-pointer text-blue-600 hover:underline"
+                            onClick={() => window.open(`/leads/${sale.lead_id}`, "_blank")}
+                          >
+                            {sale.leads?.name ?? "-"}
+                          </TableCell>
 
-            <TableCell className="max-w-[160px] break-words whitespace-normal">
-              {sale.email}
-            </TableCell>
+                          <TableCell className="max-w-[160px] break-words whitespace-normal">
+                            {sale.email}
+                          </TableCell>
 
-            <TableCell className="max-w-[160px] break-words whitespace-normal">
-              {sale.leads?.phone ?? "-"}
-            </TableCell>
+                          <TableCell className="max-w-[160px] break-words whitespace-normal">
+                            {sale.leads?.phone ?? "-"}
+                          </TableCell>
 
-            <TableCell>{formatCurrency(sale.sale_value)}</TableCell>
-            <TableCell>{sale.subscription_cycle} days</TableCell>
+                          <TableCell>{formatCurrency(sale.sale_value)}</TableCell>
+                          <TableCell>{sale.subscription_cycle} days</TableCell>
 
-            <TableCell>Finance Team A</TableCell>
+                          <TableCell>Finance Team A</TableCell>
 
-            <TableCell>
-              <Badge className={getStageColor(sale.finance_status)}>
-                {sale.finance_status}
-              </Badge>
-            </TableCell>
+                          <TableCell>
+                            <Badge className={getStageColor(sale.finance_status)}>
+                              {sale.finance_status}
+                            </Badge>
+                          </TableCell>
 
-            <TableCell>
-              {sale.oldest_sale_done_at
-                ? new Date(sale.oldest_sale_done_at).toLocaleDateString("en-GB")
-                : "-"}
-            </TableCell>
+                          <TableCell>
+                            {sale.oldest_sale_done_at
+                              ? new Date(sale.oldest_sale_done_at).toLocaleDateString("en-GB")
+                              : "-"}
+                          </TableCell>
 
-            <TableCell>
-              {sale.onboarded_date
-                ? new Date(sale.onboarded_date).toLocaleDateString("en-GB")
-                : "-"}
-            </TableCell>
+                          <TableCell>
+                            {sale.onboarded_date
+                              ? new Date(sale.onboarded_date).toLocaleDateString("en-GB")
+                              : "-"}
+                          </TableCell>
 
-            {/* Next Renewal Date — render nothing if Closed */}
-             <TableCell>
-          {isFinalized
-            ? null
-            : calculateNextRenewal(sale.onboarded_date, sale.subscription_cycle)}
-        </TableCell>
+                          {/* Next Renewal Date — render nothing if Closed */}
+                          <TableCell>
+                            {isFinalized
+                              ? null
+                              : calculateNextRenewal(sale.onboarded_date, sale.subscription_cycle)}
+                          </TableCell>
 
-        {/* Deadline — hide if finalized */}
-        <TableCell>
-          {isFinalized
-            ? null
-            : getRenewWithinBadge(sale.onboarded_date || "", sale.subscription_cycle)}
-        </TableCell>
+                          {/* Deadline — hide if finalized */}
+                          <TableCell>
+                            {isFinalized
+                              ? null
+                              : getRenewWithinBadge(sale.onboarded_date || "", sale.subscription_cycle)}
+                          </TableCell>
 
-        {/* Actions — disable if finalized */}
-        <TableCell>
-          <Select
+                          {/* Actions — disable if finalized */}
+                          <TableCell>
+                            {/* <Select
             value={actionSelections[sale.id] || ""}
             onValueChange={(value) => {
               setActionSelections((prev) => ({ ...prev, [sale.id]: value }));
@@ -1677,44 +1824,75 @@ export default function FinancePage() {
               <SelectItem value="Closed">Closed</SelectItem>
               <SelectItem value="Got Placed">Got Placed</SelectItem>
             </SelectContent>
-          </Select>
-        </TableCell>
+          </Select> */}
 
 
-            {/* Reason */}
-            <TableCell className="text-center">
-              {sale.reason_for_close ? (
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <button className="hover:text-blue-600">
-                      <MessageSquare className="w-5 h-5" />
-                    </button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-[300px] bg-white shadow-lg border p-4 text-sm text-gray-700">
-                    Reason: '{sale.reason_for_close}'
-                  </PopoverContent>
-                </Popover>
-              ) : (
-                <span className="text-gray-400 text-xs italic">—</span>
-              )}
-            </TableCell>
-          </TableRow>
-        );
-      })
-    ) : (
-      <TableRow>
-        <TableCell
-          colSpan={7}
-          className="text-center py-8 text-muted-foreground"
-        >
-          {followUpFilter === "Today"
-            ? "No follow ups today"
-            : "No information here"}
-        </TableCell>
-      </TableRow>
-    )}
-  </TableBody>
-</Table>
+                            <Select
+                              value={actionSelections[sale.id] || ""}
+                              onValueChange={(value) => {
+                                setActionSelections((prev) => ({ ...prev, [sale.id]: value }));
+                                if (value === "Paid") {
+                                  handlePaymentDialogOpen(sale.lead_id);  // Pass the selected sale's lead_id
+                                } else if (["Closed", "Paused", "Unpaid", "Got Placed"].includes(value)) {
+                                  if (!window.confirm(`Are you sure you want to update status as ${value} ?`)) return;
+                                  setSelectedSaleId(sale.id);
+                                  setSelectedFinanceStatus(value as FinanceStatus);
+                                  setShowReasonDialog(true);
+                                } else {
+                                  handleFinanceStatusUpdate(sale.id, value as FinanceStatus);
+                                }
+                              }}
+                              disabled={!!actionSelections[sale.id]}
+                            >
+                              <SelectTrigger className="w-36">
+                                <SelectValue placeholder="Select Status" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Paid">Paid</SelectItem>
+                                <SelectItem value="Unpaid">Unpaid</SelectItem>
+                                <SelectItem value="Paused">Paused</SelectItem>
+                                <SelectItem value="Closed">Closed</SelectItem>
+                                <SelectItem value="Got Placed">Got Placed</SelectItem>
+                              </SelectContent>
+                            </Select>
+
+                          </TableCell>
+
+
+                          {/* Reason */}
+                          <TableCell className="text-center">
+                            {sale.reason_for_close ? (
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <button className="hover:text-blue-600">
+                                    <MessageSquare className="w-5 h-5" />
+                                  </button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[300px] bg-white shadow-lg border p-4 text-sm text-gray-700">
+                                  Reason: '{sale.reason_for_close}'
+                                </PopoverContent>
+                              </Popover>
+                            ) : (
+                              <span className="text-gray-400 text-xs italic">—</span>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  ) : (
+                    <TableRow>
+                      <TableCell
+                        colSpan={7}
+                        className="text-center py-8 text-muted-foreground"
+                      >
+                        {followUpFilter === "Today"
+                          ? "No follow ups today"
+                          : "No information here"}
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
 
             </div>
 
@@ -1912,91 +2090,217 @@ export default function FinancePage() {
 
 
           <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
-            <DialogContent hideCloseIcon aria-describedby="payment-details-description" className="w-[420px]" onInteractOutside={(e) => e.preventDefault()} // Prevent outside click close
-            >
+            <DialogContent aria-describedby="payment-details-description" className="max-w-5xl max-h-[80vh] overflow-y-auto" onInteractOutside={(e) => e.preventDefault()}>
               <DialogHeader>
-                <DialogTitle>💰 Payment Details</DialogTitle>
+                <DialogTitle>Renewal Form</DialogTitle>
               </DialogHeader>
 
               <p id="payment-details-description" className="text-sm text-muted-foreground mb-2">
-                Fill the payment info, onboard date, and subscription details to record this payment.
+                Client Id : {clientId}
               </p>
 
               <div className="space-y-4">
+                {/* Client Details */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-1 border p-4 rounded-lg">
+                    <div className="col-span-1"><Label className="font-semibold">Client Details</Label></div>
 
-                {/* Payment amount */}
-                <Input
-                  type="number"
-                  placeholder="Payment amount ($)"
-                  value={paymentAmount}
-                  onChange={(e) => setPaymentAmount(e.target.value)}
-                  required
-                />
+  <div className="grid grid-cols-4 p-4 gap-4">
+
+<div className="col-span-1">
+    <Label className="text-muted-foreground">Client Email</Label>
+  </div>
+  <div className="col-span-3">
+    <Input placeholder="Client Full Name" value={clientName} onChange={(e) => setClientName(e.target.value)} />
+  </div>
+
+  <div className="col-span-1">
+    <Label className="text-muted-foreground">Client Email</Label>
+  </div>
+  <div className="col-span-3">
+    <Input placeholder="Client Email" value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} />
+  </div>
+
+  <div className="col-span-1">
+    <Label className="text-muted-foreground">Application Email</Label>
+  </div>
+  <div className="col-span-3">
+    <Input placeholder="Company Application Email" value={companyApplicationEmail} onChange={(e) => setCompanyApplicationEmail(e.target.value)} />
+  </div>
+
+  <div className="col-span-1">
+    <Label className="text-muted-foreground">Phone number</Label>
+  </div>
+  <div className="col-span-3">
+    <Input placeholder="Contact Number" value={contactNumber} onChange={(e) => setContactNumber(e.target.value)} />
+  </div>
+
+  <div className="col-span-1">
+    <Label className="text-muted-foreground">City</Label>
+  </div>
+  <div className="col-span-3">
+    <Input placeholder="City" value={city} onChange={(e) => setCity(e.target.value)} />
+  </div>
+  </div>
+
+                  </div>
+                  {/* Subscription & Payment Info */}
+                  <div className="grid grid-cols-2 gap-4 border p-4 rounded-lg">
+  {/* Subscription & Payment Info Label */}
+  <div className="col-span-2">
+    <Label className="font-semibold">Subscription & Payment Info</Label>
+  </div>
+
+  {/* Payment Mode */}
+  <div className="col-span-1">
+    <Label className="text-muted-foreground">Payment Mode</Label>
+  </div>
+  <div className="col-span-1">
+    <Select value={paymentMode} onValueChange={setPaymentMode}>
+      <SelectTrigger><SelectValue placeholder="Select Payment Mode" /></SelectTrigger>
+      <SelectContent>
+        <SelectItem value="UPI">UPI</SelectItem>
+        <SelectItem value="PayPal">PayPal</SelectItem>
+        <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
+        <SelectItem value="Credit/Debit Card">Credit/Debit Card</SelectItem>
+        <SelectItem value="Stripe">Stripe</SelectItem>
+        <SelectItem value="Razorpay">Razorpay</SelectItem>
+        <SelectItem value="Other">Other</SelectItem>
+      </SelectContent>
+    </Select>
+  </div>
+
+  {/* Subscription Duration */}
+  <div className="col-span-1">
+    <Label className="text-muted-foreground">Subscription Duration</Label>
+  </div>
+  <div className="col-span-1">
+    <Select value={subscriptionCycle} onValueChange={setSubscriptionCycle}>
+      <SelectTrigger><SelectValue placeholder="Select Subscription Duration" /></SelectTrigger>
+      <SelectContent>
+        <SelectItem value="15">15 Days</SelectItem>
+        <SelectItem value="30">1 Month</SelectItem>
+        <SelectItem value="60">2 Months</SelectItem>
+        <SelectItem value="90">3 Months</SelectItem>
+      </SelectContent>
+    </Select>
+  </div>
+
+  {/* Subscription Sale Value */}
+  <div className="col-span-1">
+    <Label className="text-muted-foreground">Subscription Sale Value ($)</Label>
+  </div>
+  <div className="col-span-1">
+    <Input
+      type="number"
+      placeholder="Subscription Sale Value ($)"
+      value={subscriptionSaleValue}
+      onChange={(e) => setSubscriptionSaleValue(e.target.value)}
+    />
+  </div>
+
+  {/* Auto Total (Subscription Only) */}
+  <div className="col-span-1">
+    <Label className="text-muted-foreground">Auto Total (Subscription Only)</Label>
+  </div>
+  <div className="col-span-1">
+    <Input
+      placeholder="Auto Total (Subscription Only)"
+      value={calculateAutoTotal(subscriptionCycle, subscriptionSaleValue)}
+      disabled
+    />
+  </div>
+
+  {/* Onboarding Date */}
+  <div className="col-span-1">
+    <Label className="text-muted-foreground">Onboarding Date</Label>
+  </div>
+  <div className="col-span-1">
+    <Input
+      type="date"
+      value={onboardingDate ? onboardingDate.toISOString().slice(0, 10) : ""}
+      onChange={(e) => setOnboardingDate(new Date(e.target.value))}
+    />
+  </div>
+</div>
 
 
-                {/* NEW -- Onboarded Date */}
-                <Input
-                  type="date"
-                  placeholder="Onboarded date"
-                  value={onboardDate ? onboardDate.toISOString().slice(0, 10) : ""}
-                  onChange={(e) => setOnboardDate(new Date(e.target.value))}
-                  required
-                />
+                </div>
 
-                {/* NEW -- Subscription Months */}
-                <Select
-                  value={subscriptionMonths}
-                  onValueChange={setSubscriptionMonths}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Subscription duration" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {/* <SelectItem value="0.5">15 days</SelectItem> */}
-                    <SelectItem value="1">1 month</SelectItem>
-                    <SelectItem value="2">2 months</SelectItem>
-                    <SelectItem value="3">3 months</SelectItem>
-                  </SelectContent>
-                </Select>
+
+
+                {/* Add-on Services */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border p-4 rounded-lg">
+  <Label className="col-span-2 text-sm font-semibold">Addon payments Info</Label>  {/* This will span across the full row */}
+             <div className="grid grid-cols-2 gap-2 items-center">
+  <Label className="text-muted-foreground col-span-1">Resume Sale Value ($)</Label>
+  <Input type="number" placeholder="Resume Sale Value ($)" value={resumeValue} onChange={(e) => setResumeValue(e.target.value)} className="col-span-1" />
+</div>
+
+<div className="grid grid-cols-2 gap-2 items-center">
+  <Label className="text-muted-foreground col-span-1">Portfolio Sale Value ($)</Label>
+  <Input type="number" placeholder="Portfolio Sale Value ($)" value={portfolioValue} onChange={(e) => setPortfolioValue(e.target.value)} className="col-span-1" />
+</div>
+
+<div className="grid grid-cols-2 gap-2 items-center">
+  <Label className="text-muted-foreground col-span-1">LinkedIn Sale Value ($)</Label>
+  <Input type="number" placeholder="LinkedIn Sale Value ($)" value={linkedinValue} onChange={(e) => setLinkedinValue(e.target.value)} className="col-span-1" />
+</div>
+
+<div className="grid grid-cols-2 gap-2 items-center">
+  <Label className="text-muted-foreground col-span-1">GitHub Sale Value ($)</Label>
+  <Input type="number" placeholder="GitHub Sale Value ($)" value={githubValue} onChange={(e) => setGithubValue(e.target.value)} className="col-span-1" />
+</div>
+
+<div className="grid grid-cols-2 gap-2 items-center">
+  <Label className="text-muted-foreground col-span-1">Courses Sale Value ($)</Label>
+  <Input type="number" placeholder="Courses Sale Value ($)" value={coursesValue} onChange={(e) => setCoursesValue(e.target.value)} className="col-span-1" />
+</div>
+
+<div className="grid grid-cols-2 gap-2 items-center">
+  <Label className="text-muted-foreground col-span-1">Badge Value ($)</Label>
+  <Input type="number" placeholder="Badge Value ($)" value={badgeValue} onChange={(e) => setBadgeValue(e.target.value)} className="col-span-1" />
+</div>
+
+<div className="grid grid-cols-2 gap-2 items-center">
+  <Label className="text-muted-foreground col-span-1">Custom Add-on Label</Label>
+  <Input placeholder="Custom Add-on Label" value={customLabel} onChange={(e) => setCustomLabel(e.target.value)} className="col-span-1" />
+</div>
+
+<div className="grid grid-cols-2 gap-2 items-center">
+  <Label className="text-muted-foreground col-span-1">Custom Add-on Value ($)</Label>
+  <Input type="number" placeholder="Custom Add-on Value ($)" value={customValue} onChange={(e) => setCustomValue(e.target.value)} className="col-span-1" />
+</div>
+
+                  <div className="grid grid-cols-2 gap-2 items-center">
+                    <Label className="text-muted-foreground col-span-1">No. of applications</Label>
+                    <Input type="number" placeholder="No. of Job Applications per Month" value={noOfJobApps} onChange={(e) => setNoOfJobApps(e.target.value)} className="col-span-1" />
+                  </div>
+
+                  <div className="py-1">
+                    <Label className="font-semibold">Total Amount : {Number(formattedTotalAmount).toFixed(2)} </Label>
+                  </div>
+                </div>
+
+                {/* Commitments */}
+                <div>
+                  <Label className="font-semibold">Commitments</Label>
+                  <Textarea placeholder="Enter commitments" value={commitments} onChange={(e) => setCommitments(e.target.value)} />
+                </div>
+
+                {/* Action Buttons */}
                 <div className="flex gap-3 pt-4">
-                  <Button
-                    variant="ghost"
-                    className="w-1/2 bg-black text-white hover:bg-orange-400"
-                    onClick={() => {
-                      // Close the dialog
-                      setShowPaymentDialog(false);
-
-                      // Reset form fields
-                      setPaymentAmount("");
-                      setOnboardDate(null);
-                      setSubscriptionMonths("");
-
-                      // Reset action dropdown (if applicable)
-                      if (selectedSaleId) {
-                        setActionSelections((prev) => ({
-                          ...prev,
-                          [selectedSaleId]: "", // Resets to "Select Status"
-                        }));
-                      }
-
-                      // Clear selected ID (optional cleanup)
-                      setSelectedSaleId(null);
-                    }}
-                  >
-                    Cancel payment ❌
+                  <Button variant="ghost" className="w-1/2 bg-black text-white hover:bg-orange-400" onClick={() => setShowPaymentDialog(false)}>
+                    Cancel Payment ❌
                   </Button>
-
-                  <Button
-                    onClick={handlePaymentClose}
-                    className="w-1/2 bg-blue-600 text-white hover:bg-blue-700"
-                  >
+                  <Button onClick={handlePaymentClose} className="w-1/2 bg-blue-600 text-white hover:bg-blue-700">
                     Payment Done ✅
                   </Button>
                 </div>
-
               </div>
             </DialogContent>
           </Dialog>
+
 
 
 
