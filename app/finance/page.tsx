@@ -797,14 +797,14 @@ export default function FinancePage() {
       nextRenewalDate.setDate(nextRenewalDate.getDate() + parseInt(subscriptionCycle, 10));
     }
 
-    console.log("Selected Sale ID: ", selectedSaleId);
-    console.log("Client Name: ", clientName);
-    console.log("Client Email: ", clientEmail);
+    // console.log("Selected Sale ID: ", selectedSaleId);
+    // console.log("Client Name: ", clientName);
+    // console.log("Client Email: ", clientEmail);
     // console.log("application value Amount: ", subscriptionSaleValue);
-    console.log("application value Amount: ", adjustedTotalAmount);
+    // console.log("application value Amount: ", adjustedTotalAmount);
 
-    adjustedTotalAmount
-    console.log("Total Amount with addons: ", subscription_puls_addons);
+    // adjustedTotalAmount
+    // console.log("Total Amount with addons: ", subscription_puls_addons);
 
     // Validate required fields
     if (!clientId) {
