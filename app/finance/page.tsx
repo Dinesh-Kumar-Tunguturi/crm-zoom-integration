@@ -408,23 +408,22 @@ export default function FinancePage() {
 
 
   useEffect(() => {
-    const base = parseFloat(subscriptionSaleValue || "0");
-    const resume = parseFloat(resumeValue || "0");
-    const portfolio = parseFloat(portfolioValue || "0");
-    const linkedin = parseFloat(linkedinValue || "0");
-    const github = parseFloat(githubValue || "0");
+  const validSubscriptionSaleValue = parseFloat(subscriptionSaleValue || "0");
+  const validResumeValue = parseFloat(resumeValue || "0");
+  const validPortfolioValue = parseFloat(portfolioValue || "0");
+  const validLinkedinValue = parseFloat(linkedinValue || "0");
+  const validGithubValue = parseFloat(githubValue || "0");
 
-    const multipliedBase = base * subscriptionMultiplier;
-    const total = multipliedBase + resume + portfolio + linkedin + github;
-    setTotalSale(total);
-  }, [
-    subscriptionSaleValue,
-    resumeValue,
-    portfolioValue,
-    linkedinValue,
-    githubValue,
-    subscriptionMultiplier, // <-- Important
-  ]);
+  const total = validSubscriptionSaleValue + validResumeValue + validPortfolioValue + validLinkedinValue + validGithubValue;
+  setTotalSale(total); // Update total correctly
+}, [
+  subscriptionSaleValue,
+  resumeValue,
+  portfolioValue,
+  linkedinValue,
+  githubValue
+]);
+
 
 
   useEffect(() => {
@@ -827,10 +826,17 @@ export default function FinancePage() {
       alert("Please fill clientEmail field.");
       return;
     }
-    if (!subscription_puls_addons) {
-      alert("Please fill subscriptionSaleValue field.");
-      return;
-    }
+
+
+   const validSubscriptionSaleValue = parseFloat(subscriptionSaleValue || "0");
+const validResumeValue = parseFloat(resumeValue || "0");
+const validPortfolioValue = parseFloat(portfolioValue || "0");
+const validLinkedinValue = parseFloat(linkedinValue || "0");
+const validGithubValue = parseFloat(githubValue || "0");
+
+const total = validSubscriptionSaleValue + validResumeValue + validPortfolioValue + validLinkedinValue + validGithubValue;
+setTotalSale(total);  // Update total correctly
+
 
 
     // Insert a new record into the sales_closure table
@@ -1065,15 +1071,32 @@ export default function FinancePage() {
       break;
   }
 
-  // Format the result with two decimal places
-  const subscription_puls_addons = adjustedTotalAmount + parseFloat(resumeValue) +
-    parseFloat(portfolioValue) +
-    parseFloat(linkedinValue) +
-    parseFloat(githubValue) +
-    parseFloat(coursesValue) +
-    parseFloat(customValue) +
-    parseFloat(badgeValue);
-  const formattedTotalAmount = subscription_puls_addons.toFixed(2);
+  const validResumeValue = parseFloat(resumeValue || "0");
+const validPortfolioValue = parseFloat(portfolioValue || "0");
+const validLinkedinValue = parseFloat(linkedinValue || "0");
+const validGithubValue = parseFloat(githubValue || "0");
+const validCoursesValue = parseFloat(coursesValue || "0");
+const validCustomValue = parseFloat(customValue || "0");
+const validBadgeValue = parseFloat(badgeValue || "0");
+
+// Now you can safely add them together
+const subscription_puls_addons = adjustedTotalAmount + validResumeValue +
+  validPortfolioValue + validLinkedinValue + validGithubValue +
+  validCoursesValue + validCustomValue + validBadgeValue;
+
+console.log("subscription_puls_addons", typeof subscription_puls_addons, subscription_puls_addons);
+console.log("adjustedTotalAmount", typeof adjustedTotalAmount, adjustedTotalAmount);
+console.log("resumeValue", typeof resumeValue, resumeValue);
+console.log("portfolioValue", typeof portfolioValue, portfolioValue);
+console.log("linkedinValue", typeof linkedinValue, linkedinValue);
+console.log("githubValue", typeof githubValue, githubValue);
+console.log("coursesValue", typeof coursesValue, coursesValue);
+console.log("customValue", typeof customValue, customValue);
+console.log("badgeValue", typeof badgeValue, badgeValue);
+
+// Format the result with two decimal places
+const formattedTotalAmount = subscription_puls_addons.toFixed(2);
+
 
   // Now use formattedTotalAmount in your input field
 
@@ -1597,16 +1620,16 @@ export default function FinancePage() {
                         ClientID
                         <span
                           className={`text-xs leading-none ${sortField === "lead_id" && sortOrder === "desc"
-                              ? "text-blue-600"
-                              : "text-gray-400"
+                            ? "text-blue-600"
+                            : "text-gray-400"
                             }`}
                         >
                           ▲
                         </span>
                         <span
                           className={`text-xs leading-none ${sortField === "lead_id" && sortOrder === "asc"
-                              ? "text-blue-600"
-                              : "text-gray-400"
+                            ? "text-blue-600"
+                            : "text-gray-400"
                             }`}
                         >
                           ▼
@@ -1622,16 +1645,16 @@ export default function FinancePage() {
                         Name
                         <span
                           className={`text-xs leading-none ${sortField === "name" && sortOrder === "desc"
-                              ? "text-blue-600"
-                              : "text-gray-400"
+                            ? "text-blue-600"
+                            : "text-gray-400"
                             }`}
                         >
                           ▲
                         </span>
                         <span
                           className={`text-xs leading-none ${sortField === "name" && sortOrder === "asc"
-                              ? "text-blue-600"
-                              : "text-gray-400"
+                            ? "text-blue-600"
+                            : "text-gray-400"
                             }`}
                         >
                           ▼
@@ -1650,16 +1673,16 @@ export default function FinancePage() {
                         Sale value
                         <span
                           className={`text-xs leading-none ${sortField === "sale_value" && sortOrder === "desc"
-                              ? "text-blue-600"
-                              : "text-gray-400"
+                            ? "text-blue-600"
+                            : "text-gray-400"
                             }`}
                         >
                           ▲
                         </span>
                         <span
                           className={`text-xs leading-none ${sortField === "sale_value" && sortOrder === "asc"
-                              ? "text-blue-600"
-                              : "text-gray-400"
+                            ? "text-blue-600"
+                            : "text-gray-400"
                             }`}
                         >
                           ▼
@@ -1679,16 +1702,16 @@ export default function FinancePage() {
                         SaledoneAt
                         <span
                           className={`text-xs leading-none ${sortField === "oldest_sale_done_at" && sortOrder === "desc"
-                              ? "text-blue-600"
-                              : "text-gray-400"
+                            ? "text-blue-600"
+                            : "text-gray-400"
                             }`}
                         >
                           ▲
                         </span>
                         <span
                           className={`text-xs leading-none ${sortField === "oldest_sale_done_at" && sortOrder === "asc"
-                              ? "text-blue-600"
-                              : "text-gray-400"
+                            ? "text-blue-600"
+                            : "text-gray-400"
                             }`}
                         >
                           ▼
@@ -1704,16 +1727,16 @@ export default function FinancePage() {
                         Onboarded/lastPaymentAt
                         <span
                           className={`text-xs leading-none ${sortField === "onboarded_date" && sortOrder === "desc"
-                              ? "text-blue-600"
-                              : "text-gray-400"
+                            ? "text-blue-600"
+                            : "text-gray-400"
                             }`}
                         >
                           ▲
                         </span>
                         <span
                           className={`text-xs leading-none ${sortField === "onboarded_date" && sortOrder === "asc"
-                              ? "text-blue-600"
-                              : "text-gray-400"
+                            ? "text-blue-600"
+                            : "text-gray-400"
                             }`}
                         >
                           ▼
@@ -2105,124 +2128,124 @@ export default function FinancePage() {
                   <div className="grid grid-cols-1 md:grid-cols-1 border p-4 rounded-lg">
                     <div className="col-span-1"><Label className="font-semibold">Client Details</Label></div>
 
-  <div className="grid grid-cols-4 p-4 gap-4">
+                    <div className="grid grid-cols-4 p-4 gap-4">
 
-<div className="col-span-1">
-    <Label className="text-muted-foreground">Client Email</Label>
-  </div>
-  <div className="col-span-3">
-    <Input placeholder="Client Full Name" value={clientName} onChange={(e) => setClientName(e.target.value)} />
-  </div>
+                      <div className="col-span-1">
+                        <Label className="text-muted-foreground">Client Email</Label>
+                      </div>
+                      <div className="col-span-3">
+                        <Input placeholder="Client Full Name" value={clientName} onChange={(e) => setClientName(e.target.value)} />
+                      </div>
 
-  <div className="col-span-1">
-    <Label className="text-muted-foreground">Client Email</Label>
-  </div>
-  <div className="col-span-3">
-    <Input placeholder="Client Email" value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} />
-  </div>
+                      <div className="col-span-1">
+                        <Label className="text-muted-foreground">Client Email</Label>
+                      </div>
+                      <div className="col-span-3">
+                        <Input placeholder="Client Email" value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} />
+                      </div>
 
-  <div className="col-span-1">
-    <Label className="text-muted-foreground">Application Email</Label>
-  </div>
-  <div className="col-span-3">
-    <Input placeholder="Company Application Email" value={companyApplicationEmail} onChange={(e) => setCompanyApplicationEmail(e.target.value)} />
-  </div>
+                      <div className="col-span-1">
+                        <Label className="text-muted-foreground">Application Email</Label>
+                      </div>
+                      <div className="col-span-3">
+                        <Input placeholder="Company Application Email" value={companyApplicationEmail} onChange={(e) => setCompanyApplicationEmail(e.target.value)} />
+                      </div>
 
-  <div className="col-span-1">
-    <Label className="text-muted-foreground">Phone number</Label>
-  </div>
-  <div className="col-span-3">
-    <Input placeholder="Contact Number" value={contactNumber} onChange={(e) => setContactNumber(e.target.value)} />
-  </div>
+                      <div className="col-span-1">
+                        <Label className="text-muted-foreground">Phone number</Label>
+                      </div>
+                      <div className="col-span-3">
+                        <Input placeholder="Contact Number" value={contactNumber} onChange={(e) => setContactNumber(e.target.value)} />
+                      </div>
 
-  <div className="col-span-1">
-    <Label className="text-muted-foreground">City</Label>
-  </div>
-  <div className="col-span-3">
-    <Input placeholder="City" value={city} onChange={(e) => setCity(e.target.value)} />
-  </div>
-  </div>
+                      <div className="col-span-1">
+                        <Label className="text-muted-foreground">City</Label>
+                      </div>
+                      <div className="col-span-3">
+                        <Input placeholder="City" value={city} onChange={(e) => setCity(e.target.value)} />
+                      </div>
+                    </div>
 
                   </div>
                   {/* Subscription & Payment Info */}
                   <div className="grid grid-cols-2 gap-4 border p-4 rounded-lg">
-  {/* Subscription & Payment Info Label */}
-  <div className="col-span-2">
-    <Label className="font-semibold">Subscription & Payment Info</Label>
-  </div>
+                    {/* Subscription & Payment Info Label */}
+                    <div className="col-span-2">
+                      <Label className="font-semibold">Subscription & Payment Info</Label>
+                    </div>
 
-  {/* Payment Mode */}
-  <div className="col-span-1">
-    <Label className="text-muted-foreground">Payment Mode</Label>
-  </div>
-  <div className="col-span-1">
-    <Select value={paymentMode} onValueChange={setPaymentMode}>
-      <SelectTrigger><SelectValue placeholder="Select Payment Mode" /></SelectTrigger>
-      <SelectContent>
-        <SelectItem value="UPI">UPI</SelectItem>
-        <SelectItem value="PayPal">PayPal</SelectItem>
-        <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
-        <SelectItem value="Credit/Debit Card">Credit/Debit Card</SelectItem>
-        <SelectItem value="Stripe">Stripe</SelectItem>
-        <SelectItem value="Razorpay">Razorpay</SelectItem>
-        <SelectItem value="Other">Other</SelectItem>
-      </SelectContent>
-    </Select>
-  </div>
+                    {/* Payment Mode */}
+                    <div className="col-span-1">
+                      <Label className="text-muted-foreground">Payment Mode</Label>
+                    </div>
+                    <div className="col-span-1">
+                      <Select value={paymentMode} onValueChange={setPaymentMode}>
+                        <SelectTrigger><SelectValue placeholder="Select Payment Mode" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="UPI">UPI</SelectItem>
+                          <SelectItem value="PayPal">PayPal</SelectItem>
+                          <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
+                          <SelectItem value="Credit/Debit Card">Credit/Debit Card</SelectItem>
+                          <SelectItem value="Stripe">Stripe</SelectItem>
+                          <SelectItem value="Razorpay">Razorpay</SelectItem>
+                          <SelectItem value="Other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-  {/* Subscription Duration */}
-  <div className="col-span-1">
-    <Label className="text-muted-foreground">Subscription Duration</Label>
-  </div>
-  <div className="col-span-1">
-    <Select value={subscriptionCycle} onValueChange={setSubscriptionCycle}>
-      <SelectTrigger><SelectValue placeholder="Select Subscription Duration" /></SelectTrigger>
-      <SelectContent>
-        <SelectItem value="15">15 Days</SelectItem>
-        <SelectItem value="30">1 Month</SelectItem>
-        <SelectItem value="60">2 Months</SelectItem>
-        <SelectItem value="90">3 Months</SelectItem>
-      </SelectContent>
-    </Select>
-  </div>
+                    {/* Subscription Duration */}
+                    <div className="col-span-1">
+                      <Label className="text-muted-foreground">Subscription Duration</Label>
+                    </div>
+                    <div className="col-span-1">
+                      <Select value={subscriptionCycle} onValueChange={setSubscriptionCycle}>
+                        <SelectTrigger><SelectValue placeholder="Select Subscription Duration" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="15">15 Days</SelectItem>
+                          <SelectItem value="30">1 Month</SelectItem>
+                          <SelectItem value="60">2 Months</SelectItem>
+                          <SelectItem value="90">3 Months</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-  {/* Subscription Sale Value */}
-  <div className="col-span-1">
-    <Label className="text-muted-foreground">Subscription Sale Value ($)</Label>
-  </div>
-  <div className="col-span-1">
-    <Input
-      type="number"
-      placeholder="Subscription Sale Value ($)"
-      value={subscriptionSaleValue}
-      onChange={(e) => setSubscriptionSaleValue(e.target.value)}
-    />
-  </div>
+                    {/* Subscription Sale Value */}
+                    <div className="col-span-1">
+                      <Label className="text-muted-foreground">Subscription Sale Value ($)</Label>
+                    </div>
+                    <div className="col-span-1">
+                      <Input
+                        type="number"
+                        placeholder="Subscription Sale Value ($)"
+                        value={subscriptionSaleValue}
+                        onChange={(e) => setSubscriptionSaleValue(e.target.value)}
+                      />
+                    </div>
 
-  {/* Auto Total (Subscription Only) */}
-  <div className="col-span-1">
-    <Label className="text-muted-foreground">Auto Total (Subscription Only)</Label>
-  </div>
-  <div className="col-span-1">
-    <Input
-      placeholder="Auto Total (Subscription Only)"
-      value={calculateAutoTotal(subscriptionCycle, subscriptionSaleValue)}
-      disabled
-    />
-  </div>
+                    {/* Auto Total (Subscription Only) */}
+                    <div className="col-span-1">
+                      <Label className="text-muted-foreground">Auto Total (Subscription Only)</Label>
+                    </div>
+                    <div className="col-span-1">
+                      <Input
+                        placeholder="Auto Total (Subscription Only)"
+                        value={calculateAutoTotal(subscriptionCycle, subscriptionSaleValue)}
+                        disabled
+                      />
+                    </div>
 
-  {/* Onboarding Date */}
-  <div className="col-span-1">
-    <Label className="text-muted-foreground">Onboarding Date</Label>
-  </div>
-  <div className="col-span-1">
-    <Input
-      type="date"
-      value={onboardingDate ? onboardingDate.toISOString().slice(0, 10) : ""}
-      onChange={(e) => setOnboardingDate(new Date(e.target.value))}
-    />
-  </div>
-</div>
+                    {/* Onboarding Date */}
+                    <div className="col-span-1">
+                      <Label className="text-muted-foreground">Onboarding Date</Label>
+                    </div>
+                    <div className="col-span-1">
+                      <Input
+                        type="date"
+                        value={onboardingDate ? onboardingDate.toISOString().slice(0, 10) : ""}
+                        onChange={(e) => setOnboardingDate(new Date(e.target.value))}
+                      />
+                    </div>
+                  </div>
 
 
                 </div>
@@ -2231,46 +2254,46 @@ export default function FinancePage() {
 
                 {/* Add-on Services */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border p-4 rounded-lg">
-  <Label className="col-span-2 text-sm font-semibold">Addon payments Info</Label>  {/* This will span across the full row */}
-             <div className="grid grid-cols-2 gap-2 items-center">
-  <Label className="text-muted-foreground col-span-1">Resume Sale Value ($)</Label>
-  <Input type="number" placeholder="Resume Sale Value ($)" value={resumeValue} onChange={(e) => setResumeValue(e.target.value)} className="col-span-1" />
-</div>
+                  <Label className="col-span-2 text-sm font-semibold">Addon payments Info</Label>  {/* This will span across the full row */}
+                  <div className="grid grid-cols-2 gap-2 items-center">
+                    <Label className="text-muted-foreground col-span-1">Resume Sale Value ($)</Label>
+                    <Input type="number" placeholder="Resume Sale Value ($)" value={resumeValue} onChange={(e) => setResumeValue(e.target.value)} className="col-span-1" />
+                  </div>
 
-<div className="grid grid-cols-2 gap-2 items-center">
-  <Label className="text-muted-foreground col-span-1">Portfolio Sale Value ($)</Label>
-  <Input type="number" placeholder="Portfolio Sale Value ($)" value={portfolioValue} onChange={(e) => setPortfolioValue(e.target.value)} className="col-span-1" />
-</div>
+                  <div className="grid grid-cols-2 gap-2 items-center">
+                    <Label className="text-muted-foreground col-span-1">Portfolio Sale Value ($)</Label>
+                    <Input type="number" placeholder="Portfolio Sale Value ($)" value={portfolioValue} onChange={(e) => setPortfolioValue(e.target.value)} className="col-span-1" />
+                  </div>
 
-<div className="grid grid-cols-2 gap-2 items-center">
-  <Label className="text-muted-foreground col-span-1">LinkedIn Sale Value ($)</Label>
-  <Input type="number" placeholder="LinkedIn Sale Value ($)" value={linkedinValue} onChange={(e) => setLinkedinValue(e.target.value)} className="col-span-1" />
-</div>
+                  <div className="grid grid-cols-2 gap-2 items-center">
+                    <Label className="text-muted-foreground col-span-1">LinkedIn Sale Value ($)</Label>
+                    <Input type="number" placeholder="LinkedIn Sale Value ($)" value={linkedinValue} onChange={(e) => setLinkedinValue(e.target.value)} className="col-span-1" />
+                  </div>
 
-<div className="grid grid-cols-2 gap-2 items-center">
-  <Label className="text-muted-foreground col-span-1">GitHub Sale Value ($)</Label>
-  <Input type="number" placeholder="GitHub Sale Value ($)" value={githubValue} onChange={(e) => setGithubValue(e.target.value)} className="col-span-1" />
-</div>
+                  <div className="grid grid-cols-2 gap-2 items-center">
+                    <Label className="text-muted-foreground col-span-1">GitHub Sale Value ($)</Label>
+                    <Input type="number" placeholder="GitHub Sale Value ($)" value={githubValue} onChange={(e) => setGithubValue(e.target.value)} className="col-span-1" />
+                  </div>
 
-<div className="grid grid-cols-2 gap-2 items-center">
-  <Label className="text-muted-foreground col-span-1">Courses Sale Value ($)</Label>
-  <Input type="number" placeholder="Courses Sale Value ($)" value={coursesValue} onChange={(e) => setCoursesValue(e.target.value)} className="col-span-1" />
-</div>
+                  <div className="grid grid-cols-2 gap-2 items-center">
+                    <Label className="text-muted-foreground col-span-1">Courses Sale Value ($)</Label>
+                    <Input type="number" placeholder="Courses Sale Value ($)" value={coursesValue} onChange={(e) => setCoursesValue(e.target.value)} className="col-span-1" />
+                  </div>
 
-<div className="grid grid-cols-2 gap-2 items-center">
-  <Label className="text-muted-foreground col-span-1">Badge Value ($)</Label>
-  <Input type="number" placeholder="Badge Value ($)" value={badgeValue} onChange={(e) => setBadgeValue(e.target.value)} className="col-span-1" />
-</div>
+                  <div className="grid grid-cols-2 gap-2 items-center">
+                    <Label className="text-muted-foreground col-span-1">Badge Value ($)</Label>
+                    <Input type="number" placeholder="Badge Value ($)" value={badgeValue} onChange={(e) => setBadgeValue(e.target.value)} className="col-span-1" />
+                  </div>
 
-<div className="grid grid-cols-2 gap-2 items-center">
-  <Label className="text-muted-foreground col-span-1">Custom Add-on Label</Label>
-  <Input placeholder="Custom Add-on Label" value={customLabel} onChange={(e) => setCustomLabel(e.target.value)} className="col-span-1" />
-</div>
+                  <div className="grid grid-cols-2 gap-2 items-center">
+                    <Label className="text-muted-foreground col-span-1">Custom Add-on Label</Label>
+                    <Input placeholder="Custom Add-on Label" value={customLabel} onChange={(e) => setCustomLabel(e.target.value)} className="col-span-1" />
+                  </div>
 
-<div className="grid grid-cols-2 gap-2 items-center">
-  <Label className="text-muted-foreground col-span-1">Custom Add-on Value ($)</Label>
-  <Input type="number" placeholder="Custom Add-on Value ($)" value={customValue} onChange={(e) => setCustomValue(e.target.value)} className="col-span-1" />
-</div>
+                  <div className="grid grid-cols-2 gap-2 items-center">
+                    <Label className="text-muted-foreground col-span-1">Custom Add-on Value ($)</Label>
+                    <Input type="number" placeholder="Custom Add-on Value ($)" value={customValue} onChange={(e) => setCustomValue(e.target.value)} className="col-span-1" />
+                  </div>
 
                   <div className="grid grid-cols-2 gap-2 items-center">
                     <Label className="text-muted-foreground col-span-1">No. of applications</Label>
@@ -2469,8 +2492,10 @@ export default function FinancePage() {
                       value={subscriptionCycle}
                       onValueChange={(val) => {
                         setSubscriptionCycle(val);
-                        const multiplier = val === "60" ? 2 : val === "90" ? 3 : 1;
+                        const multiplier = subscriptionCycle === "60" ? 2 : subscriptionCycle === "90" ? 3 : 1;
                         setSubscriptionMultiplier(multiplier);
+
+
                       }}
                     >
                       <SelectTrigger className="w-full"><SelectValue placeholder="Subscription Duration" /></SelectTrigger>
