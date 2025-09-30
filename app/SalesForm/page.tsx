@@ -1083,9 +1083,10 @@ const fmtDate = (s?: string | null) => {
       n(portfolioValue) +
       n(linkedinValue) +
       n(githubValue)+
-       n(coursesValue) +   // NEW
+       n(coursesValue) +
+       n(badgeValue)+   // NEW
     n(customValue),     // NEW
-    [autoTotal, resumeValue, portfolioValue, linkedinValue, githubValue, coursesValue, customValue]
+    [autoTotal, resumeValue, portfolioValue, linkedinValue, githubValue, coursesValue, customValue, badgeValue]
   );
 
   const nextDueDate = useMemo(() => {
