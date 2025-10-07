@@ -2446,9 +2446,9 @@ badge_value: r.badge_value ?? null,
             <h1 className="text-3xl font-bold text-gray-900">Resume Page</h1>
           </div> */}
 
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-start">
    <h1 className="text-3xl font-bold text-gray-900">Resume Page</h1>
-   <Button variant="outline" onClick={fetchMyTasks}>
+   <Button variant="outline" className="mx-16" onClick={fetchMyTasks}>
      My Tasks
    </Button>
  </div>
@@ -2566,9 +2566,8 @@ badge_value: r.badge_value ?? null,
             </DialogFooter>
           </DialogContent>
         </Dialog>
-
+{/* 
 <Dialog open={myTasksOpen} onOpenChange={setMyTasksOpen}>
-  {/* <DialogContent className="max-w-7xl overflow-scroll"> */}
   <DialogContent
   className="max-w-7xl overflow-scroll"
   onPointerDownOutside={(e) => e.preventDefault()}
@@ -2586,11 +2585,40 @@ badge_value: r.badge_value ?? null,
     ) : myTasksError ? (
       <div className="p-6 text-sm text-red-600">{myTasksError}</div>
     ) : (
-      // reuse the same table with full actions
-      // renderTable(mySortedRows)
+   
       renderTable(mySortedRows, "myTasks")
 
     )}
+
+    <DialogFooter className="gap-2">
+      <Button variant="outline" onClick={fetchMyTasks}>Refresh</Button>
+      <Button onClick={() => setMyTasksOpen(false)}>Close</Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog> */}
+
+<Dialog open={myTasksOpen} onOpenChange={setMyTasksOpen}>
+  <DialogContent
+    className="max-w-[90vw] max-h-[80vh] overflow-auto"  // 👈 Add max height & both scrolls
+    onPointerDownOutside={(e) => e.preventDefault()}
+    onEscapeKeyDown={(e) => e.preventDefault()}
+  >
+    <DialogHeader>
+      <DialogTitle>My Tasks</DialogTitle>
+      <DialogDescription>
+        Resumes assigned to you ({myTasksRows.length})
+      </DialogDescription>
+    </DialogHeader>
+
+    <div className="overflow-x-auto overflow-y-auto">
+      {myTasksLoading ? (
+        <div className="p-6 text-sm text-muted-foreground">Loading…</div>
+      ) : myTasksError ? (
+        <div className="p-6 text-sm text-red-600">{myTasksError}</div>
+      ) : (
+        renderTable(mySortedRows, "myTasks")
+      )}
+    </div>
 
     <DialogFooter className="gap-2">
       <Button variant="outline" onClick={fetchMyTasks}>Refresh</Button>
