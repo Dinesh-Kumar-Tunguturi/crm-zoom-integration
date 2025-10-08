@@ -1387,16 +1387,15 @@ const handleOnboardClick = async (row: SalesClosure) => {
 };
 
 
-
-// Writes/updates Project-B.pending_clients via server API
+// ✅ FIXED: Writes/updates Project-B.pending_clients via server API
 const writePendingClientFromLead = async (leadId: string) => {
   // a) Read latest onboarding details from Project-A
-  const { data: ob, error: obErr } = await supabase
+  const { data: obData, error: obErr } = await supabase
     .from("client_onborading_details")
     .select(`
       full_name,
       whatsapp_number,
-    personal_email,
+      personal_email,
       callable_phone,
       company_email,
       job_role_preferences,
@@ -1410,17 +1409,13 @@ const writePendingClientFromLead = async (leadId: string) => {
     `)
     .eq("lead_id", leadId)
     .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .limit(1);   // 👈 only limit, no maybeSingle
+
   if (obErr) throw obErr;
+
+  // pick the latest row manually
+  const ob = obData && obData.length > 0 ? obData[0] : null;
   if (!ob) throw new Error("No onboarding details found for this client.");
-
-  
-
-
-
-// const personalEmail = lead?.email || "not given"; // Default to "not given" if email is missing
-
 
   // c) ✅ Get latest badge_value from sales_closure for this lead
   const { data: scRow, error: scErr } = await supabase
@@ -1429,8 +1424,9 @@ const writePendingClientFromLead = async (leadId: string) => {
     .eq("lead_id", leadId)
     .order("closed_at", { ascending: false, nullsFirst: false })
     .limit(1)
-    .maybeSingle();
+    .maybeSingle(); // 👈 here maybeSingle is fine, because sales_closure SHOULD have max 1 latest record
   if (scErr) throw scErr;
+
   const latestBadgeValue: number | null =
     scRow?.badge_value !== null && scRow?.badge_value !== undefined
       ? Number(scRow.badge_value)
@@ -1448,29 +1444,25 @@ const writePendingClientFromLead = async (leadId: string) => {
     location_preferences: ob.location_preferences ?? null,
     work_auth_details: ob.work_auth_details ?? null,
 
-    // extra fields
     visa_type: ob.visatypes ?? null,
     sponsorship: typeof ob.needs_sponsorship === "boolean" ? ob.needs_sponsorship : null,
     applywizz_id: ob.lead_id ?? leadId,
-
-    // ✅ send badge_value along
     badge_value: latestBadgeValue,
-
-    // keep created_at for first insert (server will handle upsert)
     created_at: ob.created_at ?? new Date().toISOString(),
   };
 
+  // e) Upsert to pending_clients
   const res = await fetch("/api/pending-clients/upsert", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(pcPayload),
   });
+
   if (!res.ok) {
     const j = await res.json().catch(() => ({}));
     throw new Error(j.error || "Failed to upsert pending_client in Project-B");
   }
 };
-
 
 
 
