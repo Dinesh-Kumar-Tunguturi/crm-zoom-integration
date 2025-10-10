@@ -4,6 +4,8 @@ import { useEffect, useRef, useState, useContext } from "react";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Trash2 } from 'lucide-react'; // Import trash icon from lucide-react
+
 
 
 import {
@@ -106,6 +108,11 @@ export default function MarketingPage() {
   const [successDialogOpen, setSuccessDialogOpen] = useState(false);
   const [assignSuccessMessage, setAssignSuccessMessage] = useState("");
   // const [leadTab, setLeadTab] = useState<"New" | "Assigned">("New");
+
+  // Add state for deletion
+const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
+
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [pageSize, setPageSize] = useState(15);
@@ -453,6 +460,80 @@ const handleFilterChange = async ({
 
   const { data, error } = await query;
   if (!error) setDistinctSalesLeads(data || []);
+};
+
+// Handle Delete Click - Open the confirmation dialog
+const handleDeleteClick = (leadId: string) => {
+  setSelectedLeadId(leadId);
+  setDeleteDialogOpen(true);
+};
+
+// // Handle Confirm Delete - Execute the delete operation
+// const handleDeleteConfirmation = async () => {
+//   if (selectedLeadId) {
+//     try {
+//       const { error } = await supabase
+//         .from('leads')
+//         .delete()
+//         .eq('id', selectedLeadId); // Delete record by ID
+
+//       if (error) {
+//         console.error('Error deleting lead:', error);
+//         alert('Failed to delete lead.');
+//         return;
+//       }
+
+//       // Close the dialog and refresh leads
+//       setDeleteDialogOpen(false);
+//       setSelectedLeadId(null);
+//       alert('Lead deleted successfully!');
+      
+//       // Refetch leads after deletion (you can use your existing fetch method)
+//       const { data, error: fetchError } = await supabase.from('leads').select('*');
+//       if (fetchError) throw fetchError;
+//       setLeads(data ?? []); // Update leads state with the new data
+
+//     } catch (err) {
+//       console.error('Delete operation failed:', err);
+//       alert('Error deleting lead.');
+//     }
+//   }
+// };
+
+
+const handleDeleteConfirmation = async () => {
+  if (selectedLeadId) {
+    try {
+      // Check if the lead_id exists in the sales_closure table
+     
+
+      // Now, delete the lead from the leads table
+      const { error: deleteLeadError } = await supabase
+        .from('leads')
+        .delete()
+        .eq('id', selectedLeadId); // Delete the lead record
+
+      if (deleteLeadError) {
+        console.error('Error deleting lead:', deleteLeadError);
+        alert('Failed to delete lead.');
+        return;
+      }
+
+      // Successfully deleted the lead and sales closure records (if any)
+      setDeleteDialogOpen(false);
+      setSelectedLeadId(null);
+      alert('Lead deleted successfully!');
+
+      // Refetch leads after deletion
+      const { data, error: fetchError } = await supabase.from('leads').select('*');
+      if (fetchError) throw fetchError;
+      setLeads(data ?? []); // Update leads state with the new data
+
+    } catch (err) {
+      console.error('Delete operation failed:', err);
+      alert('Error deleting lead and sales closures.');
+    }
+  }
 };
 
 
@@ -1243,6 +1324,26 @@ setSalesHistoryDialogOpen(true);
                       </DialogContent>
                     )}
                   </Dialog>
+
+<Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+  <DialogContent>
+    <DialogHeader>
+      <DialogTitle>Confirm Deletion</DialogTitle>
+    </DialogHeader>
+    <DialogDescription>
+      Are you sure you want to delete this lead?
+    </DialogDescription>
+
+    <DialogFooter>
+      <Button onClick={handleDeleteConfirmation} variant="destructive">
+        Yes, Delete
+      </Button>
+      <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+        Cancel
+      </Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
 
 
                   <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
@@ -2067,6 +2168,8 @@ setSalesHistoryDialogOpen(true);
 
                       <TableHeader >
                         <TableRow className="center">
+            <TableHead className="sticky top-0 bg-white z-10 w-16 max-w-[80px] whitespace-normal">Delete</TableHead>
+
                           <TableHead className="sticky top-0 bg-white z-10 w-12 text-center">
                             <Checkbox
                               checked={selectedLeads.length === filteredLeads.length && filteredLeads.length > 0}
@@ -2254,7 +2357,30 @@ setSalesHistoryDialogOpen(true);
                             key={lead.id}
                             className="hover:bg-gray-100" >
 
+{/* <TableCell className="text-center">
+        <Button
+          size="icon"
+          variant="outline"
+          onClick={() => handleDeleteClick(lead.id)} // Open the delete confirmation dialog
+        >
+          <Trash2 className="h-5 w-5 text-red-600" /> 
+        </Button>
+      </TableCell> */}
 
+      <TableCell className="text-center">
+        {(lead.status !== "Assigned") && (
+          <Button
+            variant="outline"
+            color="danger"
+            onClick={() => {
+              setSelectedLeadId(lead.id); // Set the selected lead id
+              setDeleteDialogOpen(true); // Open the delete confirmation dialog
+            }}
+          >
+          <Trash2 className="h-5 w-5 text-red-600" /> {/* Red color for delete */}
+          </Button>
+        )}
+      </TableCell>
                             <TableCell>
                               <Checkbox
                                 checked={selectedLeads.includes(lead.id)}
