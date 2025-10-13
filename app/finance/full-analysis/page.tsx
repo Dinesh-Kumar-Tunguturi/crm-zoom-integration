@@ -690,6 +690,16 @@ export default function FullAnalysisPage() {
   });
   const [customDisplayLabel, setCustomDisplayLabel] = useState<string>('custom');
 
+  // counts for new / renewal per source (lead-based counts)
+const [sourceNewCounts, setSourceNewCounts] = useState<Record<SourceKey, number>>({
+  application: 0, resume: 0, linkedin: 0, portfolio: 0,
+  github: 0, courses: 0, badge: 0, custom: 0,
+});
+const [sourceRenewalCounts, setSourceRenewalCounts] = useState<Record<SourceKey, number>>({
+  application: 0, resume: 0, linkedin: 0, portfolio: 0,
+  github: 0, courses: 0, badge: 0, custom: 0,
+});
+
   useEffect(() => setMounted(true), []);
 
   // ---------- helpers ----------
@@ -744,76 +754,112 @@ export default function FullAnalysisPage() {
     return Number.isFinite(usable) ? Number(usable.toFixed(2)) : 0;
   };
 
-  // ---------- single fetch → compute everything ----------
-  const fetchAll = async () => {
-    setIsLoading(true);
+  // helper to create a stable lead key (avoid grouping null/empty together)
+const getLeadKey = (r: SaleRow) => {
+  const id = r.lead_id ? String(r.lead_id).trim() : '';
+  // if you have email or other fallback you can use it here:
+  const fallbackEmail = (r as any).email ? String((r as any).email).trim() : '';
+  if (id.length > 0) return id;
+  if (fallbackEmail.length > 0) return `email:${fallbackEmail}`;
+  return null; // orphan row; won't be counted towards lead-based counts
+};
 
-    let query = supabase
-      .from('sales_closure')
-      .select(`
-        lead_id,
-        sale_value,
-        closed_at,
-        onboarded_date,
-        subscription_cycle,
-        application_sale_value,
-        resume_sale_value,
-        linkedin_sale_value,
-        portfolio_sale_value,
-        github_sale_value,
-        courses_sale_value,
-        badge_value,
-        custom_sale_value,
-        custom_label
-      `);
+ const fetchAll = async () => {
+  // request id to avoid race/stale updates
+  (fetchAll as any).currentRequestId = ((fetchAll as any).currentRequestId || 0) + 1;
+  const reqId = (fetchAll as any).currentRequestId;
 
-    if (startDate && endDate) {
+  setIsLoading(true);
+
+  try {
+    // Helper parsers
+    const parseLocalDate = (s?: string | null) => {
+      if (!s) return undefined;
+      return s.includes('T') ? new Date(s) : new Date(`${s}T00:00:00`);
+    };
+
+    const getLeadKey = (r: SaleRow) => {
+      const id = r.lead_id ? String(r.lead_id).trim() : '';
+      const fallbackEmail = (r as any).email ? String((r as any).email).trim() : '';
+      if (id.length > 0) return id;
+      if (fallbackEmail.length > 0) return `email:${fallbackEmail}`;
+      return null;
+    };
+
+    // Which mode: date-range selected or not?
+    const hasDateRange = !!(startDate && endDate);
+    let rowsInRange: SaleRow[] = [];
+    let allRows: SaleRow[] = [];
+
+    // Build base projection for both queries
+    const projection = `
+      id,
+      lead_id,
+      sale_value,
+      closed_at,
+      onboarded_date,
+      subscription_cycle,
+      application_sale_value,
+      resume_sale_value,
+      linkedin_sale_value,
+      portfolio_sale_value,
+      github_sale_value,
+      courses_sale_value,
+      badge_value,
+      custom_sale_value,
+      custom_label,
+      email
+    `;
+
+    if (hasDateRange) {
+      // Convert to UTC ISO boundaries for queries
       const { startUTC, endUTC } = localRangeToUTC(startDate, endDate);
-      if (startUTC && endUTC) {
-        query = query.gte('closed_at', startUTC).lte('closed_at', endUTC);
-      }
+
+      // Fetch ALL rows (to compute overall lead counts for New/Renewal)
+      const allQ = supabase.from('sales_closure').select(projection).order('closed_at', { ascending: true });
+
+      // Fetch only rows within selected range (to decide which leads count for the selected window)
+      let rangeQ = supabase.from('sales_closure').select(projection).order('closed_at', { ascending: true });
+      if (startUTC && endUTC) rangeQ = rangeQ.gte('closed_at', startUTC).lte('closed_at', endUTC);
+
+      const [allRes, rangeRes] = await Promise.all([allQ, rangeQ]);
+
+      // stale guard
+      if (reqId !== (fetchAll as any).currentRequestId) return;
+
+      if (allRes.error) throw allRes.error;
+      if (rangeRes.error) throw rangeRes.error;
+
+      allRows = (allRes.data as SaleRow[]) ?? [];
+      rowsInRange = (rangeRes.data as SaleRow[]) ?? [];
+    } else {
+      // No date range: just fetch all rows (previous behavior)
+      const q = supabase.from('sales_closure').select(projection).order('closed_at', { ascending: true });
+      const { data, error } = await q;
+
+      if (reqId !== (fetchAll as any).currentRequestId) return;
+      if (error) throw error;
+
+      allRows = (data as SaleRow[]) ?? [];
+      rowsInRange = allRows; // treat entire table as the "range"
     }
 
-    const { data, error } = await query;
-    if (error) {
-      console.error('Error fetching sales_closure:', error);
-      // reset to zeros so UI is deterministic
-      setTotalCollected(0);
-      setUsableRevenue(0);
-      setPendingRevenue(0);
-      setPendingClientCount(0);
-      setPaidClientCount(0);
-      setSourceTotals({
-        application: 0, resume: 0, linkedin: 0, portfolio: 0,
-        github: 0, courses: 0, badge: 0, custom: 0,
-      });
-      setSourceAverages({
-        application: 0, resume: 0, linkedin: 0, portfolio: 0,
-        github: 0, courses: 0, badge: 0, custom: 0,
-      });
-      setCustomDisplayLabel('custom');
-      setIsLoading(false);
-      return;
-    }
+    // ---------- Basic aggregates: totalCollected, usableRevenue ----------
+    const totalCollectedNum = allRows.reduce((acc, r) => acc + safeNumber(r.sale_value, 0), 0);
 
-    const rows: SaleRow[] = data ?? [];
-
-    // total collected
-    const total = rows.reduce((acc, r) => acc + safeNumber(r.sale_value, 0), 0);
-
-    // usable revenue
-    const usable = rows.reduce((acc, r) => {
+    const usableNum = allRows.reduce((acc, r) => {
       const cycle = safeCycleDays(r.subscription_cycle, 30);
-      const start = new Date(r.closed_at);
+      const start = parseLocalDate(r.onboarded_date ?? r.closed_at) ?? parseLocalDate(r.closed_at)!;
       const amount = safeNumber(r.sale_value, 0);
       return acc + calculateUsableRevenueUntilToday(start, cycle, amount);
     }, 0);
 
-    // latest record by lead for pending vs paid
-    const latestByLead = new Map<string, SaleRow & { onboardDate: Date }>();
-    rows.forEach((r) => {
-      const key = String(r.lead_id ?? '');
-      const onboardDate = r.onboarded_date ? new Date(r.onboarded_date) : new Date(r.closed_at);
+    // ---------- latest record by lead (for pending vs paid counts) ----------
+    const latestByLead = new Map<string, (SaleRow & { onboardDate: Date })>();
+    allRows.forEach((r) => {
+      const key = getLeadKey(r);
+      if (!key) return;
+      const onboardDate = parseLocalDate(r.onboarded_date) ?? parseLocalDate(r.closed_at)!;
       const existing = latestByLead.get(key);
       if (!existing || onboardDate > existing.onboardDate) {
         latestByLead.set(key, { ...r, onboardDate });
@@ -826,7 +872,7 @@ export default function FullAnalysisPage() {
     const today = new Date();
 
     for (const r of latestByLead.values()) {
-      const start = r.onboarded_date ? new Date(r.onboarded_date) : new Date(r.closed_at);
+      const start = parseLocalDate(r.onboarded_date) ?? parseLocalDate(r.closed_at)!;
       const cycle = safeCycleDays(r.subscription_cycle, 30);
       const end = new Date(start);
       end.setDate(end.getDate() + cycle);
@@ -839,7 +885,8 @@ export default function FullAnalysisPage() {
       }
     }
 
-    // ----- source totals & averages -----
+    // ---------- source totals & averages (based on rowsInRange or allRows? keep totals on rowsInRange to reflect selected range) ----------
+    // You may want totals/averages to reflect the selected range. Current implementation uses rowsInRange.
     const totals: Record<SourceKey, number> = {
       application: 0, resume: 0, linkedin: 0, portfolio: 0,
       github: 0, courses: 0, badge: 0, custom: 0,
@@ -849,10 +896,10 @@ export default function FullAnalysisPage() {
       github: 0, courses: 0, badge: 0, custom: 0,
     };
 
-    rows.forEach((r) => {
+    rowsInRange.forEach((r) => {
       (Object.keys(SOURCE_FIELDS) as SourceKey[]).forEach((key) => {
         const col = SOURCE_FIELDS[key].column;
-        const val = safeNumber(r[col], 0);
+        const val = safeNumber((r as any)[col], 0);
         if (val !== 0) {
           totals[key] += val;
           counts[key] += 1;
@@ -860,27 +907,143 @@ export default function FullAnalysisPage() {
       });
     });
 
-    const avgs: Record<SourceKey, number> = { ...totals };
+    const avgs: Record<SourceKey, number> = {
+      application: 0, resume: 0, linkedin: 0, portfolio: 0,
+      github: 0, courses: 0, badge: 0, custom: 0,
+    };
     (Object.keys(SOURCE_FIELDS) as SourceKey[]).forEach((k) => {
       avgs[k] = counts[k] > 0 ? Number((totals[k] / counts[k]).toFixed(2)) : 0;
       totals[k] = Number(totals[k].toFixed(2));
     });
 
-    // custom label (prefer most recent non-empty)
-    const lastCustom = rows.findLast?.((r) => (r.custom_label ?? '').trim().length > 0);
-    setCustomDisplayLabel(lastCustom?.custom_label?.trim() || 'custom');
+    // ---------- custom label -->
+    const lastCustom = [...allRows]
+      .sort((a, b) => new Date(String(b.closed_at)).getTime() - new Date(String(a.closed_at)).getTime())
+      .find((r) => (r.custom_label ?? '').toString().trim().length > 0);
+    const customLabel = lastCustom?.custom_label?.toString().trim() || 'custom';
 
-    // set state
-    setTotalCollected(Number(total.toFixed(2)));
-    setUsableRevenue(Number(usable.toFixed(2)));
+    // ---------- NEW logic: compute overall per-lead source counts from whole table (allRows) ----------
+    const overallLeadSourceCounts = new Map<string, Record<SourceKey, number>>();
+    allRows.forEach((r) => {
+      const leadKey = getLeadKey(r);
+      if (!leadKey) return;
+      if (!overallLeadSourceCounts.has(leadKey)) {
+        overallLeadSourceCounts.set(leadKey, {
+          application: 0, resume: 0, linkedin: 0, portfolio: 0,
+          github: 0, courses: 0, badge: 0, custom: 0,
+        });
+      }
+      const counter = overallLeadSourceCounts.get(leadKey)!;
+      (Object.keys(SOURCE_FIELDS) as SourceKey[]).forEach((key) => {
+        const col = SOURCE_FIELDS[key].column;
+        const val = safeNumber((r as any)[col], 0);
+        if (val > 0) {
+          counter[key] = (counter[key] || 0) + 1;
+        }
+      });
+    });
+
+    // ---------- Now compute New / Renewal counts based on the selected range:
+    // We need to count unique leads that have at least one row in the selected range (rowsInRange)
+    // AND whose overallLeadSourceCounts per source is 1 (New) or >1 (Renewal).
+    const newCounts: Record<SourceKey, number> = {
+      application: 0, resume: 0, linkedin: 0, portfolio: 0,
+      github: 0, courses: 0, badge: 0, custom: 0,
+    };
+    const renewalCounts: Record<SourceKey, number> = {
+      application: 0, resume: 0, linkedin: 0, portfolio: 0,
+      github: 0, courses: 0, badge: 0, custom: 0,
+    };
+
+    // We'll keep sets so that each lead is counted only once per source
+    const countedNewPerSource: Record<SourceKey, Set<string>> = {
+      application: new Set(), resume: new Set(), linkedin: new Set(), portfolio: new Set(),
+      github: new Set(), courses: new Set(), badge: new Set(), custom: new Set(),
+    };
+    const countedRenewalPerSource: Record<SourceKey, Set<string>> = {
+      application: new Set(), resume: new Set(), linkedin: new Set(), portfolio: new Set(),
+      github: new Set(), courses: new Set(), badge: new Set(), custom: new Set(),
+    };
+
+    // For each row in the selected window, see if that lead qualifies for new or renewal for each source.
+    // If no date range selected, rowsInRange === allRows, so this still works.
+    rowsInRange.forEach((r) => {
+      const leadKey = getLeadKey(r);
+      if (!leadKey) return;
+
+      const overall = overallLeadSourceCounts.get(leadKey) ?? {
+        application: 0, resume: 0, linkedin: 0, portfolio: 0,
+        github: 0, courses: 0, badge: 0, custom: 0,
+      };
+
+      (Object.keys(SOURCE_FIELDS) as SourceKey[]).forEach((key) => {
+        const col = SOURCE_FIELDS[key].column;
+        const val = safeNumber((r as any)[col], 0);
+
+        if (val <= 0) return; // this row doesn't contribute for that source
+
+        // If overall count is exactly 1, this lead is "new" for that source (but count only once)
+        if (overall[key] === 1) {
+          if (!countedNewPerSource[key].has(leadKey)) {
+            countedNewPerSource[key].add(leadKey);
+            newCounts[key] += 1;
+          }
+        } else if (overall[key] > 1) {
+          // overall occurrences > 1 => renewal candidate; count unique lead once
+          if (!countedRenewalPerSource[key].has(leadKey)) {
+            countedRenewalPerSource[key].add(leadKey);
+            renewalCounts[key] += 1;
+          }
+        }
+      });
+    });
+
+    // ---------- finally set state (guard stale) ----------
+    if (reqId !== (fetchAll as any).currentRequestId) return;
+
+    setTotalCollected(Number(totalCollectedNum.toFixed(2)));
+    setUsableRevenue(Number(usableNum.toFixed(2)));
     setPendingRevenue(Number(pendingSum.toFixed(2)));
     setPendingClientCount(pendingCount);
     setPaidClientCount(paidCount);
     setSourceTotals(totals);
     setSourceAverages(avgs);
+    setCustomDisplayLabel(customLabel);
+    setSourceNewCounts(newCounts);
+    setSourceRenewalCounts(renewalCounts);
+  } catch (err) {
+    console.error('fetchAll failed:', err);
 
-    setIsLoading(false);
-  };
+    // deterministic reset on error
+    setTotalCollected(0);
+    setUsableRevenue(0);
+    setPendingRevenue(0);
+    setPendingClientCount(0);
+    setPaidClientCount(0);
+    setSourceTotals({
+      application: 0, resume: 0, linkedin: 0, portfolio: 0,
+      github: 0, courses: 0, badge: 0, custom: 0,
+    });
+    setSourceAverages({
+      application: 0, resume: 0, linkedin: 0, portfolio: 0,
+      github: 0, courses: 0, badge: 0, custom: 0,
+    });
+    setSourceNewCounts({
+      application: 0, resume: 0, linkedin: 0, portfolio: 0,
+      github: 0, courses: 0, badge: 0, custom: 0,
+    });
+    setSourceRenewalCounts({
+      application: 0, resume: 0, linkedin: 0, portfolio: 0,
+      github: 0, courses: 0, badge: 0, custom: 0,
+    });
+    setCustomDisplayLabel('custom');
+  } finally {
+    if (reqId === (fetchAll as any).currentRequestId) {
+      setIsLoading(false);
+    }
+  }
+};
+
 
   useEffect(() => {
     fetchAll();
@@ -1222,97 +1385,106 @@ const CustomLegend = ({
     </CardContent>
   </Card>
 
-  {/* col-span 2 */}
-  <Card className="md:col-span-2">
-    <CardHeader>
-      <CardTitle>Source of Revenue</CardTitle>
-    </CardHeader>
-    <CardContent className="flex flex-col md:flex-row gap-4">
-      {/* Totals */}
-      <div className="flex-grow rounded-xl border p-3">
-        <p className="text-sm font-semibold mb-2">Total</p>
-        <ul className="space-y-1 text-sm">
-          {(Object.keys(SOURCE_FIELDS) as SourceKey[]).map((k) => {
-            const base = SOURCE_FIELDS[k].label;
-            const label = k === 'custom' ? (customDisplayLabel || 'custom') : base;
-            return (
-              <li key={k} className="flex justify-between">
-                <span className="capitalize pr-3">{label}</span>
-                {/* <span>{" : "}</span> */}
-                <span className="font-medium">{formatCurrency(sourceTotals[k] || 0)}</span>
-              </li>
-            );
-          })}
-        </ul>
+  {/* col-span 3 */}
+<Card className="md:col-span-3">
+  <CardHeader>
+    <CardTitle>Source of Revenue</CardTitle>
+  </CardHeader>
+
+  <CardContent className="flex flex-col md:flex-row  gap-4">
+    {/* Combined table: Totals | Average | New | Renewal */}
+    <div className="flex-none rounded-xl border p-3 overflow-auto">
+      <p className="text-sm font-semibold mb-2">Source Breakdown</p>
+
+      {/* header row */}
+      <div className="hidden md:grid grid-cols-5 gap-2 text-xs text-muted-foreground mb-2 font-semibold">
+        <div>Source</div>
+        <div className="text-right">Total</div>
+        <div className="text-right">Average</div>
+        <div className="text-right">New (count)</div>
+        <div className="text-right">Renewal (count)</div>
       </div>
 
-      {/* Averages */}
-      <div className="flex-grow rounded-xl border p-3">
-        <p className="text-sm font-semibold mb-2">Average</p>
-        <ul className="space-y-1 text-sm">
-          {(Object.keys(SOURCE_FIELDS) as SourceKey[]).map((k) => {
-            const base = SOURCE_FIELDS[k].label;
-            const label = k === 'custom' ? (customDisplayLabel || 'custom') : base;
-            return (
-              <li key={k} className="flex justify-between">
-                <span className="capitalize pr-3">{label}</span>
-                <span>{" "}</span>
-                <span className="font-medium">{formatCurrency(sourceAverages[k] || 0)}</span>
-              </li>
-            );
-          })}
-        </ul>
+      {/* mobile-friendly label header */}
+      <div className="md:hidden grid grid-cols-2 gap-2 text-xs text-muted-foreground mb-2 font-semibold">
+        <div>Source</div>
+        <div className="text-right">Totals / Avg / New / Renewal</div>
       </div>
 
-      {/* Pie */}
-     {/* Pie with side legend */}
-<div className="flex-grow h-[220px]">
+      <ul className="space-y-2">
+        {(Object.keys(SOURCE_FIELDS) as SourceKey[]).map((k) => {
+          const base = SOURCE_FIELDS[k].label;
+          const label = k === 'custom' ? (customDisplayLabel || 'custom') : base;
+          return (
+            <li key={k} className="grid grid-cols-2 md:grid-cols-5 gap-2 items-center text-sm">
+              {/* Source name */}
+              <div className="capitalize">{label}</div>
+
+              {/* On small screens show compact stack */}
+              <div className="md:hidden text-right">
+                <div className="text-xs">{formatCurrency(sourceTotals[k] || 0)}</div>
+                <div className="text-xs">{formatCurrency(sourceAverages[k] || 0)}</div>
+                <div className="text-xs">{sourceNewCounts[k] ?? 0} / {sourceRenewalCounts[k] ?? 0}</div>
+              </div>
+
+              {/* Desktop columns */}
+              <div className="hidden md:block text-right font-medium">
+                {formatCurrency(sourceTotals[k] || 0)}
+              </div>
+              <div className="hidden md:block text-right font-medium">
+                {formatCurrency(sourceAverages[k] || 0)}
+              </div>
+              <div className="hidden md:block text-right">
+                {sourceNewCounts[k] ?? 0}
+              </div>
+              <div className="hidden md:block text-right">
+                {sourceRenewalCounts[k] ?? 0}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+
+{/* Pie with side legend */}
+<div className="flex-shrink-0 w-full md:w-[420px] h-[260px] px-10">
   {mounted && (
     <ResponsiveContainer width="100%" height="100%">
-      <PieChart>
+      <PieChart margin={{ top: 20, right: 160, left: 90, bottom: 20 }}>
         <Pie
           data={pieDataSources}
           dataKey="value"
           nameKey="name"
-          cx="40%"         // leave space on right for legend
-          cy="50%"
-          outerRadius={80}
+          cx="50%"  // Center the pie chart horizontally
+          cy="50%"  // Center the pie chart vertically
+          outerRadius={90}  // Larger outer radius to fill the space
           labelLine={false}
-          // label={({ percent }) => `${Math.round(percent * 100)}%`}
         >
           {pieDataSources.map((_, i) => (
             <Cell key={i} fill={COLORS[i % COLORS.length]} />
           ))}
         </Pie>
- <Tooltip
-          formatter={(value: any, name: string) => [formatCurrency(Number(value)), name]}
-        />
 
-        {/* Right-side vertical legend with % */}
+        <Tooltip formatter={(value: any, name: string) => [formatCurrency(Number(value)), name]} />
+
         <Legend
           layout="vertical"
           verticalAlign="middle"
           align="right"
+          wrapperStyle={{ top: 0, right: 0 }}  // Keep legend positioned on the right side
           content={(props) => <CustomLegend total={totalSources} {...props} />}
         />
-       
       </PieChart>
     </ResponsiveContainer>
   )}
 </div>
 
-    </CardContent>
-  </Card>
+</CardContent>
+</Card>
+
 
   {/* col-span 1 */}
-  <Card className="md:col-span-1">
-    <CardHeader>
-      <CardTitle>Salaries and Expenses</CardTitle>
-    </CardHeader>
-    <CardContent className="h-[200px] flex items-center justify-center text-muted-foreground">
-      <p>[ Line Graph Placeholder ]</p>
-    </CardContent>
-  </Card>
+  
 </div>
 
 
@@ -1327,14 +1499,14 @@ const CustomLegend = ({
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Client Lifecycle</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">Coming soon...</p>
-          </CardContent>
-        </Card>
+      <Card className="md:col-span-1">
+    <CardHeader>
+      <CardTitle>Salaries and Expenses</CardTitle>
+    </CardHeader>
+    <CardContent className="h-[200px] flex items-center justify-center text-muted-foreground">
+      <p>[ Line Graph Placeholder ]</p>
+    </CardContent>
+  </Card>
 
         <Card className="h-[300px]">
           <CardHeader>
