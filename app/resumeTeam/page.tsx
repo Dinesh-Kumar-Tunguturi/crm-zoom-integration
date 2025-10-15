@@ -1409,7 +1409,8 @@ const writePendingClientFromLead = async (leadId: string) => {
     `)
     .eq("lead_id", leadId)
     .order("created_at", { ascending: false })
-    .limit(1);   // 👈 only limit, no maybeSingle
+    .limit(1)
+    .maybeSingle();   
 
   if (obErr) throw obErr;
 
