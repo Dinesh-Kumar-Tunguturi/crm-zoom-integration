@@ -1046,6 +1046,18 @@ setTotalSale(total);  // Update total correctly
 
     return start.toLocaleDateString("en-GB"); // Format: dd/mm/yyyy
   }
+
+  
+const today = new Date();
+const expiredCount = sales.filter((sale) => {
+  if (!sale.onboarded_date || !sale.subscription_cycle) return false;
+
+  const nextRenewal = new Date(sale.onboarded_date);
+  nextRenewal.setDate(nextRenewal.getDate() + sale.subscription_cycle);
+
+  return nextRenewal >= today;
+}).length;
+
   const totalAmount = (
     parseFloat(subscriptionSaleValue)
 
@@ -1210,13 +1222,21 @@ const formattedTotalAmount = subscription_puls_addons.toFixed(2);
 
 
 
-          <div className="flex items-center justify-between mt-4">
-            <Input
-              placeholder="Search by email or lead_id"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="max-w-md"
-            />
+       <div className="flex items-center justify-between mt-4">
+  <div className="flex items-center gap-4">
+    <Input
+      placeholder="Search by email or lead_id"
+      value={searchTerm}
+      onChange={(e) => setSearchTerm(e.target.value)}
+      className="max-w-md"
+    />
+    <div className="text-sm text-gray-500 flex items-center w-96">
+      Today total active clients:&nbsp;
+      <span className="text-md text-green-600 font-bold">{expiredCount}</span>
+    </div>
+  </div>
+{/* </div> */}
+
             <div className="flex space-x-4 justify-end">
               <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as FinanceStatus | "All")}>
                 <SelectTrigger className="w-40">
@@ -1756,7 +1776,8 @@ const formattedTotalAmount = subscription_puls_addons.toFixed(2);
                     sortedSales.map((sale, idx) => {
                       // Treat these statuses as "finalized"
                       const stage = String(sale.finance_status || "").trim().toLowerCase();
-                      const isFinalized = ["closed", "unpaid", "got placed"].includes(stage);
+                      const isFinalized = ["unpaid", "got placed"].includes(stage);
+                      const forClosed = ["closed", "unpaid", "got placed"].includes(stage);
 
                       return (
                         <TableRow key={sale.id}>
@@ -1811,7 +1832,7 @@ const formattedTotalAmount = subscription_puls_addons.toFixed(2);
 
                           {/* Deadline — hide if finalized */}
                           <TableCell>
-                            {isFinalized
+                            {forClosed
                               ? null
                               : getRenewWithinBadge(sale.onboarded_date || "", sale.subscription_cycle)}
                           </TableCell>

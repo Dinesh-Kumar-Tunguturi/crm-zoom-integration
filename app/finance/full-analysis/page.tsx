@@ -764,7 +764,573 @@ const getLeadKey = (r: SaleRow) => {
   return null; // orphan row; won't be counted towards lead-based counts
 };
 
- const fetchAll = async () => {
+//  const fetchAll = async () => {
+//   // request id to avoid race/stale updates
+//   (fetchAll as any).currentRequestId = ((fetchAll as any).currentRequestId || 0) + 1;
+//   const reqId = (fetchAll as any).currentRequestId;
+
+//   setIsLoading(true);
+
+//   try {
+//     // Helper parsers
+//     const parseLocalDate = (s?: string | null) => {
+//       if (!s) return undefined;
+//       return s.includes('T') ? new Date(s) : new Date(`${s}T00:00:00`);
+//     };
+
+//     const getLeadKey = (r: SaleRow) => {
+//       const id = r.lead_id ? String(r.lead_id).trim() : '';
+//       const fallbackEmail = (r as any).email ? String((r as any).email).trim() : '';
+//       if (id.length > 0) return id;
+//       if (fallbackEmail.length > 0) return `email:${fallbackEmail}`;
+//       return null;
+//     };
+
+//     // Which mode: date-range selected or not?
+//     const hasDateRange = !!(startDate && endDate);
+//     let rowsInRange: SaleRow[] = [];
+//     let allRows: SaleRow[] = [];
+
+//     // Build base projection for both queries
+//     const projection = `
+//       id,
+//       lead_id,
+//       sale_value,
+//       closed_at,
+//       onboarded_date,
+//       subscription_cycle,
+//       application_sale_value,
+//       resume_sale_value,
+//       linkedin_sale_value,
+//       portfolio_sale_value,
+//       github_sale_value,
+//       courses_sale_value,
+//       badge_value,
+//       custom_sale_value,
+//       custom_label,
+//       email
+//     `;
+
+//     if (hasDateRange) {
+//       // Convert to UTC ISO boundaries for queries
+//       const { startUTC, endUTC } = localRangeToUTC(startDate, endDate);
+
+//       // Fetch ALL rows (to compute overall lead counts for New/Renewal)
+//       const allQ = supabase.from('sales_closure').select(projection).order('closed_at', { ascending: true });
+
+//       // Fetch only rows within selected range (to decide which leads count for the selected window)
+//       let rangeQ = supabase.from('sales_closure').select(projection).order('closed_at', { ascending: true });
+//       if (startUTC && endUTC) rangeQ = rangeQ.gte('closed_at', startUTC).lte('closed_at', endUTC);
+
+//       const [allRes, rangeRes] = await Promise.all([allQ, rangeQ]);
+
+//       // stale guard
+//       if (reqId !== (fetchAll as any).currentRequestId) return;
+
+//       if (allRes.error) throw allRes.error;
+//       if (rangeRes.error) throw rangeRes.error;
+
+//       allRows = (allRes.data as SaleRow[]) ?? [];
+//       rowsInRange = (rangeRes.data as SaleRow[]) ?? [];
+//     } else {
+//       // No date range: just fetch all rows (previous behavior)
+//       const q = supabase.from('sales_closure').select(projection).order('closed_at', { ascending: true });
+//       const { data, error } = await q;
+
+//       if (reqId !== (fetchAll as any).currentRequestId) return;
+//       if (error) throw error;
+
+//       allRows = (data as SaleRow[]) ?? [];
+//       rowsInRange = allRows; // treat entire table as the "range"
+//     }
+
+//     // ---------- Basic aggregates: totalCollected, usableRevenue ----------
+//     const totalCollectedNum = allRows.reduce((acc, r) => acc + safeNumber(r.sale_value, 0), 0);
+
+//     const usableNum = allRows.reduce((acc, r) => {
+//       const cycle = safeCycleDays(r.subscription_cycle, 30);
+//       const start = parseLocalDate(r.onboarded_date ?? r.closed_at) ?? parseLocalDate(r.closed_at)!;
+//       const amount = safeNumber(r.sale_value, 0);
+//       return acc + calculateUsableRevenueUntilToday(start, cycle, amount);
+//     }, 0);
+
+//     // ---------- latest record by lead (for pending vs paid counts) ----------
+//     const latestByLead = new Map<string, (SaleRow & { onboardDate: Date })>();
+//     allRows.forEach((r) => {
+//       const key = getLeadKey(r);
+//       if (!key) return;
+//       const onboardDate = parseLocalDate(r.onboarded_date) ?? parseLocalDate(r.closed_at)!;
+//       const existing = latestByLead.get(key);
+//       if (!existing || onboardDate > existing.onboardDate) {
+//         latestByLead.set(key, { ...r, onboardDate });
+//       }
+//     });
+
+//     let pendingSum = 0;
+//     let pendingCount = 0;
+//     let paidCount = 0;
+//     const today = new Date();
+
+//     for (const r of latestByLead.values()) {
+//       const start = parseLocalDate(r.onboarded_date) ?? parseLocalDate(r.closed_at)!;
+//       const cycle = safeCycleDays(r.subscription_cycle, 30);
+//       const end = new Date(start);
+//       end.setDate(end.getDate() + cycle);
+
+//       if (end < today) {
+//         pendingSum += safeNumber(r.sale_value, 0);
+//         pendingCount += 1;
+//       } else {
+//         paidCount += 1;
+//       }
+//     }
+
+//     // ---------- source totals & averages (based on rowsInRange or allRows? keep totals on rowsInRange to reflect selected range) ----------
+//     // You may want totals/averages to reflect the selected range. Current implementation uses rowsInRange.
+//     const totals: Record<SourceKey, number> = {
+//       application: 0, resume: 0, linkedin: 0, portfolio: 0,
+//       github: 0, courses: 0, badge: 0, custom: 0,
+//     };
+//     const counts: Record<SourceKey, number> = {
+//       application: 0, resume: 0, linkedin: 0, portfolio: 0,
+//       github: 0, courses: 0, badge: 0, custom: 0,
+//     };
+
+//     rowsInRange.forEach((r) => {
+//       (Object.keys(SOURCE_FIELDS) as SourceKey[]).forEach((key) => {
+//         const col = SOURCE_FIELDS[key].column;
+//         const val = safeNumber((r as any)[col], 0);
+//         if (val !== 0) {
+//           totals[key] += val;
+//           counts[key] += 1;
+//         }
+//       });
+//     });
+
+//     const avgs: Record<SourceKey, number> = {
+//       application: 0, resume: 0, linkedin: 0, portfolio: 0,
+//       github: 0, courses: 0, badge: 0, custom: 0,
+//     };
+//     (Object.keys(SOURCE_FIELDS) as SourceKey[]).forEach((k) => {
+//       avgs[k] = counts[k] > 0 ? Number((totals[k] / counts[k]).toFixed(2)) : 0;
+//       totals[k] = Number(totals[k].toFixed(2));
+//     });
+
+//     // ---------- custom label -->
+//     const lastCustom = [...allRows]
+//       .sort((a, b) => new Date(String(b.closed_at)).getTime() - new Date(String(a.closed_at)).getTime())
+//       .find((r) => (r.custom_label ?? '').toString().trim().length > 0);
+//     const customLabel = lastCustom?.custom_label?.toString().trim() || 'custom';
+
+//     // ---------- NEW logic: compute overall per-lead source counts from whole table (allRows) ----------
+//     const overallLeadSourceCounts = new Map<string, Record<SourceKey, number>>();
+//     allRows.forEach((r) => {
+//       const leadKey = getLeadKey(r);
+//       if (!leadKey) return;
+//       if (!overallLeadSourceCounts.has(leadKey)) {
+//         overallLeadSourceCounts.set(leadKey, {
+//           application: 0, resume: 0, linkedin: 0, portfolio: 0,
+//           github: 0, courses: 0, badge: 0, custom: 0,
+//         });
+//       }
+//       const counter = overallLeadSourceCounts.get(leadKey)!;
+//       (Object.keys(SOURCE_FIELDS) as SourceKey[]).forEach((key) => {
+//         const col = SOURCE_FIELDS[key].column;
+//         const val = safeNumber((r as any)[col], 0);
+//         if (val > 0) {
+//           counter[key] = (counter[key] || 0) + 1;
+//         }
+//       });
+//     });
+
+//     // ---------- Now compute New / Renewal counts based on the selected range:
+//     // We need to count unique leads that have at least one row in the selected range (rowsInRange)
+//     // AND whose overallLeadSourceCounts per source is 1 (New) or >1 (Renewal).
+//     const newCounts: Record<SourceKey, number> = {
+//       application: 0, resume: 0, linkedin: 0, portfolio: 0,
+//       github: 0, courses: 0, badge: 0, custom: 0,
+//     };
+//     const renewalCounts: Record<SourceKey, number> = {
+//       application: 0, resume: 0, linkedin: 0, portfolio: 0,
+//       github: 0, courses: 0, badge: 0, custom: 0,
+//     };
+
+//     // We'll keep sets so that each lead is counted only once per source
+//     const countedNewPerSource: Record<SourceKey, Set<string>> = {
+//       application: new Set(), resume: new Set(), linkedin: new Set(), portfolio: new Set(),
+//       github: new Set(), courses: new Set(), badge: new Set(), custom: new Set(),
+//     };
+//     const countedRenewalPerSource: Record<SourceKey, Set<string>> = {
+//       application: new Set(), resume: new Set(), linkedin: new Set(), portfolio: new Set(),
+//       github: new Set(), courses: new Set(), badge: new Set(), custom: new Set(),
+//     };
+
+//     // For each row in the selected window, see if that lead qualifies for new or renewal for each source.
+//     // If no date range selected, rowsInRange === allRows, so this still works.
+//     rowsInRange.forEach((r) => {
+//       const leadKey = getLeadKey(r);
+//       if (!leadKey) return;
+
+//       const overall = overallLeadSourceCounts.get(leadKey) ?? {
+//         application: 0, resume: 0, linkedin: 0, portfolio: 0,
+//         github: 0, courses: 0, badge: 0, custom: 0,
+//       };
+
+//       (Object.keys(SOURCE_FIELDS) as SourceKey[]).forEach((key) => {
+//         const col = SOURCE_FIELDS[key].column;
+//         const val = safeNumber((r as any)[col], 0);
+
+//         if (val <= 0) return; // this row doesn't contribute for that source
+
+//         // If overall count is exactly 1, this lead is "new" for that source (but count only once)
+//         if (overall[key] === 1) {
+//           if (!countedNewPerSource[key].has(leadKey)) {
+//             countedNewPerSource[key].add(leadKey);
+//             newCounts[key] += 1;
+//           }
+//         } else if (overall[key] > 1) {
+//           // overall occurrences > 1 => renewal candidate; count unique lead once
+//           if (!countedRenewalPerSource[key].has(leadKey)) {
+//             countedRenewalPerSource[key].add(leadKey);
+//             renewalCounts[key] += 1;
+//           }
+//         }
+//       });
+//     });
+
+//     // ---------- finally set state (guard stale) ----------
+//     if (reqId !== (fetchAll as any).currentRequestId) return;
+
+//     setTotalCollected(Number(totalCollectedNum.toFixed(2)));
+//     setUsableRevenue(Number(usableNum.toFixed(2)));
+//     setPendingRevenue(Number(pendingSum.toFixed(2)));
+//     setPendingClientCount(pendingCount);
+//     setPaidClientCount(paidCount);
+//     setSourceTotals(totals);
+//     setSourceAverages(avgs);
+//     setCustomDisplayLabel(customLabel);
+//     setSourceNewCounts(newCounts);
+//     setSourceRenewalCounts(renewalCounts);
+//   } catch (err) {
+//     console.error('fetchAll failed:', err);
+
+//     // deterministic reset on error
+//     setTotalCollected(0);
+//     setUsableRevenue(0);
+//     setPendingRevenue(0);
+//     setPendingClientCount(0);
+//     setPaidClientCount(0);
+//     setSourceTotals({
+//       application: 0, resume: 0, linkedin: 0, portfolio: 0,
+//       github: 0, courses: 0, badge: 0, custom: 0,
+//     });
+//     setSourceAverages({
+//       application: 0, resume: 0, linkedin: 0, portfolio: 0,
+//       github: 0, courses: 0, badge: 0, custom: 0,
+//     });
+//     setSourceNewCounts({
+//       application: 0, resume: 0, linkedin: 0, portfolio: 0,
+//       github: 0, courses: 0, badge: 0, custom: 0,
+//     });
+//     setSourceRenewalCounts({
+//       application: 0, resume: 0, linkedin: 0, portfolio: 0,
+//       github: 0, courses: 0, badge: 0, custom: 0,
+//     });
+//     setCustomDisplayLabel('custom');
+//   } finally {
+//     if (reqId === (fetchAll as any).currentRequestId) {
+//       setIsLoading(false);
+//     }
+//   }
+// };
+
+
+// const fetchAll = async () => {
+//   // request id to avoid race/stale updates
+//   (fetchAll as any).currentRequestId = ((fetchAll as any).currentRequestId || 0) + 1;
+//   const reqId = (fetchAll as any).currentRequestId;
+
+//   setIsLoading(true);
+
+//   try {
+//     // Helper parsers
+//     const parseLocalDate = (s?: string | null) => {
+//       if (!s) return undefined;
+//       return s.includes('T') ? new Date(s) : new Date(`${s}T00:00:00`);
+//     };
+
+//     const getLeadKey = (r: SaleRow) => {
+//       const id = r.lead_id ? String(r.lead_id).trim() : '';
+//       const fallbackEmail = (r as any).email ? String((r as any).email).trim() : '';
+//       if (id.length > 0) return id;
+//       if (fallbackEmail.length > 0) return `email:${fallbackEmail}`;
+//       return null;
+//     };
+
+//     // Which mode: date-range selected or not?
+//     const hasDateRange = !!(startDate && endDate);
+//     let rowsInRange: SaleRow[] = [];
+//     let allRows: SaleRow[] = [];
+
+//     // Build base projection for both queries
+//     const projection = `
+//       id,
+//       lead_id,
+//       sale_value,
+//       closed_at,
+//       onboarded_date,
+//       subscription_cycle,
+//       application_sale_value,
+//       resume_sale_value,
+//       linkedin_sale_value,
+//       portfolio_sale_value,
+//       github_sale_value,
+//       courses_sale_value,
+//       badge_value,
+//       custom_sale_value,
+//       custom_label,
+//       email
+//     `;
+
+//     if (hasDateRange) {
+//       // Convert to UTC ISO boundaries for queries
+//       const { startUTC, endUTC } = localRangeToUTC(startDate, endDate);
+
+//       // Fetch ALL rows (to compute overall lead counts for New/Renewal)
+//       const allQ = supabase.from('sales_closure').select(projection).order('closed_at', { ascending: true });
+
+//       // Fetch only rows within selected range (to decide which leads count for the selected window)
+//       let rangeQ = supabase.from('sales_closure').select(projection).order('closed_at', { ascending: true });
+//       if (startUTC && endUTC) rangeQ = rangeQ.gte('closed_at', startUTC).lte('closed_at', endUTC);
+
+//       const [allRes, rangeRes] = await Promise.all([allQ, rangeQ]);
+
+//       // stale guard
+//       if (reqId !== (fetchAll as any).currentRequestId) return;
+
+//       if (allRes.error) throw allRes.error;
+//       if (rangeRes.error) throw rangeRes.error;
+
+//       allRows = (allRes.data as SaleRow[]) ?? [];
+//       rowsInRange = (rangeRes.data as SaleRow[]) ?? [];
+//     } else {
+//       // No date range: just fetch all rows (previous behavior)
+//       const q = supabase.from('sales_closure').select(projection).order('closed_at', { ascending: true });
+//       const { data, error } = await q;
+
+//       if (reqId !== (fetchAll as any).currentRequestId) return;
+//       if (error) throw error;
+
+//       allRows = (data as SaleRow[]) ?? [];
+//       rowsInRange = allRows; // treat entire table as the "range"
+//     }
+
+//     // ---------- Basic aggregates: totalCollected, usableRevenue ----------
+//     // NOTE: KPIs use rowsInRange so they change with date selection
+//     const totalCollectedNum = rowsInRange.reduce((acc, r) => acc + safeNumber(r.sale_value, 0), 0);
+
+//     const usableNum = rowsInRange.reduce((acc, r) => {
+//       const cycle = safeCycleDays(r.subscription_cycle, 30);
+//       const start = parseLocalDate(r.onboarded_date ?? r.closed_at) ?? parseLocalDate(r.closed_at)!;
+//       const amount = safeNumber(r.sale_value, 0);
+//       return acc + calculateUsableRevenueUntilToday(start, cycle, amount);
+//     }, 0);
+
+//     // deferred (derived from totals in range)
+//     const deferredNum = Math.max(0, totalCollectedNum - usableNum);
+
+//     // ---------- latest record by lead for pending vs paid counts ----------
+//     // Build latest-by-lead using rowsInRange so Pending/ Paid reflect the date window
+//     const latestByLeadInRange = new Map<string, (SaleRow & { onboardDate: Date })>();
+//     rowsInRange.forEach((r) => {
+//       const key = getLeadKey(r);
+//       if (!key) return;
+//       const onboardDate = parseLocalDate(r.onboarded_date) ?? parseLocalDate(r.closed_at)!;
+//       const existing = latestByLeadInRange.get(key);
+//       if (!existing || onboardDate > existing.onboardDate) {
+//         latestByLeadInRange.set(key, { ...r, onboardDate });
+//       }
+//     });
+
+//     let pendingSum = 0;
+//     let pendingCount = 0;
+//     let paidCount = 0;
+//     const today = new Date();
+
+//     for (const r of latestByLeadInRange.values()) {
+//       const start = parseLocalDate(r.onboarded_date) ?? parseLocalDate(r.closed_at)!;
+//       const cycle = safeCycleDays(r.subscription_cycle, 30);
+//       const end = new Date(start);
+//       end.setDate(end.getDate() + cycle);
+
+//       if (end < today) {
+//         pendingSum += safeNumber(r.sale_value, 0);
+//         pendingCount += 1;
+//       } else {
+//         paidCount += 1;
+//       }
+//     }
+
+//     // ---------- source totals & averages (based on rowsInRange to reflect selected range) ----------
+//     const totals: Record<SourceKey, number> = {
+//       application: 0, resume: 0, linkedin: 0, portfolio: 0,
+//       github: 0, courses: 0, badge: 0, custom: 0,
+//     };
+//     const counts: Record<SourceKey, number> = {
+//       application: 0, resume: 0, linkedin: 0, portfolio: 0,
+//       github: 0, courses: 0, badge: 0, custom: 0,
+//     };
+
+//     rowsInRange.forEach((r) => {
+//       (Object.keys(SOURCE_FIELDS) as SourceKey[]).forEach((key) => {
+//         const col = SOURCE_FIELDS[key].column;
+//         const val = safeNumber((r as any)[col], 0);
+//         if (val !== 0) {
+//           totals[key] += val;
+//           counts[key] += 1;
+//         }
+//       });
+//     });
+
+//     const avgs: Record<SourceKey, number> = {
+//       application: 0, resume: 0, linkedin: 0, portfolio: 0,
+//       github: 0, courses: 0, badge: 0, custom: 0,
+//     };
+//     (Object.keys(SOURCE_FIELDS) as SourceKey[]).forEach((k) => {
+//       avgs[k] = counts[k] > 0 ? Number((totals[k] / counts[k]).toFixed(2)) : 0;
+//       totals[k] = Number(totals[k].toFixed(2));
+//     });
+
+//     // ---------- custom label (prefer most recent non-empty from allRows so label is global) -->
+//     const lastCustom = [...allRows]
+//       .sort((a, b) => new Date(String(b.closed_at)).getTime() - new Date(String(a.closed_at)).getTime())
+//       .find((r) => (r.custom_label ?? '').toString().trim().length > 0);
+//     const customLabel = lastCustom?.custom_label?.toString().trim() || 'custom';
+
+//     // ---------- NEW logic: compute overall per-lead source counts from whole table (allRows) ----------
+//     const overallLeadSourceCounts = new Map<string, Record<SourceKey, number>>();
+//     allRows.forEach((r) => {
+//       const leadKey = getLeadKey(r);
+//       if (!leadKey) return;
+//       if (!overallLeadSourceCounts.has(leadKey)) {
+//         overallLeadSourceCounts.set(leadKey, {
+//           application: 0, resume: 0, linkedin: 0, portfolio: 0,
+//           github: 0, courses: 0, badge: 0, custom: 0,
+//         });
+//       }
+//       const counter = overallLeadSourceCounts.get(leadKey)!;
+//       (Object.keys(SOURCE_FIELDS) as SourceKey[]).forEach((key) => {
+//         const col = SOURCE_FIELDS[key].column;
+//         const val = safeNumber((r as any)[col], 0);
+//         if (val > 0) {
+//           counter[key] = (counter[key] || 0) + 1;
+//         }
+//       });
+//     });
+
+//     // ---------- Now compute New / Renewal counts based on the selected range:
+//     // Count unique leads that have >=1 row in rowsInRange AND whose overallLeadSourceCounts per source is 1 (New) or >1 (Renewal).
+//     const newCounts: Record<SourceKey, number> = {
+//       application: 0, resume: 0, linkedin: 0, portfolio: 0,
+//       github: 0, courses: 0, badge: 0, custom: 0,
+//     };
+//     const renewalCounts: Record<SourceKey, number> = {
+//       application: 0, resume: 0, linkedin: 0, portfolio: 0,
+//       github: 0, courses: 0, badge: 0, custom: 0,
+//     };
+
+//     // Keep sets so each lead is counted only once per source
+//     const countedNewPerSource: Record<SourceKey, Set<string>> = {
+//       application: new Set(), resume: new Set(), linkedin: new Set(), portfolio: new Set(),
+//       github: new Set(), courses: new Set(), badge: new Set(), custom: new Set(),
+//     };
+//     const countedRenewalPerSource: Record<SourceKey, Set<string>> = {
+//       application: new Set(), resume: new Set(), linkedin: new Set(), portfolio: new Set(),
+//       github: new Set(), courses: new Set(), badge: new Set(), custom: new Set(),
+//     };
+
+//     rowsInRange.forEach((r) => {
+//       const leadKey = getLeadKey(r);
+//       if (!leadKey) return;
+
+//       const overall = overallLeadSourceCounts.get(leadKey) ?? {
+//         application: 0, resume: 0, linkedin: 0, portfolio: 0,
+//         github: 0, courses: 0, badge: 0, custom: 0,
+//       };
+
+//       (Object.keys(SOURCE_FIELDS) as SourceKey[]).forEach((key) => {
+//         const col = SOURCE_FIELDS[key].column;
+//         const val = safeNumber((r as any)[col], 0);
+
+//         if (val <= 0) return; // this row doesn't contribute for that source
+
+//         if (overall[key] === 1) {
+//           if (!countedNewPerSource[key].has(leadKey)) {
+//             countedNewPerSource[key].add(leadKey);
+//             newCounts[key] += 1;
+//           }
+//         } else if (overall[key] > 1) {
+//           if (!countedRenewalPerSource[key].has(leadKey)) {
+//             countedRenewalPerSource[key].add(leadKey);
+//             renewalCounts[key] += 1;
+//           }
+//         }
+//       });
+//     });
+
+//     // ---------- finally set state (guard stale) ----------
+//     if (reqId !== (fetchAll as any).currentRequestId) return;
+
+//     // KPIs based on the selected range (rowsInRange)
+//     setTotalCollected(Number(totalCollectedNum.toFixed(2)));
+//     setUsableRevenue(Number(usableNum.toFixed(2)));
+//     setPendingRevenue(Number(pendingSum.toFixed(2)));
+//     setPendingClientCount(pendingCount);
+//     setPaidClientCount(paidCount);
+
+//     // source blocks based on range
+//     setSourceTotals(totals);
+//     setSourceAverages(avgs);
+//     setCustomDisplayLabel(customLabel);
+
+//     // new / renewal counts use overall counts but limited to leads in range
+//     setSourceNewCounts(newCounts);
+//     setSourceRenewalCounts(renewalCounts);
+//   } catch (err) {
+//     console.error('fetchAll failed:', err);
+
+//     // deterministic reset on error
+//     setTotalCollected(0);
+//     setUsableRevenue(0);
+//     setPendingRevenue(0);
+//     setPendingClientCount(0);
+//     setPaidClientCount(0);
+//     setSourceTotals({
+//       application: 0, resume: 0, linkedin: 0, portfolio: 0,
+//       github: 0, courses: 0, badge: 0, custom: 0,
+//     });
+//     setSourceAverages({
+//       application: 0, resume: 0, linkedin: 0, portfolio: 0,
+//       github: 0, courses: 0, badge: 0, custom: 0,
+//     });
+//     setSourceNewCounts({
+//       application: 0, resume: 0, linkedin: 0, portfolio: 0,
+//       github: 0, courses: 0, badge: 0, custom: 0,
+//     });
+//     setSourceRenewalCounts({
+//       application: 0, resume: 0, linkedin: 0, portfolio: 0,
+//       github: 0, courses: 0, badge: 0, custom: 0,
+//     });
+//     setCustomDisplayLabel('custom');
+//   } finally {
+//     if (reqId === (fetchAll as any).currentRequestId) {
+//       setIsLoading(false);
+//     }
+//   }
+// };
+
+
+const fetchAll = async () => {
   // request id to avoid race/stale updates
   (fetchAll as any).currentRequestId = ((fetchAll as any).currentRequestId || 0) + 1;
   const reqId = (fetchAll as any).currentRequestId;
@@ -775,6 +1341,7 @@ const getLeadKey = (r: SaleRow) => {
     // Helper parsers
     const parseLocalDate = (s?: string | null) => {
       if (!s) return undefined;
+      // If string contains a time part, trust it; otherwise treat as local midnight
       return s.includes('T') ? new Date(s) : new Date(`${s}T00:00:00`);
     };
 
@@ -811,9 +1378,14 @@ const getLeadKey = (r: SaleRow) => {
       email
     `;
 
+    let rangeStartUTC: string | undefined;
+    let rangeEndUTC: string | undefined;
+
     if (hasDateRange) {
       // Convert to UTC ISO boundaries for queries
       const { startUTC, endUTC } = localRangeToUTC(startDate, endDate);
+      rangeStartUTC = startUTC;
+      rangeEndUTC = endUTC;
 
       // Fetch ALL rows (to compute overall lead counts for New/Renewal)
       const allQ = supabase.from('sales_closure').select(projection).order('closed_at', { ascending: true });
@@ -844,39 +1416,71 @@ const getLeadKey = (r: SaleRow) => {
       rowsInRange = allRows; // treat entire table as the "range"
     }
 
-    // ---------- Basic aggregates: totalCollected, usableRevenue ----------
-    const totalCollectedNum = allRows.reduce((acc, r) => acc + safeNumber(r.sale_value, 0), 0);
+    // ---------- Basic aggregates: totalCollected (range-based) ----------
+    const totalCollectedNum = rowsInRange.reduce((acc, r) => acc + safeNumber(r.sale_value, 0), 0);
 
-    const usableNum = allRows.reduce((acc, r) => {
-      const cycle = safeCycleDays(r.subscription_cycle, 30);
-      const start = parseLocalDate(r.onboarded_date ?? r.closed_at) ?? parseLocalDate(r.closed_at)!;
-      const amount = safeNumber(r.sale_value, 0);
-      return acc + calculateUsableRevenueUntilToday(start, cycle, amount);
+    // ---------- usableRevenue: prorate only the portion inside the selected range (or to today if no range) ----------
+    const MS_PER_DAY = 1000 * 60 * 60 * 24;
+    const today = new Date();
+
+    const usableNum = rowsInRange.reduce((acc, r) => {
+      const cycleDays = safeCycleDays(r.subscription_cycle, 30);
+      const subscriptionStart = parseLocalDate(r.onboarded_date ?? r.closed_at) ?? parseLocalDate(r.closed_at)!;
+      const subscriptionEnd = new Date(subscriptionStart);
+      subscriptionEnd.setDate(subscriptionEnd.getDate() + cycleDays);
+
+      // If date-range selected, intersect subscription period with [rangeStart, rangeEnd]
+      // Otherwise, intersect subscription period with [subscriptionStart, today]
+      const windowStart = hasDateRange && rangeStartUTC ? new Date(rangeStartUTC) : subscriptionStart;
+      // For window end, if date-range selected use rangeEnd, but never extend beyond today
+      const windowEndCandidates = [
+        hasDateRange && rangeEndUTC ? new Date(rangeEndUTC) : undefined,
+        today,
+      ].filter(Boolean) as Date[];
+      const windowEnd = windowEndCandidates.length ? new Date(Math.min(...windowEndCandidates.map(d => d.getTime()))) : today;
+
+      // Now compute intersection between [subscriptionStart, subscriptionEnd] and [windowStart, windowEnd]
+      const interStart = new Date(Math.max(subscriptionStart.getTime(), windowStart.getTime()));
+      const interEnd = new Date(Math.min(subscriptionEnd.getTime(), windowEnd.getTime()));
+
+      if (interEnd.getTime() <= interStart.getTime()) return acc; // no overlap
+
+      const daysInWindow = (interEnd.getTime() - interStart.getTime()) / MS_PER_DAY; // fractional days allowed
+      const perDay = safeNumber(r.sale_value, 0) / cycleDays;
+      const usableForRow = perDay * daysInWindow;
+      return acc + (Number.isFinite(usableForRow) ? usableForRow : 0);
     }, 0);
 
-    // ---------- latest record by lead (for pending vs paid counts) ----------
-    const latestByLead = new Map<string, (SaleRow & { onboardDate: Date })>();
-    allRows.forEach((r) => {
+    // If you want to round usableNum to 2 decimals:
+    const usableRounded = Number(usableNum.toFixed(2));
+
+    // deferred revenue for the selected window (Total - usableWithinWindow)
+    const deferredNum = Math.max(0, totalCollectedNum - usableRounded);
+
+    // ---------- latest record by lead for pending vs paid counts ----------
+    // Build latest-by-lead using rowsInRange so Pending/ Paid reflect the date window
+    const latestByLeadInRange = new Map<string, (SaleRow & { onboardDate: Date })>();
+    rowsInRange.forEach((r) => {
       const key = getLeadKey(r);
       if (!key) return;
       const onboardDate = parseLocalDate(r.onboarded_date) ?? parseLocalDate(r.closed_at)!;
-      const existing = latestByLead.get(key);
+      const existing = latestByLeadInRange.get(key);
       if (!existing || onboardDate > existing.onboardDate) {
-        latestByLead.set(key, { ...r, onboardDate });
+        latestByLeadInRange.set(key, { ...r, onboardDate });
       }
     });
 
     let pendingSum = 0;
     let pendingCount = 0;
     let paidCount = 0;
-    const today = new Date();
 
-    for (const r of latestByLead.values()) {
+    for (const r of latestByLeadInRange.values()) {
       const start = parseLocalDate(r.onboarded_date) ?? parseLocalDate(r.closed_at)!;
       const cycle = safeCycleDays(r.subscription_cycle, 30);
       const end = new Date(start);
       end.setDate(end.getDate() + cycle);
 
+      // Use today as the cutoff for "overdue"
       if (end < today) {
         pendingSum += safeNumber(r.sale_value, 0);
         pendingCount += 1;
@@ -885,8 +1489,7 @@ const getLeadKey = (r: SaleRow) => {
       }
     }
 
-    // ---------- source totals & averages (based on rowsInRange or allRows? keep totals on rowsInRange to reflect selected range) ----------
-    // You may want totals/averages to reflect the selected range. Current implementation uses rowsInRange.
+    // ---------- source totals & averages (based on rowsInRange to reflect selected range) ----------
     const totals: Record<SourceKey, number> = {
       application: 0, resume: 0, linkedin: 0, portfolio: 0,
       github: 0, courses: 0, badge: 0, custom: 0,
@@ -916,7 +1519,7 @@ const getLeadKey = (r: SaleRow) => {
       totals[k] = Number(totals[k].toFixed(2));
     });
 
-    // ---------- custom label -->
+    // ---------- custom label (prefer most recent non-empty from allRows so label is global) -->
     const lastCustom = [...allRows]
       .sort((a, b) => new Date(String(b.closed_at)).getTime() - new Date(String(a.closed_at)).getTime())
       .find((r) => (r.custom_label ?? '').toString().trim().length > 0);
@@ -944,8 +1547,7 @@ const getLeadKey = (r: SaleRow) => {
     });
 
     // ---------- Now compute New / Renewal counts based on the selected range:
-    // We need to count unique leads that have at least one row in the selected range (rowsInRange)
-    // AND whose overallLeadSourceCounts per source is 1 (New) or >1 (Renewal).
+    // Count unique leads that have >=1 row in rowsInRange AND whose overallLeadSourceCounts per source is 1 (New) or >1 (Renewal).
     const newCounts: Record<SourceKey, number> = {
       application: 0, resume: 0, linkedin: 0, portfolio: 0,
       github: 0, courses: 0, badge: 0, custom: 0,
@@ -955,7 +1557,7 @@ const getLeadKey = (r: SaleRow) => {
       github: 0, courses: 0, badge: 0, custom: 0,
     };
 
-    // We'll keep sets so that each lead is counted only once per source
+    // Keep sets so each lead is counted only once per source
     const countedNewPerSource: Record<SourceKey, Set<string>> = {
       application: new Set(), resume: new Set(), linkedin: new Set(), portfolio: new Set(),
       github: new Set(), courses: new Set(), badge: new Set(), custom: new Set(),
@@ -965,8 +1567,6 @@ const getLeadKey = (r: SaleRow) => {
       github: new Set(), courses: new Set(), badge: new Set(), custom: new Set(),
     };
 
-    // For each row in the selected window, see if that lead qualifies for new or renewal for each source.
-    // If no date range selected, rowsInRange === allRows, so this still works.
     rowsInRange.forEach((r) => {
       const leadKey = getLeadKey(r);
       if (!leadKey) return;
@@ -982,14 +1582,12 @@ const getLeadKey = (r: SaleRow) => {
 
         if (val <= 0) return; // this row doesn't contribute for that source
 
-        // If overall count is exactly 1, this lead is "new" for that source (but count only once)
         if (overall[key] === 1) {
           if (!countedNewPerSource[key].has(leadKey)) {
             countedNewPerSource[key].add(leadKey);
             newCounts[key] += 1;
           }
         } else if (overall[key] > 1) {
-          // overall occurrences > 1 => renewal candidate; count unique lead once
           if (!countedRenewalPerSource[key].has(leadKey)) {
             countedRenewalPerSource[key].add(leadKey);
             renewalCounts[key] += 1;
@@ -1001,14 +1599,19 @@ const getLeadKey = (r: SaleRow) => {
     // ---------- finally set state (guard stale) ----------
     if (reqId !== (fetchAll as any).currentRequestId) return;
 
+    // KPIs based on the selected range (rowsInRange)
     setTotalCollected(Number(totalCollectedNum.toFixed(2)));
-    setUsableRevenue(Number(usableNum.toFixed(2)));
+    setUsableRevenue(usableRounded);
     setPendingRevenue(Number(pendingSum.toFixed(2)));
     setPendingClientCount(pendingCount);
     setPaidClientCount(paidCount);
+
+    // source blocks based on range
     setSourceTotals(totals);
     setSourceAverages(avgs);
     setCustomDisplayLabel(customLabel);
+
+    // new / renewal counts use overall counts but limited to leads in range
     setSourceNewCounts(newCounts);
     setSourceRenewalCounts(renewalCounts);
   } catch (err) {
@@ -1049,7 +1652,7 @@ const getLeadKey = (r: SaleRow) => {
     fetchAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startDate, endDate]);
-
+// 
   // derived
   const deferredRevenue = useMemo(() => {
     if (totalCollected == null || usableRevenue == null) return null;
@@ -1447,10 +2050,10 @@ const CustomLegend = ({
     </div>
 
 {/* Pie with side legend */}
-<div className="flex-shrink-0 w-full md:w-[420px] h-[260px] px-10">
+<div className="flex-shrink-0 w-full md:w-[420px] h-[260px] px-6">
   {mounted && (
     <ResponsiveContainer width="100%" height="100%">
-      <PieChart margin={{ top: 20, right: 160, left: 90, bottom: 20 }}>
+      <PieChart margin={{ top: 20, right: 160, left: 92, bottom: 20 }}>
         <Pie
           data={pieDataSources}
           dataKey="value"
