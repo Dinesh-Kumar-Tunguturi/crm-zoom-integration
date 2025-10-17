@@ -332,8 +332,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(401).json({ error: "Unauthorized. Invalid API key." });
   }
 
-  // for update and pull request
-  
+  // for update and pull request, working
+
   try {
     // Safe parse JSON
     let body = req.body;
