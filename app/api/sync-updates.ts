@@ -395,14 +395,15 @@
 // }
 
 
+//app/api/sync-updates.ts
+export const runtime = "nodejs";  // Ensure node runtime
+
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { createClient } from "@supabase/supabase-js";
 
 // ---------- CONFIG ----------
-export const config = {
-  runtime: "nodejs", // Ensure Node.js runtime
-};
+
 
 // ---------- SUPABASE SETUP ----------
 const SUPABASE_URL =
@@ -493,22 +494,29 @@ async function updateSalesClosure(
 
 // ---------- MAIN HANDLER ----------
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+
+   if (req.method === "OPTIONS") return res.status(200).end();
+
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method Not Allowed" });
+  }
+
   // CORS headers
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type");
 
   // Handle OPTIONS request for preflight
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
-  }
+  // if (req.method === "OPTIONS") {
+  //   return res.status(200).end();
+  // }
 
-  // Handle only POST requests
-  if (req.method !== "POST") {
-    return res
-      .status(405)
-      .json({ error: `Method ${req.method} not allowed. Use POST.` });
-  }
+  // // Handle only POST requests
+  // if (req.method !== "POST") {
+  //   return res
+  //     .status(405)
+  //     .json({ error: `Method ${req.method} not allowed. Use POST.` });
+  // }
 
   // Authentication
   if (!authenticateRequest(req)) {
