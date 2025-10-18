@@ -12,7 +12,9 @@
 //   },
 // }
 
-/** @type {import('next').NextConfig} */
+
+// export default nextConfig
+/** @type {import('next').NextConfig} **/
 const nextConfig = {
   experimental: {
     appDir: true, // Enable App Router
@@ -28,4 +30,4 @@ const nextConfig = {
   },
 };
 
-module.exports = nextConfig;
+export default nextConfig;
