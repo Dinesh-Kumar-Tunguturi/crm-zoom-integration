@@ -6,10 +6,12 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/utils/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { PieChart, Pie, Cell} from 'recharts';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent } from '@/components/ui/dropdown-menu';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+
 
 type SaleRow = {
   id?: string;
@@ -688,12 +690,15 @@ const fetchAll = async () => {
   </Card>
 
   {/* col-span 3 */}
+
+
+
+
 <Card className="md:col-span-3">
   <CardHeader>
     <CardTitle>Source of Revenue</CardTitle>
   </CardHeader>
-
-  <CardContent className="flex flex-col md:flex-row  gap-4">
+  <CardContent className="flex flex-col md:flex-row gap-4">
     {/* Combined table: Totals | Average | New | Renewal */}
     <div className="flex-none rounded-xl border p-3 overflow-auto">
       <p className="text-sm font-semibold mb-2">Source Breakdown</p>
@@ -748,42 +753,31 @@ const fetchAll = async () => {
       </ul>
     </div>
 
-{/* Pie with side legend */}
-<div className="flex-shrink-0 w-full md:w-[420px] h-[260px] px-6">
-  {mounted && (
-    <ResponsiveContainer width="100%" height="100%">
-      <PieChart margin={{ top: 20, right: 160, left: 92, bottom: 20 }}>
-        <Pie
-          data={pieDataSources}
-          dataKey="value"
-          nameKey="name"
-          cx="50%"  // Center the pie chart horizontally
-          cy="50%"  // Center the pie chart vertically
-          outerRadius={90}  // Larger outer radius to fill the space
-          labelLine={false}
-        >
-          {pieDataSources.map((_, i) => (
-            <Cell key={i} fill={COLORS[i % COLORS.length]} />
-          ))}
-        </Pie>
+    {/* BarChart with Source Revenue */}
+    <div className="w-full md:w-[900px] h-[300px] px-6">
+      {mounted && (
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={pieDataSources}>
+            {/* XAxis for the Source Names */}
+            <XAxis dataKey="name" />
+            
+            {/* YAxis for Revenue Values */}
+            <YAxis />
+            
+            {/* Tooltip to show the revenue when hovering over a bar */}
+            <Tooltip formatter={(value: any) => formatCurrency(Number(value))} />
+            
+            {/* Legend for source names */}
+            <Legend verticalAlign="top" height={36} />
 
-        <Tooltip formatter={(value: any, name: string) => [formatCurrency(Number(value)), name]} />
-
-        <Legend
-          layout="vertical"
-          verticalAlign="middle"
-          align="right"
-          wrapperStyle={{ top: 0, right: 0 }}  // Keep legend positioned on the right side
-          content={(props) => <CustomLegend total={totalSources} {...props} />}
-        />
-      </PieChart>
-    </ResponsiveContainer>
-  )}
-</div>
-
-</CardContent>
+            {/* Bars for each source */}
+            <Bar dataKey="value" fill="#8884d8" barSize={30} />
+          </BarChart>
+        </ResponsiveContainer>
+      )}
+    </div>
+  </CardContent>
 </Card>
-
 
   {/* col-span 1 */}
   

@@ -401,8 +401,12 @@
 //app/api/sync-updates/route.ts
 export const runtime = "nodejs";  // Ensure node runtime
 
-import { VercelRequest, VercelResponse } from "@vercel/node";
+
+import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { createClient } from "@supabase/supabase-js";
+
+// ---------- CONFIG ----------
+
 
 // ---------- SUPABASE SETUP ----------
 const SUPABASE_URL =
@@ -419,7 +423,7 @@ const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
 });
 
-// ---------- AUTHENTICATION ----------
+// ---------- AUTH ----------
 function authenticateRequest(req: VercelRequest): boolean {
   const authHeader = req.headers["authorization"];
   const expectedApiKey = process.env.SYNC_API_KEY;
@@ -430,7 +434,7 @@ function authenticateRequest(req: VercelRequest): boolean {
   return apiKey === expectedApiKey;
 }
 
-// ---------- HELPER FUNCTION: Update Sales Closure ----------
+// ---------- HELPER FUNCTION ----------
 async function updateSalesClosure(
   lead_id: string,
   updates: Record<string, any>
@@ -493,26 +497,37 @@ async function updateSalesClosure(
 
 // ---------- MAIN HANDLER ----------
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+
+   if (req.method === "OPTIONS") return res.status(200).end();
+
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method Not Allowed" });
+  }
+
   // CORS headers
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type");
 
   // Handle OPTIONS request for preflight
-  if (req.method === "OPTIONS") return res.status(200).end();
+  // if (req.method === "OPTIONS") {
+  //   return res.status(200).end();
+  // }
 
-  // Handle POST request only
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method Not Allowed" });
-  }
+  // // Handle only POST requests
+  // if (req.method !== "POST") {
+  //   return res
+  //     .status(405)
+  //     .json({ error: `Method ${req.method} not allowed. Use POST.` });
+  // }
 
   // Authentication
   if (!authenticateRequest(req)) {
-    return res.status(401).json({ error: "Unauthorized. Invalid API key." });
+    return res.status(401).json({ error: "Unauthorized. " });
   }
 
   try {
-    // Safe parse JSON body
+    // Safe parse JSON
     let body = req.body;
     if (typeof body === "string") {
       try {
@@ -526,7 +541,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    // Extract fields from the body
     const { lead_id } = body;
     if (!lead_id || typeof lead_id !== "string") {
       return res
@@ -534,7 +548,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .json({ error: "lead_id is required and must be a string." });
     }
 
-    // ✅ Dynamically build the updates object (optional fields)
+    // ✅ Build updates dynamically (every field optional)
     const allowedFields = [
       "lead_name",
       "email",
@@ -559,7 +573,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    // Call the update helper function
+    // Call updater
     const result = await updateSalesClosure(lead_id, updates);
 
     const status = result.success ? 200 : 400;
@@ -571,3 +585,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .json({ error: "Internal Server Error", details: err.message });
   }
 }
+//
+
