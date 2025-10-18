@@ -14,11 +14,11 @@
 
 
 // export default nextConfig
-
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // output: 'export',
+  experimental: {
+    appDir: true, // Enable App Router
+  },
   eslint: {
     ignoreDuringBuilds: true,
   },
@@ -28,6 +28,6 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-}
+};
 
-export default nextConfig
+export default nextConfig;
