@@ -512,7 +512,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // Authentication
   if (!authenticateRequest(req)) {
-    return res.status(401).json({ error: "Unauthorized. Invalid API key." });
+    return res.status(401).json({ error: "Unauthorized. " });
   }
 
   try {
