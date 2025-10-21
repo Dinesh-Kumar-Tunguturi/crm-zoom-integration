@@ -54,6 +54,7 @@ interface SalesClosure {
   reason_for_close?: string;
   leads?: { name: string, phone: string };
   oldest_sale_done_at?: string; // 🆕
+  application_sale_value: number;
 }
 
 
@@ -161,6 +162,7 @@ type SalesClosureData = {
   github_service?: number;
   portfolio_service?: number;
   created_at?: string;
+  application_sale_value?: number;
 };
 
 
@@ -180,6 +182,8 @@ export default function FinancePage() {
   const [sortField, setSortField] = useState<string | null>(null);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
 
+const [showUnpaidDialog, setShowUnpaidDialog] = useState(false);
+const [unpaidApplications, setUnpaidApplications] = useState<SalesClosure[]>([]);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [followUpFilter, setFollowUpFilter] = useState<"All dates" | "Today">("Today");
@@ -272,7 +276,91 @@ export default function FinancePage() {
 
 
 
-  async function fetchSalesData() {
+  // async function fetchSalesData() {
+  //   const { data: rows, error } = await supabase
+  //     .from("sales_closure")
+  //     .select("*")
+  //     .order("closed_at", { ascending: false });
+
+  //   if (error) {
+  //     console.error("Error fetching sales data:", error);
+  //     return;
+  //   }
+
+  //   setAllSales(rows);
+  //   const onboardedRows = rows.filter((r) => r.onboarded_date);
+
+  //   const latestMap = new Map<string, SalesClosure>();
+  //   for (const rec of onboardedRows) {
+  //     const existing = latestMap.get(rec.lead_id);
+  //     if (!existing || new Date(rec.closed_at) > new Date(existing.closed_at)) {
+  //       latestMap.set(rec.lead_id, rec);
+  //     }
+  //   }
+
+  //   const latestRows = Array.from(latestMap.values()).sort(
+  //     (a, b) =>
+  //       new Date(b.onboarded_date ?? "").getTime() -
+  //       new Date(a.onboarded_date ?? "").getTime()
+  //   );
+
+  //   // Step 1: Build oldest sale_done map
+  //   const oldestSaleDateMap = new Map<string, string>();
+
+  //   for (const record of rows) {
+  //     const existing = oldestSaleDateMap.get(record.lead_id);
+  //     const currentClosedAt = new Date(record.closed_at);
+  //     if (!existing || currentClosedAt < new Date(existing)) {
+  //       oldestSaleDateMap.set(record.lead_id, record.closed_at);
+  //     }
+  //   }
+
+
+  //   const leadIds = latestRows.map((r) => r.lead_id);
+
+  //   // 🆕 Fetch both name and phone from leads
+  //   const { data: leads, error: leadsErr } = await supabase
+  //     .from("leads")
+  //     .select("business_id, name, phone") // 👈 add phone here
+  //     .in("business_id", leadIds);
+
+  //   if (leadsErr) {
+  //     console.error("Error fetching leads:", leadsErr);
+  //     return;
+  //   }
+
+  //   const { data: fallback, error: fbErr } = await supabase
+  //     .from("sales_closure")
+  //     .select("lead_id, lead_name");
+
+  //   if (fbErr) {
+  //     console.error("Error fetching fallback names:", fbErr);
+  //     return;
+  //   }
+
+  //   const leadNameMap = new Map(leads.map((l) => [l.business_id, l.name]));
+  //   const leadPhoneMap = new Map(leads.map((l) => [l.business_id, l.phone])); // 🆕 map phone
+  //   const fallbackNameMap = new Map(
+  //     fallback.map((f) => [f.lead_id, f.lead_name])
+  //   );
+
+
+  //   const tableReady = latestRows.map((r) => ({
+  //     ...r,
+  //     leads: {
+  //       name: leadNameMap.get(r.lead_id) || fallbackNameMap.get(r.lead_id) || "-",
+  //       phone: leadPhoneMap.get(r.lead_id) || "-",
+  //     },
+  //     oldest_sale_done_at: oldestSaleDateMap.get(r.lead_id) || r.closed_at, // fallback to current
+  //   }));
+
+
+  //   setSales(tableReady);
+    
+    
+  // }
+
+    async function fetchSalesData() {
     const { data: rows, error } = await supabase
       .from("sales_closure")
       .select("*")
@@ -311,13 +399,12 @@ export default function FinancePage() {
       }
     }
 
-
     const leadIds = latestRows.map((r) => r.lead_id);
 
     // 🆕 Fetch both name and phone from leads
     const { data: leads, error: leadsErr } = await supabase
       .from("leads")
-      .select("business_id, name, phone") // 👈 add phone here
+      .select("business_id, name, phone")
       .in("business_id", leadIds);
 
     if (leadsErr) {
@@ -335,11 +422,10 @@ export default function FinancePage() {
     }
 
     const leadNameMap = new Map(leads.map((l) => [l.business_id, l.name]));
-    const leadPhoneMap = new Map(leads.map((l) => [l.business_id, l.phone])); // 🆕 map phone
+    const leadPhoneMap = new Map(leads.map((l) => [l.business_id, l.phone]));
     const fallbackNameMap = new Map(
       fallback.map((f) => [f.lead_id, f.lead_name])
     );
-
 
     const tableReady = latestRows.map((r) => ({
       ...r,
@@ -347,12 +433,24 @@ export default function FinancePage() {
         name: leadNameMap.get(r.lead_id) || fallbackNameMap.get(r.lead_id) || "-",
         phone: leadPhoneMap.get(r.lead_id) || "-",
       },
-      oldest_sale_done_at: oldestSaleDateMap.get(r.lead_id) || r.closed_at, // fallback to current
+      oldest_sale_done_at: oldestSaleDateMap.get(r.lead_id) || r.closed_at,
     }));
 
+    // 🧾 Split into paid & unpaid application groups
+    const paidApplications = tableReady.filter(
+      (r) => r.application_sale_value && r.application_sale_value > 0
+    );
+    const unpaidApplications = tableReady.filter(
+      (r) => !r.application_sale_value || r.application_sale_value === 0
+    );
 
-    setSales(tableReady);
+    // Main table → only show paid
+    setSales(paidApplications);
+
+    // Store unpaid for the dialog box
+    setUnpaidApplications(unpaidApplications);
   }
+
 
 
 
@@ -1142,6 +1240,14 @@ const formattedTotalAmount = subscription_puls_addons.toFixed(2);
             {/* <Button onClick={() => setShowRevenueDialog(true)}>Revenue</Button> */}
             <div className="flex gap-2">
 
+               <Button
+    variant="outline"
+    className="bg-red-100 text-red-700 hover:bg-red-200"
+    onClick={() => setShowUnpaidDialog(true)}
+  >
+    Unpaid Applications
+  </Button>
+
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" className="flex gap-1">
@@ -1316,7 +1422,13 @@ const formattedTotalAmount = subscription_puls_addons.toFixed(2);
                       <TableRow key={client.id}>
                         <TableCell>{index + 1}</TableCell>
                         <TableCell>{client.lead_id}</TableCell>
-                        <TableCell>{client.lead_name || "-"}</TableCell>
+                        {/* <TableCell>{client.lead_name || "-"}</TableCell> */}
+                         <TableCell
+                            className="font-medium max-w-[150px] break-words whitespace-normal cursor-pointer text-blue-600 hover:underline"
+                            onClick={() => window.open(`/leads/${client.lead_id}`, "_blank")}
+                          >
+                            {client.lead_name || "-"}
+                          </TableCell>
                         <TableCell>{client.email || "-"}</TableCell>
                         <TableCell>${client.sale_value}</TableCell>
                         <TableCell>{client.subscription_cycle} days</TableCell>
@@ -1712,7 +1824,7 @@ const formattedTotalAmount = subscription_puls_addons.toFixed(2);
 
                     <TableHead>Subscription Cycle</TableHead>
                     <TableHead>Assigned To</TableHead>
-                    <TableHead>Stage</TableHead>
+                    {/* <TableHead>Stage</TableHead> */}
 
                     <TableHead
                       className="cursor-pointer items-center gap-1"
@@ -1763,6 +1875,8 @@ const formattedTotalAmount = subscription_puls_addons.toFixed(2);
                         </span>
                       </div>
                     </TableHead>
+                    <TableHead>Stage</TableHead>
+
 
                     <TableHead>Next Renewal Date</TableHead>
                     <TableHead>Deadline</TableHead>
@@ -1806,12 +1920,6 @@ const formattedTotalAmount = subscription_puls_addons.toFixed(2);
                           <TableCell>Finance Team A</TableCell>
 
                           <TableCell>
-                            <Badge className={getStageColor(sale.finance_status)}>
-                              {sale.finance_status}
-                            </Badge>
-                          </TableCell>
-
-                          <TableCell>
                             {sale.oldest_sale_done_at
                               ? new Date(sale.oldest_sale_done_at).toLocaleDateString("en-GB")
                               : "-"}
@@ -1821,6 +1929,13 @@ const formattedTotalAmount = subscription_puls_addons.toFixed(2);
                             {sale.onboarded_date
                               ? new Date(sale.onboarded_date).toLocaleDateString("en-GB")
                               : "-"}
+                          </TableCell>
+
+
+ <TableCell>
+                            <Badge className={getStageColor(sale.finance_status)}>
+                              {sale.finance_status}
+                            </Badge>
                           </TableCell>
 
                           {/* Next Renewal Date — render nothing if Closed */}
@@ -2047,6 +2162,85 @@ const formattedTotalAmount = subscription_puls_addons.toFixed(2);
           </Dialog>
 
 
+<Dialog open={showUnpaidDialog} onOpenChange={setShowUnpaidDialog}>
+  <DialogContent className="max-w-[90vw] max-h-[80vh] overflow-y-auto" aria-describedby="unpaid-applications-list">
+    <DialogHeader>
+      <DialogTitle className="text-xl font-semibold text-red-700">Unpaid Applications</DialogTitle>
+    </DialogHeader>
+
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>S.No</TableHead>
+          <TableHead>Client ID</TableHead>
+          <TableHead>Name</TableHead>
+          <TableHead>Email</TableHead>
+          <TableHead>Phone</TableHead>
+          <TableHead>Sale Value</TableHead>
+          <TableHead>Subscription Cycle</TableHead>
+          <TableHead>Assigned To</TableHead>
+          <TableHead>Oldest Sale Done At</TableHead>
+          <TableHead>Onboarded Date</TableHead>
+          <TableHead>Stage</TableHead>
+          <TableHead>Next Renewal</TableHead>
+          <TableHead>Deadline</TableHead>
+          <TableHead>Actions</TableHead>
+          <TableHead>Reason</TableHead>
+        </TableRow>
+      </TableHeader>
+
+      <TableBody>
+        {unpaidApplications.length === 0 ? (
+          <TableRow>
+            <TableCell colSpan={15} className="text-center text-muted-foreground py-6">
+              🎉 All clients have paid for applications
+            </TableCell>
+          </TableRow>
+        ) : (
+          unpaidApplications.map((sale, idx) => (
+            <TableRow key={sale.id}>
+              <TableCell>{idx + 1}</TableCell>
+              <TableCell>{sale.lead_id}</TableCell>
+ <TableCell
+                            className="font-medium  break-words whitespace-normal cursor-pointer text-blue-600 hover:underline"
+                            onClick={() => window.open(`/leads/${sale.lead_id}`, "_blank")}
+                          >
+                            {sale?.leads?.name || "-"}
+                          </TableCell>              <TableCell>{sale.email}</TableCell>
+              <TableCell>{sale.leads?.phone ?? "-"}</TableCell>
+              <TableCell>{formatCurrency(sale.sale_value)}</TableCell>
+              <TableCell>{sale.subscription_cycle} days</TableCell>
+              <TableCell>Finance Team A</TableCell>
+              <TableCell>
+                {sale.oldest_sale_done_at
+                  ? new Date(sale.oldest_sale_done_at).toLocaleDateString("en-GB")
+                  : "-"}
+              </TableCell>
+              <TableCell>
+                {sale.onboarded_date
+                  ? new Date(sale.onboarded_date).toLocaleDateString("en-GB")
+                  : "-"}
+              </TableCell>
+              <TableCell>
+                <Badge className={getStageColor(sale.finance_status)}>
+                  {sale.finance_status}
+                </Badge>
+              </TableCell>
+              <TableCell>
+                {calculateNextRenewal(sale.onboarded_date, sale.subscription_cycle)}
+              </TableCell>
+              <TableCell>
+                {getRenewWithinBadge(sale.onboarded_date || "", sale.subscription_cycle)}
+              </TableCell>
+              <TableCell>—</TableCell>
+              <TableCell>—</TableCell>
+            </TableRow>
+          ))
+        )}
+      </TableBody>
+    </Table>
+  </DialogContent>
+</Dialog>
 
 
           <Dialog open={showCloseDialog} onOpenChange={(open) => {
