@@ -2436,6 +2436,33 @@ interface ClientOnboardingDetails {
   date_of_birth: string | null; // date as ISO string
 }
 
+// helper to find first non-null positive value by closed_at (desc)
+function findLatestValue(rows: any[], field: string) {
+  if (!rows?.length) return null;
+  const record = rows.find(r => r[field] != null && Number(r[field]) > 0);
+  return record ? Number(record[field]) : null;
+}
+
+// main function to merge all add-on fields
+function getLatestAddons(rows: any[]) {
+  if (!rows?.length) return null;
+  const sorted = [...rows].sort(
+    (a, b) => new Date(b.closed_at).getTime() - new Date(a.closed_at).getTime()
+  );
+  return {
+    resume_sale_value: findLatestValue(sorted, "resume_sale_value"),
+    portfolio_sale_value: findLatestValue(sorted, "portfolio_sale_value"),
+    linkedin_sale_value: findLatestValue(sorted, "linkedin_sale_value"),
+    github_sale_value: findLatestValue(sorted, "github_sale_value"),
+    custom_label: findLatestValue(sorted, "custom_label"),
+    custom_sale_value: findLatestValue(sorted, "custom_sale_value"),
+    badge_value: findLatestValue(sorted, "badge_value"),
+    commitments: findLatestValue(sorted, "commitments"),
+    application_sale_value: findLatestValue(sorted, "application_sale_value"),
+    // You can include more fields if needed
+  };
+}
+
 export default function LeadProfilePage() {
   const { business_id } = useParams();
   const [lead, setLead] = useState<Lead | null>(null);
@@ -2445,6 +2472,8 @@ export default function LeadProfilePage() {
   const [feedbackList, setFeedbackList] = useState<any[]>([]);
   const [renewal, setRenewal] = useState<Lead | null>(null);
   const [onboarding, setOnboarding] = useState<ClientOnboardingDetails | null>(null);
+  const [latestAddons, setLatestAddons] = useState<any | null>(null);
+
 
   const [resumeProg, setResumeProg] = useState<ResumeProgress | null>(null);
   const [portfolioProg, setPortfolioProg] = useState<PortfolioProgress | null>(null);
@@ -2574,13 +2603,32 @@ const canEdit = ALLOWED_EDIT.has(norm(user?.role));
       }
 
       // Sales history (ascending by onboarded_date -> latest is last)
-      const { data: salesRows, error: salesErr } = await supabase
-        .from("sales_closure")
-        .select("*")
-        .eq("lead_id", business_id)
-        .order("onboarded_date", { ascending: true });
-      if (salesErr) console.error("Error fetching sales history:", salesErr.message);
-      setSaleHistory(salesRows ?? []);
+      // const { data: salesRows, error: salesErr } = await supabase
+      //   .from("sales_closure")
+      //   .select("*")
+      //   .eq("lead_id", business_id)
+      //   .order("onboarded_date", { ascending: true });
+      // if (salesErr) console.error("Error fetching sales history:", salesErr.message);
+      // setSaleHistory(salesRows ?? []);
+
+      // 🧾 Sales history (ordered by closed_at for add-ons logic)
+const { data: allSales, error: salesErr } = await supabase
+  .from("sales_closure")
+  .select("*")
+  .eq("lead_id", business_id)
+  .order("closed_at", { ascending: false });
+
+if (salesErr) {
+  console.error("Error fetching sales_closure:", salesErr.message);
+  setSaleHistory([]);
+} else {
+  setSaleHistory(allSales ?? []);
+}
+
+// 🧮 Compute merged Add-ons summary (based on closed_at)
+const mergedAddons = getLatestAddons(allSales ?? []);
+setLatestAddons(mergedAddons);
+
 
       // Call history
       const { data: callRows, error: callErr } = await supabase
@@ -3438,11 +3486,38 @@ const canEdit = ALLOWED_EDIT.has(norm(user?.role));
       No add-ons or commitments recorded yet.
     </div>
   ) : (() => {
-      const latest = saleHistory[saleHistory.length - 1];
+      // const latest = saleHistory[saleHistory.length - 1];
+
+      const latest = latestAddons;
+
 
       return (
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-2">
+
+            {/*applications*/}
+            {/* Application Sale Value */}
+<div className="flex items-center justify-between border rounded-md px-3 py-2">
+  <span className="font-medium">Applications </span>
+  {isEditAddons ? (
+    <Input
+      className="w-24 h-8"
+      value={saleForm?.application_sale_value ?? ""}
+      onChange={(e) =>
+        setSaleForm((p: any) => ({
+          ...p,
+          application_sale_value: e.target.value,
+        }))
+      }
+      placeholder="0.00"
+    />
+  ) : (
+    <span className="text-gray-700">
+      {money(latest?.application_sale_value)}
+    </span>
+  )}
+</div>
+
             {/* Resume */}
             <div className="flex items-center justify-between border rounded-md px-3 py-2">
               <span className="font-medium">Resume</span>
