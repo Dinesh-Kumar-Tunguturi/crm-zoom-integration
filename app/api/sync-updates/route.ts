@@ -589,6 +589,51 @@
 
 
 
+// import { NextResponse } from "next/server";
+// import { createClient } from "@supabase/supabase-js";
+
+// export const runtime = "nodejs";
+
+// // 🧩 Supabase setup
+// const supabase = createClient(
+//   process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL!,
+//   process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY!
+// );
+
+// export async function POST(req: Request) {
+//   try {
+//     const body = await req.json();
+//     const { lead_id, ...updates } = body;
+
+//     if (!lead_id) {
+//       return NextResponse.json({ message: "you got an error message", error: "lead_id is required" }, { status: 400 });
+//     }
+
+//     if (Object.keys(updates).length === 0) {
+//       return NextResponse.json({ message: "you got an error message", error: "No fields provided to update" }, { status: 400 });
+//     }
+
+//     const { data, error } = await supabase
+//       .from("sales_closure")
+//       .update(updates)
+//       .eq("lead_id", lead_id)
+//       .select();
+
+//     if (error || !data || data.length === 0) {
+//       return NextResponse.json({ message: "you got an error message", details: error?.message }, { status: 400 });
+//     }
+
+//     return NextResponse.json({ message: "data updated" }, { status: 200 });
+//   } catch (err: any) {
+//     return NextResponse.json({ message: "you got an error message", details: err.message }, { status: 500 });
+//   }
+// }
+
+// export async function OPTIONS() {
+//   return NextResponse.json({}, { status: 200 });
+// }
+
+
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
@@ -606,11 +651,17 @@ export async function POST(req: Request) {
     const { lead_id, ...updates } = body;
 
     if (!lead_id) {
-      return NextResponse.json({ message: "you got an error message", error: "lead_id is required" }, { status: 400 });
+      return NextResponse.json(
+        { message: "you got an error message", error: "lead_id is required" },
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
     }
 
     if (Object.keys(updates).length === 0) {
-      return NextResponse.json({ message: "you got an error message", error: "No fields provided to update" }, { status: 400 });
+      return NextResponse.json(
+        { message: "you got an error message", error: "No fields provided to update" },
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
     }
 
     const { data, error } = await supabase
@@ -620,15 +671,27 @@ export async function POST(req: Request) {
       .select();
 
     if (error || !data || data.length === 0) {
-      return NextResponse.json({ message: "you got an error message", details: error?.message }, { status: 400 });
+      return NextResponse.json(
+        { message: "you got an error message", details: error?.message },
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
     }
 
-    return NextResponse.json({ message: "data updated" }, { status: 200 });
+    return NextResponse.json(
+      { message: "data updated" },
+      { status: 200, headers: { "Content-Type": "application/json" } }
+    );
   } catch (err: any) {
-    return NextResponse.json({ message: "you got an error message", details: err.message }, { status: 500 });
+    return NextResponse.json(
+      { message: "you got an error message", details: err.message },
+      { status: 500, headers: { "Content-Type": "application/json" } }
+    );
   }
 }
 
 export async function OPTIONS() {
-  return NextResponse.json({}, { status: 200 });
+  return NextResponse.json(
+    { message: "OK" },
+    { status: 200, headers: { "Content-Type": "application/json" } }
+  );
 }
