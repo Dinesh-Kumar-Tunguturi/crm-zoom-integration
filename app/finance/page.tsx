@@ -17,7 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner"; // or wherever your toast system comes from
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
-import { MoreVertical, } from "lucide-react"; // or use any icon you like
+import { MoreVertical, Edit } from "lucide-react"; // or use any icon you like
 
 
 import {
@@ -197,6 +197,9 @@ const [unpaidApplications, setUnpaidApplications] = useState<SalesClosure[]>([])
   const [reasonText, setReasonText] = useState("");
 
 
+const [editingLeadId, setEditingLeadId] = useState<string | null>(null);
+const [newOnboardDate, setNewOnboardDate] = useState<string>("");
+const [updatingDate, setUpdatingDate] = useState(false);
 
   const [selectedSaleId, setSelectedSaleId] = useState<string | null>(null);
   const [selectedFinanceStatus, setSelectedFinanceStatus] = useState<FinanceStatus | null>(null);
@@ -1135,6 +1138,61 @@ setTotalSale(total);  // Update total correctly
   };
 
 
+  async function handleChangeOnboardDate(leadId: string) {
+  if (!newOnboardDate) {
+    toast.error("Please select a valid date.");
+    return;
+  }
+
+  try {
+    setUpdatingDate(true);
+
+    // Step 1: find latest record for this lead
+    const { data: latestRecord, error: fetchError } = await supabase
+      .from("sales_closure")
+      .select("id, lead_id, onboarded_date, closed_at")
+      .eq("lead_id", leadId)
+      .order("closed_at", { ascending: false })
+      .limit(1)
+      .single();
+
+    if (fetchError || !latestRecord) {
+      console.error("Error fetching latest record:", fetchError);
+      toast.error("Could not find the latest record for this client.");
+      setUpdatingDate(false);
+      return;
+    }
+
+    // Step 2: update onboarded_date
+    const { error: updateError } = await supabase
+      .from("sales_closure")
+      .update({ onboarded_date: newOnboardDate })
+      .eq("id", latestRecord.id);
+
+    if (updateError) {
+      console.error("Error updating onboarded_date:", updateError);
+      toast.error("Failed to update onboarded date.");
+    } else {
+      toast.success("Onboarded date updated successfully!");
+
+      // Step 3: Update UI
+      setSales((prev) =>
+        prev.map((sale) =>
+          sale.lead_id === leadId
+            ? { ...sale, onboarded_date: newOnboardDate }
+            : sale
+        )
+      );
+      setEditingLeadId(null);
+    }
+  } catch (err) {
+    console.error("Unexpected error:", err);
+    toast.error("Something went wrong. Try again.");
+  } finally {
+    setUpdatingDate(false);
+  }
+}
+
 
   function calculateNextRenewal(onboarded: string | undefined, cycle: number): string {
     if (!onboarded || !cycle) return "-";
@@ -1875,10 +1933,11 @@ const formattedTotalAmount = subscription_puls_addons.toFixed(2);
                         </span>
                       </div>
                     </TableHead>
-                    <TableHead>Stage</TableHead>
+                    
 
 
                     <TableHead>Next Renewal Date</TableHead>
+                    <TableHead>Stage</TableHead>
                     <TableHead>Deadline</TableHead>
                     <TableHead>Actions</TableHead>
                     <TableHead>Reason</TableHead>
@@ -1925,18 +1984,62 @@ const formattedTotalAmount = subscription_puls_addons.toFixed(2);
                               : "-"}
                           </TableCell>
 
-                          <TableCell>
+                         {/*  <TableCell>
                             {sale.onboarded_date
                               ? new Date(sale.onboarded_date).toLocaleDateString("en-GB")
                               : "-"}
                           </TableCell>
+*/}
+                         <TableCell className="flex items-center gap-2">
+  {editingLeadId === sale.lead_id ? (
+    <div className="flex items-center gap-2">
+      <Input
+        type="date"
+        value={newOnboardDate}
+        onChange={(e) => setNewOnboardDate(e.target.value)}
+        className="w-40"
+      />
+      <Button
+        size="sm"
+        onClick={() => handleChangeOnboardDate(sale.lead_id)}
+        disabled={updatingDate || !newOnboardDate}
+        className="bg-blue-600 text-white hover:bg-blue-700"
+      >
+        {updatingDate ? "Updating..." : "Change"}
+      </Button>
+      <Button
+        size="sm"
+        variant="ghost"
+        onClick={() => setEditingLeadId(null)}
+      >
+        Cancel
+      </Button>
+    </div>
+  ) : (
+    <>
+      {sale.onboarded_date
+        ? new Date(sale.onboarded_date).toLocaleDateString("en-GB")
+        : "-"}
+      <button
+        onClick={() => {
+          setEditingLeadId(sale.lead_id);
+          setNewOnboardDate(
+            sale.onboarded_date
+              ? new Date(sale.onboarded_date).toISOString().slice(0, 10)
+              : ""
+          );
+        }}
+        className="text-gray-500 hover:text-blue-600"
+        title="Edit onboarded date"
+      >
+        <Edit className="w-4 h-4" />
+      </button>
+    </>
+  )}
+</TableCell>
 
 
- <TableCell>
-                            <Badge className={getStageColor(sale.finance_status)}>
-                              {sale.finance_status}
-                            </Badge>
-                          </TableCell>
+
 
                           {/* Next Renewal Date — render nothing if Closed */}
                           <TableCell>
@@ -1945,6 +2048,13 @@ const formattedTotalAmount = subscription_puls_addons.toFixed(2);
                               : calculateNextRenewal(sale.onboarded_date, sale.subscription_cycle)}
                           </TableCell>
 
+
+ <TableCell>
+                            <Badge className={getStageColor(sale.finance_status)}>
+                              {sale.finance_status}
+                            </Badge>
+                          </TableCell>
+                          
                           {/* Deadline — hide if finalized */}
                           <TableCell>
                             {forClosed
@@ -2232,7 +2342,39 @@ const formattedTotalAmount = subscription_puls_addons.toFixed(2);
               <TableCell>
                 {getRenewWithinBadge(sale.onboarded_date || "", sale.subscription_cycle)}
               </TableCell>
-              <TableCell>—</TableCell>
+                <TableCell>
+
+                            <Select
+                              value={actionSelections[sale.id] || ""}
+                              onValueChange={(value) => {
+                                setActionSelections((prev) => ({ ...prev, [sale.id]: value }));
+                                if (value === "Paid") {
+                                  handlePaymentDialogOpen(sale.lead_id);  // Pass the selected sale's lead_id
+                                } else if (["Closed", "Paused", "Unpaid", "Got Placed"].includes(value)) {
+                                  if (!window.confirm(`Are you sure you want to update status as ${value} ?`)) return;
+                                  setSelectedSaleId(sale.id);
+                                  setSelectedFinanceStatus(value as FinanceStatus);
+                                  setShowReasonDialog(true);
+                                } else {
+                                  handleFinanceStatusUpdate(sale.id, value as FinanceStatus);
+                                }
+                              }}
+                              disabled={!!actionSelections[sale.id]}
+                            >
+                              <SelectTrigger className="w-36">
+                                <SelectValue placeholder="Select Status" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Paid">Paid</SelectItem>
+                                <SelectItem value="Unpaid">Unpaid</SelectItem>
+                                <SelectItem value="Paused">Paused</SelectItem>
+                                <SelectItem value="Closed">Closed</SelectItem>
+                                <SelectItem value="Got Placed">Got Placed</SelectItem>
+                              </SelectContent>
+                            </Select>
+
+                          </TableCell>
+
               <TableCell>—</TableCell>
             </TableRow>
           ))
