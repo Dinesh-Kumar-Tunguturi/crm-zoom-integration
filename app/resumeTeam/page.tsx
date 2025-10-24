@@ -68,6 +68,7 @@ interface SalesClosure {
   portfolio_paid: boolean;    
   commitments?: string | null;
   badge_value?: number | null;
+  data_sent_to_customer_dashboard?: string | null;
 
 
   // joined
@@ -127,6 +128,7 @@ export default function ResumeTeamPage() {
   // Was the upload triggered from main table or My Tasks?
 const [uploadContext, setUploadContext] = useState<"main" | "myTasks">("main");
 const [selectedTab, setSelectedTab] = useState("main"); // Default to 'main'
+const [clickedIds, setClickedIds] = useState<Record<string, boolean>>({});
 
 
 const [startDate, setStartDate] = useState<string | null>(null); // Start date
@@ -627,7 +629,7 @@ const fetchData = async (opts?: {
   let salesQuery = supabase
     .from("sales_closure")
     .select(
-      "id, lead_id, email, finance_status, closed_at, resume_sale_value, portfolio_sale_value, commitments, company_application_email, onboarded_date, badge_value"
+      "id, lead_id, email, finance_status, closed_at, resume_sale_value, portfolio_sale_value, commitments, company_application_email, onboarded_date, badge_value,data_sent_to_customer_dashboard"
     )
     .not("resume_sale_value", "is", null)
     .neq("resume_sale_value", 0) // Ensure we only select rows where resume_sale_value > 0
@@ -785,6 +787,8 @@ const fetchData = async (opts?: {
       resume_sale_value: r.resume_sale_value ?? null,
       commitments: r.commitments ?? null,
       badge_value: r.badge_value ?? null,
+      data_sent_to_customer_dashboard: r.data_sent_to_customer_dashboard ?? null,
+
       leads: lead,
       rp_status: rp.status,
       rp_pdf_path: rp.pdf_path,
@@ -864,7 +868,9 @@ if (!error && row) {
   setLatestOnboardRowId(row.id);
   setObFullName(row.full_name ?? "");
   setObPersonalEmail(row.personal_email ?? "");
-  setObCompanyEmail(row.company_email ?? "");
+  // setObCompanyEmail(row.company_email ?? "");
+  setObCompanyEmail((row.company_email ?? "").trim());
+
   setObCallablePhone(row.callable_phone ?? "");
   setObJobRolesText(csvFromArray(row.job_role_preferences));
   setObLocationsText(csvFromArray(row.location_preferences));
@@ -968,7 +974,8 @@ const writePendingClientFromLead = async (leadId: string) => {
     personal_email: ob.personal_email,
     whatsapp_number: ob.whatsapp_number ?? null,
     callable_phone: ob.callable_phone ?? null,
-    company_email: ob.company_email ?? null,
+    // company_email: ob.company_email ?? null,
+    company_email: ob.company_email?.trim() || null,
     job_role_preferences: ob.job_role_preferences ?? null,
     salary_range: ob.salary_range ?? null,
     location_preferences: ob.location_preferences ?? null,
@@ -1039,7 +1046,8 @@ if (!validateEmail(obPersonalEmail)) {
     // Prepare the payload for client_onboarding_details
     const payload = {
       full_name: obFullName || null,
-      company_email: obCompanyEmail || null,
+      // company_email: obCompanyEmail || null,
+      company_email: obCompanyEmail?.trim() || null,
       personal_email: obPersonalEmail, // Ensure the email is valid
       callable_phone: obCallablePhone || null,
       job_role_preferences: csvToArray(obJobRolesText),
@@ -1084,7 +1092,7 @@ if (!validateEmail(obPersonalEmail)) {
     if (saleErr) throw saleErr;
 
     // Mirror data into pending_clients
-    await writePendingClientFromLead(currentLeadId);
+    // await writePendingClientFromLead(currentLeadId);
 
     // Refresh table with current filter preserved
     await fetchData(
@@ -1360,6 +1368,7 @@ const fetchMyTasks = async () => {
         resume_sale_value: r.resume_sale_value ?? null,
         commitments: r.commitments ?? null,
 badge_value: r.badge_value ?? null,
+data_sent_to_customer_dashboard: r.data_sent_to_customer_dashboard ?? null,
 
         leads: lead,
 
@@ -1773,6 +1782,7 @@ const fetchFilteredClients = async (mode: "notOnboarded" | "resumeOnly") => {
         resume_sale_value: r.resume_sale_value ?? null,
         commitments: r.commitments ?? null,
         badge_value: r.badge_value ?? null,
+        data_sent_to_customer_dashboard: r.data_sent_to_customer_dashboard ?? null,
         portfolio_sale_value: r.portfolio_sale_value ?? null,
         portfolio_paid: portfolioPaid,
         leads: lead,  // Use the actual name and phone from the leads table
@@ -1801,6 +1811,350 @@ const fetchFilteredClients = async (mode: "notOnboarded" | "resumeOnly") => {
   }
 };
 
+
+const handleSendToPendingClients = async (leadId: string) => {
+  try {
+    console.log("Lead ID in row:", leadId);
+
+    await sendToPendingClients(leadId);
+    alert("✅ Data successfully sent to pending_clients.");
+    await fetchData(); // refresh dashboard
+  } catch (err: any) {
+    console.error("Error:", err.message);
+    alert("❌ Failed to send data: " + err.message);
+  }
+};
+
+// const sendToPendingClients = async (leadId: string) => {
+//   // 1️⃣ Fetch from sales_closure
+//  const { data: sc, error: scErr } = await supabase
+//   .from("sales_closure")
+//   .select("onboarded_date, subscription_cycle, no_of_job_applications, id")
+//   .eq("lead_id", leadId)
+//   .order("onboarded_date", { ascending: true })
+//   .limit(1)
+//   .single();
+
+
+//   if (scErr || !sc) throw new Error("No sales_closure record found for this lead.");
+
+//   const startDate = sc.onboarded_date;
+//   const endDate = startDate
+//     ? new Date(new Date(startDate).getTime() + sc.subscription_cycle * 24 * 60 * 60 * 1000)
+//         .toISOString()
+//         .split("T")[0]
+//     : null;
+
+//   // 2️⃣ Fetch from resume_progress
+//   const { data: rp, error: rpErr } = await supabase
+//     .from("resume_progress")
+//     .select("pdf_path")
+//     .eq("lead_id", leadId)
+//     .maybeSingle();
+
+//   if (rpErr) throw rpErr;
+//   const resumePath = rp?.pdf_path || null;
+//   const resumeUrl = resumePath; // same as path for now
+
+//   // 3️⃣ Fetch earliest onboarding details
+//   const { data: ob, error: obErr } = await supabase
+//     .from("client_onborading_details")
+//     .select("*")
+//     .eq("lead_id", leadId)
+//     .order("created_at", { ascending: true })
+//     .limit(1)
+//     .maybeSingle();
+
+//   if (obErr || !ob) throw new Error("No onboarding details found for this lead.");
+
+//   // 4️⃣ Build pending client payload (without education/university fields)
+//   const payload = {
+//     full_name: ob.full_name,
+//     personal_email: ob.personal_email,
+//     whatsapp_number: ob.whatsapp_number,
+//     callable_phone: ob.callable_phone,
+//     company_email: ob.company_email,
+//     job_role_preferences: ob.job_role_preferences,
+//     salary_range: ob.salary_range,
+//     location_preferences: ob.location_preferences,
+//     work_auth_details: ob.work_auth_details,
+//     resume_url: resumeUrl,
+//     resume_path: resumePath,
+//     start_date: startDate,
+//     end_date: endDate,
+//     no_of_applications: sc.no_of_job_applications,
+//     is_over_18: ob.is_over_18,
+//     eligible_to_work_in_us: ob.eligible_to_work_in_us,
+//     authorized_without_visa: ob.authorized_without_visa,
+//     require_future_sponsorship: ob.require_future_sponsorship,
+//     can_perform_essential_functions: ob.can_perform_essential_functions,
+//     worked_for_company_before: ob.worked_for_company_before,
+//     discharged_for_policy_violation: ob.discharged_for_policy_violation,
+//     referred_by_agency: ob.referred_by_agency,
+//     highest_education: ob.highest_education,
+//     university_name: ob.university_name,
+//     cumulative_gpa: ob.cumulative_gpa,
+//     desired_start_date: ob.desired_start_date,
+//     willing_to_relocate: ob.willing_to_relocate,
+//     can_work_3_days_in_office: ob.can_work_3_days_in_office,
+//     role: ob.role,
+//     experience: ob.experience,
+//     work_preferences: ob.work_preferences,
+//     alternate_job_roles: ob.alternate_job_roles,
+//     exclude_companies: ob.exclude_companies,
+//     convicted_of_felony: ob.convicted_of_felony,
+//     felony_explanation: ob.felony_explanation,
+//     pending_investigation: ob.pending_investigation,
+//     willing_background_check: ob.willing_background_check,
+//     willing_drug_screen: ob.willing_drug_screen,
+//     failed_or_refused_drug_test: ob.failed_or_refused_drug_test,
+//     uses_substances_affecting_duties: ob.uses_substances_affecting_duties,
+//     substances_description: ob.substances_description,
+//     can_provide_legal_docs: ob.can_provide_legal_docs,
+//     gender: ob.gender,
+//     is_hispanic_latino: ob.is_hispanic_latino,
+//     race_ethnicity: ob.race_ethnicity,
+//     veteran_status: ob.veteran_status,
+//     disability_status: ob.disability_status,
+//     has_relatives_in_company: ob.has_relatives_in_company,
+//     relatives_details: ob.relatives_details,
+//     state_of_residence: ob.state_of_residence,
+//     zip_or_country: ob.zip_or_country,
+//   };
+
+//   // 5️⃣ Upsert into pending_clients
+//   const { error: insertErr } = await supabase
+//     .from("pending_clients")
+//     .upsert(payload, { onConflict: "company_email" });
+
+//   if (insertErr) throw insertErr;
+
+//   // 6️⃣ Update sales_closure
+//   const { error: updateErr } = await supabase
+//     .from("sales_closure")
+//     .update({ data_sent_to_customer_dashboard: "Sent" })
+//     .eq("lead_id", leadId);
+
+//   if (updateErr) throw updateErr;
+
+//   return { success: true };
+// };
+
+const sendToPendingClients = async (leadId: string) => {
+  console.log("👉 Starting sendToPendingClients for:", leadId);
+
+  // 1️⃣ Fetch latest sales_closure record
+  const { data: sc, error: scErr } = await supabase
+    .from("sales_closure")
+    .select("onboarded_date, subscription_cycle, no_of_job_applications, badge_value, id")
+    .eq("lead_id", leadId)
+    .order("onboarded_date", { ascending: false })
+    .limit(1)
+    .single();
+
+    if (scErr) console.error("sales_closure error:", scErr);
+
+
+  if (scErr || !sc) throw new Error("No sales_closure record found for this lead.");
+
+  const startDate = sc.onboarded_date;
+  const endDate = startDate
+    ? new Date(new Date(startDate).getTime() + sc.subscription_cycle * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .split("T")[0]
+    : null;
+
+  // 2️⃣ Fetch from resume_progress
+  const { data: rp, error: rpErr } = await supabase
+    .from("resume_progress")
+    .select("pdf_path")
+    .eq("lead_id", leadId)
+    .maybeSingle();
+
+    if (rpErr) console.error("resume_progress error:", rpErr);
+
+
+  if (rpErr) throw rpErr;
+  const resumePath = rp?.pdf_path || null;
+  const resumeUrl = resumePath; // same path for now
+
+  // 3️⃣ Fetch earliest client_onborading_details
+  const { data: ob, error: obErr } = await supabase
+    .from("client_onborading_details")
+    .select("*")
+    .eq("lead_id", leadId)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+    if (obErr) console.error("onboarding_details error:", obErr);
+
+
+  if (obErr || !ob) throw new Error("No onboarding details found for this lead.");
+
+  // 4️⃣ Build payload (matches Zod schema)
+  const payload = {
+    full_name: ob.full_name,
+    personal_email: ob.personal_email,
+    whatsapp_number: ob.whatsapp_number ?? null,
+    callable_phone: ob.callable_phone ?? null,
+    // company_email: ob.company_email ?? null,
+    company_email: ob.company_email?.trim() || null,
+    job_role_preferences: ob.job_role_preferences ?? null,
+    salary_range: ob.salary_range ?? null,
+    location_preferences: ob.location_preferences ?? null,
+    work_auth_details: ob.work_auth_details ?? null,
+    applywizz_id: leadId,
+    created_at: new Date().toISOString(),
+    visa_type: ob.visatypes ?? null,
+    sponsorship: ob.needs_sponsorship ?? null,
+    resume_url: resumeUrl,
+    resume_path: resumePath,
+    start_date: startDate,
+    end_date: endDate,
+    no_of_applications: sc.no_of_job_applications ?? null,
+    badge_value: sc.badge_value ?? null,
+
+    // Extra fields
+    is_over_18: ob.is_over_18,
+    eligible_to_work_in_us: ob.eligible_to_work_in_us,
+    authorized_without_visa: ob.authorized_without_visa,
+    require_future_sponsorship: ob.require_future_sponsorship,
+    can_perform_essential_functions: ob.can_perform_essential_functions,
+    worked_for_company_before: ob.worked_for_company_before,
+    discharged_for_policy_violation: ob.discharged_for_policy_violation,
+    referred_by_agency: ob.referred_by_agency,
+    highest_education: ob.highest_education,
+    university_name: ob.university_name,
+    cumulative_gpa: ob.cumulative_gpa,
+    desired_start_date: ob.desired_start_date,
+    willing_to_relocate: ob.willing_to_relocate,
+    can_work_3_days_in_office: ob.can_work_3_days_in_office,
+    role: ob.role,
+    experience: ob.experience,
+    work_preferences: ob.work_preferences,
+    alternate_job_roles: ob.alternate_job_roles,
+    exclude_companies: ob.exclude_companies,
+    convicted_of_felony: ob.convicted_of_felony,
+    felony_explanation: ob.felony_explanation,
+    pending_investigation: ob.pending_investigation,
+    willing_background_check: ob.willing_background_check,
+    willing_drug_screen: ob.willing_drug_screen,
+    failed_or_refused_drug_test: ob.failed_or_refused_drug_test,
+    uses_substances_affecting_duties: ob.uses_substances_affecting_duties,
+    substances_description: ob.substances_description,
+    can_provide_legal_docs: ob.can_provide_legal_docs,
+    gender: ob.gender,
+    is_hispanic_latino: ob.is_hispanic_latino,
+    race_ethnicity: ob.race_ethnicity,
+    veteran_status: ob.veteran_status,
+    disability_status: ob.disability_status,
+    has_relatives_in_company: ob.has_relatives_in_company,
+    relatives_details: ob.relatives_details,
+    state_of_residence: ob.state_of_residence,
+    zip_or_country: ob.zip_or_country,
+  };
+
+  console.log("📦 Sending payload to /api/pending-clients/upsert", payload);
+
+  
+  // 5️⃣ POST to API route
+  const res = await fetch("/api/pending-clients/upsert", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  const result = await res.json();
+  if (!res.ok) throw new Error(result?.error || "Upsert failed.");
+
+  // 6️⃣ Update sales_closure status
+  const { error: updateErr } = await supabase
+    .from("sales_closure")
+    .update({ data_sent_to_customer_dashboard: "Sent" })
+    .eq("lead_id", leadId);
+
+    if (updateErr) console.error("sales_closure update error:", updateErr);
+
+
+  if (updateErr) throw updateErr;
+
+  console.log("✅ Successfully sent data to pending_clients for:", leadId);
+  return { success: true };
+};
+
+const handleClick = async (leadId: string) => {
+  setClickedIds(prev => ({ ...prev, [leadId]: true }));
+  try {
+    await handleSendToPendingClients(leadId);
+  } catch {
+    setClickedIds(prev => ({ ...prev, [leadId]: false }));
+  }
+};
+
+
+const SendButton = ({ row, handleSendToPendingClients }: any) => {
+  const [isSending, setIsSending] = useState(false);
+  const [isSent, setIsSent] = useState(false);
+
+  // ✅ Sync with backend data
+  useEffect(() => {
+    if (row.data_sent_to_customer_dashboard === "Sent") {
+      setIsSent(true);
+      setIsSending(false);
+    }
+  }, [row.data_sent_to_customer_dashboard]);
+
+  const handleClick = async () => {
+    console.log("Lead ID in row:", row.lead_id);
+    setIsSending(true);
+
+    try {
+      await handleSendToPendingClients(row.lead_id);
+      // Wait for backend confirmation — if your table auto-refreshes,
+      // the `useEffect` above will switch this to green.
+      // If not, you can manually force it:
+      setIsSent(true);
+    } catch (error) {
+      console.error("❌ Failed to send data:", error);
+      setIsSending(false);
+    }
+  };
+
+  // ✅ Render state priority:
+  // 1. Sent (green)
+  // 2. Sending (orange)
+  // 3. Idle (purple)
+  if (isSent || row.data_sent_to_customer_dashboard === "Sent") {
+    return (
+      <Button
+        variant="outline"
+        size="sm"
+      className="bg-orange-600 text-white hover:bg-orange-400 hover:text-white cursor-not-allowed"
+      >
+        Sent
+      </Button>
+
+      
+    );
+  }
+
+  return (
+    <Button
+      onClick={handleClick}
+      variant="outline"
+      size="sm"
+      disabled={isSending}
+      className={`text-white ${
+        isSending
+          ? "bg-orange-500 hover:bg-orange-500 cursor-not-allowed"
+          : "bg-purple-600 hover:bg-purple-700"
+      }`}
+    >
+      {isSending ? "Sending..." : "TT"}
+    </Button>
+  );
+};
 
  
   const renderTable = (data: SalesClosure[], ctx: "main" | "myTasks" | "notOnboarded" | "resumeOnly" | "allResumes" = "main") => (
@@ -1902,6 +2256,7 @@ const fetchFilteredClients = async (mode: "notOnboarded" | "resumeOnly") => {
     <TableHead>Portfolio Assignee</TableHead>
     <TableHead>Client Requirements</TableHead>
     <TableHead>Onboard</TableHead>
+    <TableHead>Forward to TT</TableHead>
   </TableRow>
 </TableHeader>
 
@@ -2172,6 +2527,17 @@ const fetchFilteredClients = async (mode: "notOnboarded" | "resumeOnly") => {
     </Button>
   )}
 </TableCell>
+
+
+<TableCell>
+  {ctx === "resumeOnly" ? (
+    <span className="text-gray-400 text-sm">—</span>
+  ) : (
+    <SendButton row={row} handleSendToPendingClients={handleSendToPendingClients} />
+  )}
+</TableCell>
+
+
 
 
             </TableRow>
