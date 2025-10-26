@@ -1,3 +1,4 @@
+ /* styles/globals.css */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -92,3 +93,18 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+.highlight-search {
+  background-color: yellow !important;
+  color: black !important;
+  font-weight: 600;
+  border-radius: 3px;
+  padding: 0 2px;
+  transition: background-color 0.2s ease;
+}
+
+.dark .highlight-search {
+  background-color: #facc15 !important; /* Tailwind amber-400 */
+  color: #000 !important;
+}
+
