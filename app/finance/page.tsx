@@ -17,7 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner"; // or wherever your toast system comes from
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
-import { MoreVertical, Edit } from "lucide-react"; // or use any icon you like
+import { MoreVertical, Edit, RefreshCw  } from "lucide-react"; // or use any icon you like
 
 
 import {
@@ -178,6 +178,9 @@ export default function FinancePage() {
   const [notOnboardedClients, setNotOnboardedClients] = useState<any[]>([]);
   const [loadingNotOnboarded, setLoadingNotOnboarded] = useState(false);
   const [feedbackMsg, setFeedbackMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  const [refreshing, setRefreshing] = useState(false);
+
 
   const [sortField, setSortField] = useState<string | null>(null);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
@@ -546,7 +549,9 @@ const [updatingDate, setUpdatingDate] = useState(false);
       sale.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       sale.lead_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (sale.leads?.name ?? "").toLowerCase().includes(searchTerm.toLowerCase()) || // ✅ search by name
-      (sale.leads?.phone ?? "").toLowerCase().includes(searchTerm.toLowerCase());  // ✅ search by phone
+      (sale.leads?.phone ?? "").toLowerCase().includes(searchTerm.toLowerCase()) ||  // ✅ search by phone
+      (sale.sale_value.toString().includes(searchTerm)) ||
+      (sale.subscription_cycle.toString().includes(searchTerm));
 
     const matchesStatus = statusFilter === "All" || sale.finance_status === statusFilter;
 
@@ -711,6 +716,55 @@ const [updatingDate, setUpdatingDate] = useState(false);
         return "bg-gray-100 text-gray-800";
     }
   };
+
+//   const handleRefresh = async () => {
+//   try {
+//     setRefreshing(true);
+//     await fetchSalesData(); // 🧠 re-fetch all data again
+//     toast.success("✅ Page refreshed successfully!");
+//   } catch (err) {
+//     console.error("Error refreshing data:", err);
+//     toast.error("Failed to refresh data.");
+//   } finally {
+//     setRefreshing(false);
+//   }
+// };
+
+const handleRefresh = async () => {
+  try {
+    setRefreshing(true);
+
+    // 🔁 Re-fetch main data
+    await fetchSalesData();
+
+    // 🔁 Re-fetch not onboarded clients if that tab is active
+    if (activeTabView === "notOnboarded") {
+      await fetchNotOnboardedClients();
+    }
+
+    // 🔁 Recompute monthly revenue breakdown (if sales exist)
+    if (allSales.length > 0) {
+      const breakdown = generateMonthlyRevenue(allSales, selectedYear);
+      setMonthlyBreakdown(breakdown);
+    }
+
+    // ✅ Reset search filters and states (optional)
+    setSearchTerm("");
+    setStatusFilter("All");
+    setFollowUpFilter("Today");
+
+    // ✅ Optional: Scroll to top of page after refresh
+    window.scrollTo({ top: 0, behavior: "smooth" });
+
+    toast.success("✅ Page refreshed successfully!");
+  } catch (err) {
+    console.error("Error refreshing data:", err);
+    toast.error("Failed to refresh data.");
+  } finally {
+    setRefreshing(false);
+  }
+};
+
 
   const handleDownloadCSV = () => {
     const filteredData = monthlyBreakdown.filter((m) => m.proratedRevenue > 0);
@@ -1292,7 +1346,25 @@ const formattedTotalAmount = subscription_puls_addons.toFixed(2);
         <div className="space-y-6">
           <div className="flex justify-between items-center">
             <div>
+              <div className="flex items-center gap-2">
               <h1 className="text-3xl font-bold text-gray-900">Finance CRM</h1>
+               {/* 🔁 Refresh Button */}
+   <Button
+  variant="outline"
+  onClick={handleRefresh}
+  disabled={refreshing}
+  className="border border-gray-300 hover:bg-gray-100"
+>
+  {refreshing ? (
+    <RefreshCw className="h-4 w-4 animate-spin text-blue-500" /> 
+  ) : (
+    <RefreshCw className="h-4 w-4 text-blue-700" />
+  )}
+    <span className="text-blue-700 font-medium">
+    {refreshing ? "Refreshing..." : "Refresh"}
+  </span>
+</Button>
+    </div>
               <p className="text-gray-600 mt-2">Track revenue and manage payments</p>
             </div>
             {/* <Button onClick={() => setShowRevenueDialog(true)}>Revenue</Button> */}
@@ -1386,14 +1458,17 @@ const formattedTotalAmount = subscription_puls_addons.toFixed(2);
 
 
 
-       <div className="flex items-center justify-between mt-4">
-  <div className="flex items-center gap-4">
+      <div className="flex items-center justify-between mt-4">
+  <div className="flex items-center gap-3">
     <Input
-      placeholder="Search by email or lead_id"
+      placeholder="Search by email, phone or lead_id"
       value={searchTerm}
       onChange={(e) => setSearchTerm(e.target.value)}
       className="max-w-md"
     />
+
+   
+
     <div className="text-sm text-gray-500 flex items-center w-96">
       Today total active clients:&nbsp;
       <span className="text-md text-green-600 font-bold">{expiredCount}</span>
