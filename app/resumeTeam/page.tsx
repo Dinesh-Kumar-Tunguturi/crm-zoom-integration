@@ -16,13 +16,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
-import { MoreVertical } from "lucide-react";
+import { MoreVertical, RefreshCw  } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
+
+import toast from "react-hot-toast";
 
 
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
@@ -69,6 +71,7 @@ interface SalesClosure {
   commitments?: string | null;
   badge_value?: number | null;
   data_sent_to_customer_dashboard?: string | null;
+  job_board_value?: number | null;
 
 
   // joined
@@ -130,6 +133,8 @@ const [uploadContext, setUploadContext] = useState<"main" | "myTasks">("main");
 const [selectedTab, setSelectedTab] = useState("main"); // Default to 'main'
 const [clickedIds, setClickedIds] = useState<Record<string, boolean>>({});
 
+const [searchTerm, setSearchTerm] = useState("");
+const [refreshing, setRefreshing] = useState(false);
 
 const [startDate, setStartDate] = useState<string | null>(null); // Start date
 const [endDate, setEndDate] = useState<string | null>(null); // End date
@@ -572,7 +577,7 @@ const SortIcon = ({ active, dir }: { active: boolean; dir: SortDir }) =>
 const fetchData = async (opts?: {
   assigneeEmail?: string | null;
   unassigned?: boolean;
-  mode?: "main" | "notOnboarded" | "resumeOnly" | "allResumes"; // Added "allResumes" mode
+  mode?: "main" | "notOnboarded" | "resumeOnly" | "allResumes" | "jobBoardClients"; // Added "allResumes" mode
    startDate?: string | null;  // New parameter for start date
   endDate?: string | null;    // New parameter for end date
 }) => {
@@ -629,7 +634,7 @@ const fetchData = async (opts?: {
   let salesQuery = supabase
     .from("sales_closure")
     .select(
-      "id, lead_id, email, finance_status, closed_at, resume_sale_value, portfolio_sale_value, commitments, company_application_email, onboarded_date, badge_value,data_sent_to_customer_dashboard"
+      "id, lead_id, email, finance_status, closed_at, resume_sale_value, portfolio_sale_value, commitments, company_application_email, onboarded_date, badge_value,data_sent_to_customer_dashboard, job_board_value",
     )
     .not("resume_sale_value", "is", null)
     .neq("resume_sale_value", 0) // Ensure we only select rows where resume_sale_value > 0
@@ -654,7 +659,13 @@ const fetchData = async (opts?: {
     salesQuery = salesQuery
       .gt("resume_sale_value", 0)
       .or("application_sale_value.is.null,application_sale_value.lte.0");
-  } else if (opts?.mode === "allResumes") {
+  } 
+    else if (opts?.mode === "jobBoardClients") {
+    // jobboard-only → job_board_value > 0 
+    salesQuery = salesQuery
+      .gt("job_board_value", 0);
+  }
+   else if (opts?.mode === "allResumes") {
     // All Resumes → resume_sale_value > 0 (no restrictions on application_sale_value)
     salesQuery = salesQuery.gt("resume_sale_value", 0); // Fetch all records where resume_sale_value > 0
   }
@@ -1399,6 +1410,22 @@ data_sent_to_customer_dashboard: r.data_sent_to_customer_dashboard ?? null,
   }
 };
 
+const handleRefresh = async () => {
+  try {
+    setRefreshing(true);
+    await Promise.all([
+      fetchTeamMembers(),
+      fetchData({ mode: "main" }), // re-fetch default main data
+    ]);
+    toast.success("✅ Page refreshed successfully!");
+  } catch (err) {
+    console.error("Error refreshing data:", err);
+    toast.error("Failed to refresh data.");
+  } finally {
+    setRefreshing(false);
+  }
+};
+
 
   const updateStatus = async (leadId: string, status: ResumeStatus) => {
     const { error } = await supabase.from("resume_progress").upsert({ lead_id: leadId, status }, { onConflict: "lead_id" });
@@ -1721,7 +1748,7 @@ data_sent_to_customer_dashboard: r.data_sent_to_customer_dashboard ?? null,
 // };
 
 
-const fetchFilteredClients = async (mode: "notOnboarded" | "resumeOnly") => {
+const fetchFilteredClients = async (mode: "notOnboarded" | "resumeOnly" | "jobBoardClients") => {
   try {
     setFilterLoading(true);
 
@@ -1743,6 +1770,11 @@ const fetchFilteredClients = async (mode: "notOnboarded" | "resumeOnly") => {
         .gt("resume_sale_value", 0)
         .or("application_sale_value.is.null,application_sale_value.lte.0");
     }
+
+    else if (mode === "jobBoardClients") {
+            query = query.is("onboarded_date", null).gt("job_board_value", 0);
+    }
+
 
     const { data: sales, error } = await query;
     if (error) throw error;
@@ -1786,6 +1818,7 @@ const fetchFilteredClients = async (mode: "notOnboarded" | "resumeOnly") => {
         portfolio_sale_value: r.portfolio_sale_value ?? null,
         portfolio_paid: portfolioPaid,
         leads: lead,  // Use the actual name and phone from the leads table
+        job_board_value: r.job_board_value ?? null,
 
         // resume_progress defaults (required by SalesClosure)
         rp_status: "not_started",
@@ -2156,8 +2189,35 @@ const SendButton = ({ row, handleSendToPendingClients }: any) => {
   );
 };
 
+const filteredRows = rows.filter((r) => {
+  const query = searchTerm.toLowerCase().trim();
+
+  const matchLeadId = r.lead_id?.toLowerCase().includes(query);
+  const matchName = r.leads?.name?.toLowerCase().includes(query);
+  const matchEmail = r.email?.toLowerCase().includes(query);
+  const matchCompanyEmail = r.company_application_email?.toLowerCase().includes(query);
+  const matchPhone = r.leads?.phone?.toLowerCase().includes(query);
+  const matchClosedAt = r.closed_at
+    ? new Date(r.closed_at).toLocaleDateString("en-GB").toLowerCase().includes(query)
+    : false;
+  const matchOnboardedDate = r.onboarded_date_raw
+    ? new Date(r.onboarded_date_raw).toLocaleDateString("en-GB").toLowerCase().includes(query)
+    : false;
+
+  return (
+    matchLeadId ||
+    matchName ||
+    matchEmail ||
+    matchCompanyEmail ||
+    matchPhone ||
+    matchClosedAt ||
+    matchOnboardedDate
+  );
+});
+
+
  
-  const renderTable = (data: SalesClosure[], ctx: "main" | "myTasks" | "notOnboarded" | "resumeOnly" | "allResumes" = "main") => (
+  const renderTable = (data: SalesClosure[], ctx: "main" | "myTasks" | "notOnboarded" | "jobBoardClients" | "resumeOnly" | "allResumes" = "main") => (
   
       <div className="rounded-md border mt-4">
 
@@ -2715,6 +2775,18 @@ const SendButton = ({ row, handleSendToPendingClients }: any) => {
     >
       Only for Resumes
     </DropdownMenuItem>
+
+     <DropdownMenuItem
+      onClick={async () => {
+        setFilterLoading(true);
+        const data = await fetchFilteredClients("jobBoardClients");
+        setFilterRows(data);
+        setResumeOnlyDialogOpen(true);  // Open dialog for Only for Resumes
+        setFilterLoading(false);
+      }}
+    >
+      Job board clients
+    </DropdownMenuItem>
   </DropdownMenuContent>
 </DropdownMenu>
 
@@ -2764,7 +2836,40 @@ const SendButton = ({ row, handleSendToPendingClients }: any) => {
       )}
     </SelectContent>
   </Select>
+
+  
+<div className="flex items-center justify-between gap-3">
+  {/* 🔍 Search Input */}
+  <Input
+    placeholder="Search by Client ID, Name, Email, Company Email, Phone, Closed Date, or Onboarded Date"
+    value={searchTerm}
+    onChange={(e) => setSearchTerm(e.target.value)}
+    className="max-w-lg"
+  />
+
+  {/* 🔄 Refresh Button */}
+  <Button
+    variant="outline"
+    onClick={handleRefresh}
+    disabled={refreshing}
+    className="flex items-center gap-2 text-gray-700 border border-blue-300 hover:bg-gray-100"
+  >
+    {refreshing ? (
+      <>
+        <RefreshCw className="h-4 w-4 animate-spin text-blue-500" />
+        <span className="text-blue-700 font-medium">Refreshing...</span>
+      </>
+    ) : (
+      <>
+        <RefreshCw className="h-4 w-4 text-blue-700" />
+        <span className="text-blue-700 font-medium">Refresh</span>
+      </>
+    )}
+  </Button>
 </div>
+</div>
+
+
 
 
           {loading ? (
