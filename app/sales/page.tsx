@@ -85,7 +85,7 @@ interface Profile {
 
 interface SaleClosing {
   base_value: number;                 // price for 1-month
-  subscription_cycle: 15 | 30 | 60 | 90;
+  subscription_cycle: 0 | 15 | 30 | 60 | 90;
   payment_mode: "UPI" | "PayPal" | "Bank Transfer" | "Stripe" | "Credit/Debit Card" | "Other";
   closed_at: string;                  // YYYY-MM-DD picked from calendar
   resume_value: number;
@@ -93,6 +93,8 @@ interface SaleClosing {
   linkedin_value: number;
   github_value: number;
   badge_value: number | null;   // ✅ NEW
+  job_board_value: number;
+
 
   // NEW
   courses_value: number;   // Courses/Certifications ($)
@@ -195,6 +197,7 @@ export default function SalesPage() {
     const cycle = parseInt(subscriptionCycle || "0");
 
     const multiplier =
+    cycle  === 0 ? 0 :
       cycle === 15 ? 0.5 :
         cycle === 30 ? 1 :
           cycle === 60 ? 2 :
@@ -260,7 +263,7 @@ export default function SalesPage() {
 
   const [saleData, setSaleData] = useState<SaleClosing>({
     base_value: 0,
-    subscription_cycle: "" as unknown as 15 | 30 | 60 | 90,
+    subscription_cycle: "" as unknown as 0 | 15 | 30 | 60 | 90,
     payment_mode: "" as unknown as SaleClosing["payment_mode"],
     closed_at: "",
     resume_value: 0,
@@ -275,6 +278,7 @@ export default function SalesPage() {
     company_application_email: "",  // Add this field
     no_of_job_applications: null,
     badge_value: null,                           // ✅ NEW
+    job_board_value: 0,
 
 
 
@@ -355,6 +359,7 @@ export default function SalesPage() {
   /* 🔄 Re-compute total every time a relevant field changes */
   useEffect(() => {
     const multiplier =
+    saleData.subscription_cycle === 0 ? 0 :
       saleData.subscription_cycle === 15 ? 0.5 :
         saleData.subscription_cycle === 30 ? 1 :
           saleData.subscription_cycle === 60 ? 2 : 3; // 90
@@ -367,6 +372,8 @@ export default function SalesPage() {
       saleData.github_value +
       saleData.courses_value +   // NEW
       saleData.custom_value;     // NEW
+      saleData.job_board_value;  // ✅ new field
+
 
     setTotalAmount(saleData.base_value * multiplier + addOns);
   }, [
@@ -378,6 +385,7 @@ export default function SalesPage() {
     saleData.github_value,
     saleData.courses_value,   // NEW
     saleData.custom_value,    // NEW
+    saleData.job_board_value, // ✅ new field
   ]);
 
 
@@ -598,11 +606,11 @@ export default function SalesPage() {
 
     const {
       base_value, subscription_cycle, payment_mode, closed_at,
-      resume_value, portfolio_value, linkedin_value, github_value,
+      resume_value, portfolio_value, linkedin_value, github_value, job_board_value,
       courses_value, custom_label, custom_value, commitments, company_application_email
     } = saleData;
 
-    if (!payment_mode || !subscription_cycle || !closed_at || !company_application_email || !commitments) {
+    if (!payment_mode ||   subscription_cycle === undefined || subscription_cycle === null || !closed_at || !company_application_email || !commitments) {
       alert("Please fill all required fields.");
       return;
     }
@@ -625,6 +633,7 @@ export default function SalesPage() {
         github_sale_value: github_value || null,
         company_application_email, // Add this field to the payload
         badge_value: saleData.badge_value ?? null,     // ✅ NEW
+        job_board_value: job_board_value || 0,
 
       };
 
@@ -645,7 +654,7 @@ export default function SalesPage() {
       setSaleClosingDialogOpen(false);
       setSaleData({
         base_value: 0,
-        subscription_cycle: "" as unknown as 15 | 30 | 60 | 90,
+        subscription_cycle: "" as unknown as 0 | 15 | 30 | 60 | 90,
         payment_mode: "" as unknown as SaleClosing["payment_mode"],
         closed_at: "",
         resume_value: 0,
@@ -659,6 +668,7 @@ export default function SalesPage() {
         company_application_email: "", // Reset the email field
         no_of_job_applications: null,
         badge_value: 0,            // ✅ NEW
+        job_board_value: 0,
 
       });
 
@@ -734,6 +744,7 @@ export default function SalesPage() {
           company_application_email: latestSale.company_application_email ?? "",
           no_of_job_applications: latestSale.no_of_job_applications ?? null,
           badge_value: latestSale.badge_value ?? null,            // ✅ NEW
+          job_board_value: latestSale.job_board_value ?? 0,
 
 
         });
@@ -890,14 +901,19 @@ export default function SalesPage() {
 
     const {
       base_value, subscription_cycle, payment_mode, closed_at,
-      resume_value, portfolio_value, linkedin_value, github_value,
+      resume_value, portfolio_value, linkedin_value, github_value, job_board_value,
       // NEW
       courses_value, custom_label, custom_value, commitments, company_application_email
     } = saleData;
-
-    if (!payment_mode || !subscription_cycle || !closed_at) {
-      alert("Please fill all required fields."); return;
-    }
+if (
+  !payment_mode ||
+  subscription_cycle === undefined ||
+  subscription_cycle === null ||
+  !closed_at
+) {
+  alert("Please fill all required fields (Payment Mode, Subscription Cycle, Sale Date).");
+  return;
+}
 
     const saleTotal = totalAmount;
 
@@ -919,6 +935,7 @@ export default function SalesPage() {
         company_application_email, // Add this field to the payload
         no_of_job_applications: null,
         badge_value: saleData.badge_value ?? null,      // ✅ NEW
+        job_board_value: job_board_value || 0,
 
 
       };
@@ -928,6 +945,8 @@ export default function SalesPage() {
       if (custom_label) payload.custom_label = custom_label;
       if (custom_value) payload.custom_sale_value = custom_value;
       if (commitments) payload.commitments = commitments;
+      if (saleData.job_board_value) payload.job_board_value = saleData.job_board_value;
+
 
       const jobApps = saleData.no_of_job_applications;
       if (jobApps !== null && jobApps !== undefined && !Number.isNaN(jobApps)) {
@@ -945,7 +964,7 @@ export default function SalesPage() {
       setSaleClosingDialogOpen(false);
       setSaleData({
         base_value: 0,
-        subscription_cycle: "" as unknown as 15 | 30 | 60 | 90,
+        subscription_cycle: "" as unknown as 0 | 15 | 30 | 60 | 90,
         payment_mode: "" as unknown as SaleClosing["payment_mode"],
         closed_at: "",
         resume_value: 0,
@@ -960,6 +979,7 @@ export default function SalesPage() {
         company_application_email: "", // Reset the email field
         no_of_job_applications: null,
         badge_value: 0,            // ✅ NEW
+        job_board_value: 0,
 
 
       });
@@ -1040,6 +1060,7 @@ export default function SalesPage() {
       const cycle = Number(subscriptionCycle || 0);
 
       const multiplier =
+        cycle === 0 ? 0 :
         cycle === 15 ? 0.5 :
           cycle === 30 ? 1 :
             cycle === 60 ? 2 :
@@ -1239,7 +1260,7 @@ const downloadAllTablesData = async () => {
   const todayLocalYMD = () => dayjs().format("YYYY-MM-DD");
 
   const cycleMultiplier = (d?: number) =>
-    d === 15 ? 0.5 : d === 30 ? 1 : d === 60 ? 2 : d === 90 ? 3 : 0;
+   d === 0 ? 0 : d === 15 ? 0.5 : d === 30 ? 1 : d === 60 ? 2 : d === 90 ? 3 : 0;
 
   // 👉 ADD THIS derived constant (place near your other derived consts)
   const applicationSaleValue = Number(
@@ -2049,6 +2070,7 @@ const downloadAllTablesData = async () => {
                       <SelectValue placeholder="Select Subscription Duration" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="0">No applications subscription</SelectItem>
                       <SelectItem value="15">15 Days</SelectItem>
                       <SelectItem value="30">1 Month</SelectItem>
                       <SelectItem value="60">2 Months</SelectItem>
@@ -2195,11 +2217,17 @@ const downloadAllTablesData = async () => {
                   <div>
                     <Label>Subscription Cycle</Label>
                     <Select
-                      value={saleData.subscription_cycle ? saleData.subscription_cycle.toString() : ""}
-                      onValueChange={v => setSaleData(p => ({ ...p, subscription_cycle: Number(v) as 15 | 30 | 60 | 90 }))}
+                      // value={saleData.subscription_cycle ? saleData.subscription_cycle.toString() : ""}
+
+ value={
+        saleData.subscription_cycle !== undefined && saleData.subscription_cycle !== null
+          ? saleData.subscription_cycle.toString()
+          : ""
+      }                      onValueChange={v => setSaleData(p => ({ ...p, subscription_cycle: Number(v) as 0 | 15 | 30 | 60 | 90 }))}
                     >
                       <SelectTrigger><SelectValue placeholder="Choose" /></SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="0">No subscription</SelectItem>
                         <SelectItem value="15">15 days</SelectItem>
                         <SelectItem value="30">1 month</SelectItem>
                         <SelectItem value="60">2 months</SelectItem>
@@ -2307,7 +2335,8 @@ const downloadAllTablesData = async () => {
                     />
                   </div>
 
-                  <div>
+                  {/* <div className="grid grid-cols-2 gap-4"> */}
+                    <div>
                     <Label>Badge Value ($)</Label>
                     <Input
                       type="number"
@@ -2325,7 +2354,20 @@ const downloadAllTablesData = async () => {
                     />
                   </div>
 
+                  <div>
+  <Label>Job Board Value ($)</Label>
+  <Input
+    type="number"
+    value={saleData.job_board_value}
+    onChange={e =>
+      setSaleData(p => ({ ...p, job_board_value: Number(e.target.value) }))
+    }
+    placeholder="e.g., 150"
+  />
+</div>
 
+
+{/* </div> */}
                 </div>
 
 
@@ -2337,6 +2379,10 @@ const downloadAllTablesData = async () => {
                       {saleData.subscription_cycle} days)
                     </p>
                   )}
+                  
+{saleData.subscription_cycle === 0 && (
+  <p className="text-gray-600 italic">No active applications cycle</p>
+)}
                 </div>
 
                 <div>

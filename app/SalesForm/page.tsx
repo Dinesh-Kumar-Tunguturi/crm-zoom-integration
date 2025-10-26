@@ -1,881 +1,3 @@
-// "use client";
-
-// import { useMemo, useState } from "react";
-// // ⬇️ Adjust this import if your client path differs (you showed "@/utils/supabase/client")
-// import { supabase } from "@/utils/supabase/client";
-// import ProtectedRoute from "@/components/auth/ProtectedRoute";
-// import { DashboardLayout } from "@/components/layout/dashboard-layout";
-
-// import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-// import { Label } from "@/components/ui/label";
-// import { Input } from "@/components/ui/input";
-// import {
-//   Select,
-//   SelectContent,
-//   SelectItem,
-//   SelectTrigger,
-//   SelectValue,
-// } from "@/components/ui/select";
-// import { Button } from "@/components/ui/button";
-
-// // ---------- Helpers ----------
-// const n = (v: string | number | null | undefined) => {
-//   const num = typeof v === "string" ? parseFloat(v.trim() || "0") : Number(v ?? 0);
-//   return Number.isFinite(num) ? num : 0;
-// };
-
-// const plusDays = (yyyyMmDd: string, days: number) => {
-//   if (!yyyyMmDd) return "";
-//   const d = new Date(yyyyMmDd + "T00:00:00");
-//   d.setDate(d.getDate() + days);
-//   const y = d.getFullYear();
-//   const m = String(d.getMonth() + 1).padStart(2, "0");
-//   const day = String(d.getDate()).padStart(2, "0");
-//   return `${y}-${m}-${day}`;
-// };
-
-// // ---------- Page ----------
-// export default function SalesFormPage() {
-//   // Client details
-//   const [clientName, setClientName] = useState("");
-//   const [clientEmail, setClientEmail] = useState("");
-//   const [contactNumber, setContactNumber] = useState("");
-//   const [city, setCity] = useState("");
-//   const [onboardingDate, setOnboardingDate] = useState(""); // YYYY-MM-DD
-
-//   // Subscription & payment
-//   const [paymentMode, setPaymentMode] = useState<string>("");
-//   const [subscriptionCycle, setSubscriptionCycle] = useState<string>(""); // "15" | "30" | "60" | "90"
-//   const [subscriptionSaleValue, setSubscriptionSaleValue] = useState<string>("");
-
-//   // Add-ons
-//   const [resumeValue, setResumeValue] = useState<string>("");
-//   const [portfolioValue, setPortfolioValue] = useState<string>("");
-//   const [linkedinValue, setLinkedinValue] = useState<string>("");
-//   const [githubValue, setGithubValue] = useState<string>("");
-
-//   // Not in this table (kept for UI)
-//   const [subscriptionSource, setSubscriptionSource] = useState<string>("");
-
-//   const [loading, setLoading] = useState(false);
-
-//   // Derived
-//   const autoTotal = useMemo(() => n(subscriptionSaleValue), [subscriptionSaleValue]);
-
-//   const totalSale = useMemo(
-//     () =>
-//       n(subscriptionSaleValue) +
-//       n(resumeValue) +
-//       n(portfolioValue) +
-//       n(linkedinValue) +
-//       n(githubValue),
-//     [subscriptionSaleValue, resumeValue, portfolioValue, linkedinValue, githubValue]
-//   );
-
-//   const nextDueDate = useMemo(() => {
-//     const cyc = parseInt(subscriptionCycle || "0", 10);
-//     if (!onboardingDate || !cyc) return "-";
-//     return plusDays(onboardingDate, cyc);
-//   }, [onboardingDate, subscriptionCycle]);
-
-//   const handleSubmit = async () => {
-//     try {
-//       // Front-end validations mapped to table constraints
-//       if (!clientName.trim()) return alert("Client name is required.");
-//       if (!clientEmail.trim()) return alert("Client email is required.");
-//       if (!paymentMode) return alert("Payment mode is required.");
-//       if (!subscriptionCycle) return alert("Subscription duration is required.");
-//       if (!onboardingDate) return alert("Onboarding date is required.");
-//       if (totalSale <= 0) return alert("Total sale value must be greater than 0.");
-
-//       // Required by table (NOT NULL). Replace with your real lead id if you have one.
-//       const newLeadId = `LD-${Date.now()}`;
-
-//       const durationInDays = parseInt(subscriptionCycle, 10);
-
-//       // Prepare payload (correct types for Postgres)
-//       const payload = {
-//         lead_id: newLeadId,                                // text NOT NULL
-//         email: clientEmail.trim(),                         // text NOT NULL
-//         lead_name: clientName.trim(),                      // text
-//         payment_mode: paymentMode,                         // text (must be allowed by constraint)
-//         subscription_cycle: durationInDays,                // integer NOT NULL
-//         sale_value: totalSale,                             // numeric(12,2) NOT NULL
-//         closed_at: onboardingDate || null,                 // timestamp (optional)
-//         onboarded_date: onboardingDate || null,            // date
-//         finance_status: "Paid" as const,                   // text (allowed value)
-//         resume_sale_value: n(resumeValue) || null,         // numeric
-//         linkedin_sale_value: n(linkedinValue) || null,     // numeric
-//         github_sale_value: n(githubValue) || null,         // numeric
-//         portfolio_sale_value: n(portfolioValue) || null,   // numeric
-//         // Optional/defaulted fields from your schema:
-//         associates_email: "",
-//         associates_name: "",
-//         associates_tl_email: "",
-//         associates_tl_name: "",
-//         checkout_date: nextDueDate !== "-" ? nextDueDate : null, // date
-//         invoice_url: "",
-//         // NOTE: contactNumber, city, subscriptionSource are NOT columns in this table.
-//       };
-
-//       setLoading(true);
-//       const { error: salesInsertError } = await supabase
-//         .from("sales_closure")
-//         .insert(payload);
-
-//       setLoading(false);
-
-//       if (salesInsertError) throw salesInsertError;
-
-//       // Reset
-//       setClientName("");
-//       setClientEmail("");
-//       setContactNumber("");
-//       setCity("");
-//       setOnboardingDate("");
-//       setSubscriptionCycle("");
-//       setSubscriptionSaleValue("");
-//       setPaymentMode("");
-//       setResumeValue("");
-//       setPortfolioValue("");
-//       setLinkedinValue("");
-//       setGithubValue("");
-//       setSubscriptionSource("");
-
-//       alert("✅ Client onboarded successfully!");
-//     } catch (err: any) {
-//       console.error("❌ Error onboarding client:", err?.message || err);
-//       alert(`Failed to onboard client: ${err?.message || "Unknown error"}`);
-//     }
-//   };
-
-//   return (
-//      <ProtectedRoute allowedRoles={["Sales","Sales Associate", "Super Admin"]}>
-    
-//           <DashboardLayout>
-//     <main className="mx-auto max-w-5xl p-6 space-y-6">
-//       <Card>
-//         <CardHeader>
-//           <CardTitle>🧾 Onboard New Client</CardTitle>
-//         </CardHeader>
-//         <CardContent className="space-y-6">
-//           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-//             {/* Client Details */}
-//             <div className="border rounded-md p-4 space-y-3">
-//               <Label className="font-semibold">
-//                 Client Details <span className="text-red-500">*</span>
-//               </Label>
-
-//               <Input
-//                 placeholder="Client Full Name"
-//                 value={clientName}
-//                 onChange={(e) => setClientName(e.target.value)}
-//               />
-
-//               <Input
-//                 placeholder="Client Email"
-//                 value={clientEmail}
-//                 onChange={(e) => setClientEmail(e.target.value)}
-//               />
-
-//               <Input
-//                 placeholder="Contact Number with country code"
-//                 value={contactNumber}
-//                 onChange={(e) => setContactNumber(e.target.value)}
-//               />
-
-//               <Input
-//                 placeholder="City"
-//                 value={city}
-//                 onChange={(e) => setCity(e.target.value)}
-//               />
-
-//               <Input
-//                 type="date"
-//                 value={onboardingDate}
-//                 onChange={(e) => setOnboardingDate(e.target.value)}
-//                 placeholder="dd-mm-yyyy"
-//               />
-//             </div>
-
-//             {/* Subscription & Payment Info */}
-//             <div className="border rounded-md p-4 space-y-3">
-//               <Label className="font-semibold">
-//                 Subscription & Payment Info <span className="text-red-500">*</span>
-//               </Label>
-
-//               <Select value={paymentMode} onValueChange={setPaymentMode}>
-//                 <SelectTrigger>
-//                   <SelectValue placeholder="Select Payment Mode" />
-//                 </SelectTrigger>
-//                 <SelectContent>
-//                   <SelectItem value="UPI">UPI</SelectItem>
-//                   <SelectItem value="PayPal">PayPal</SelectItem>
-//                   <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
-//                   <SelectItem value="Credit/Debit Card">Credit/Debit Card</SelectItem>
-//                   {/* schema also allows "Stripe" and "Other" */}
-//                   <SelectItem value="Stripe">Stripe</SelectItem>
-//                   <SelectItem value="Other">Other</SelectItem>
-//                 </SelectContent>
-//               </Select>
-
-//               <Select
-//                 value={subscriptionCycle}
-//                 onValueChange={setSubscriptionCycle}
-//               >
-//                 <SelectTrigger>
-//                   <SelectValue placeholder="Select Subscription Duration" />
-//                 </SelectTrigger>
-//                 <SelectContent>
-//                   <SelectItem value="15">15 Days</SelectItem>
-//                   <SelectItem value="30">1 Month</SelectItem>
-//                   <SelectItem value="60">2 Months</SelectItem>
-//                   <SelectItem value="90">3 Months</SelectItem>
-//                 </SelectContent>
-//               </Select>
-
-//               <Input
-//                 type="number"
-//                 inputMode="decimal"
-//                 placeholder="Subscription Sale Value ($)"
-//                 value={subscriptionSaleValue}
-//                 onChange={(e) => setSubscriptionSaleValue(e.target.value)}
-//               />
-
-//               <Input
-//                 placeholder="Auto Total (Subscription Only)"
-//                 value={autoTotal.toFixed(2)}
-//                 disabled
-//               />
-
-//               {/* Not stored in this table, but kept for UI */}
-//               <Select
-//                 value={subscriptionSource}
-//                 onValueChange={setSubscriptionSource}
-//               >
-//                 <SelectTrigger>
-//                   <SelectValue placeholder="Select Client Source" />
-//                 </SelectTrigger>
-//                 <SelectContent>
-//                   <SelectItem value="Referral">Referral</SelectItem>
-//                   <SelectItem value="NEW">NEW</SelectItem>
-//                 </SelectContent>
-//               </Select>
-//             </div>
-//           </div>
-
-//           {/* Add-on Services */}
-//           <div className="border rounded-md p-4 space-y-3">
-//             <Label className="font-semibold">Optional Add-On Services</Label>
-//             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-//               <Input
-//                 type="number"
-//                 inputMode="decimal"
-//                 placeholder="Resume Sale Value ($)"
-//                 value={resumeValue}
-//                 onChange={(e) => setResumeValue(e.target.value)}
-//               />
-//               <Input
-//                 type="number"
-//                 inputMode="decimal"
-//                 placeholder="Portfolio Creation Value ($)"
-//                 value={portfolioValue}
-//                 onChange={(e) => setPortfolioValue(e.target.value)}
-//               />
-//               <Input
-//                 type="number"
-//                 inputMode="decimal"
-//                 placeholder="LinkedIn Optimization Value ($)"
-//                 value={linkedinValue}
-//                 onChange={(e) => setLinkedinValue(e.target.value)}
-//               />
-//               <Input
-//                 type="number"
-//                 inputMode="decimal"
-//                 placeholder="GitHub Optimization Value ($)"
-//                 value={githubValue}
-//                 onChange={(e) => setGithubValue(e.target.value)}
-//               />
-//             </div>
-//           </div>
-
-//           {/* Auto Calculated */}
-//           <div className="border rounded-md p-4">
-//             <Label className="font-semibold">Auto Calculated</Label>
-//             <div className="flex flex-col sm:flex-row sm:justify-between gap-2 mt-2">
-//               <p>
-//                 Total Sale Value: <strong>${totalSale.toFixed(2)}</strong>
-//               </p>
-//               <p>
-//                 Next Payment Due Date:{" "}
-//                 <strong>{nextDueDate || "-"}</strong>
-//               </p>
-//             </div>
-//           </div>
-
-//           {/* Submit */}
-//           <div className="pt-2">
-//             <Button
-//               className="bg-green-600 text-white hover:bg-green-700"
-//               onClick={handleSubmit}
-//               disabled={loading}
-//             >
-//               {loading ? "Submitting..." : "Submit"}
-//             </Button>
-//           </div>
-//         </CardContent>
-//       </Card>
-//     </main>
-//     </DashboardLayout>
-//         </ProtectedRoute>
-//   );
-// }
-
-
-// "use client";
-
-// import { useMemo, useState } from "react";
-// import { supabase } from "@/utils/supabase/client";
-// import ProtectedRoute from "@/components/auth/ProtectedRoute";
-// import { DashboardLayout } from "@/components/layout/dashboard-layout";
-
-// import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-// import { Label } from "@/components/ui/label";
-// import { Input } from "@/components/ui/input";
-// import {
-//   Select,
-//   SelectContent,
-//   SelectItem,
-//   SelectTrigger,
-//   SelectValue,
-// } from "@/components/ui/select";
-// import { Button } from "@/components/ui/button";
-
-// // ---------- Helpers ----------
-// const n = (v: string | number | null | undefined) => {
-//   const num = typeof v === "string" ? parseFloat(v.trim() || "0") : Number(v ?? 0);
-//   return Number.isFinite(num) ? num : 0;
-// };
-
-// const plusDays = (yyyyMmDd: string, days: number) => {
-//   if (!yyyyMmDd) return "";
-//   const d = new Date(yyyyMmDd + "T00:00:00");
-//   d.setDate(d.getDate() + days);
-//   const y = d.getFullYear();
-//   const m = String(d.getMonth() + 1).padStart(2, "0");
-//   const day = String(d.getDate()).padStart(2, "0");
-//   return `${y}-${m}-${day}`;
-// };
-
-// // ---------- Page ----------
-// export default function SalesFormPage() {
-//   // Client details (MAIN FORM)
-//   const [clientName, setClientName] = useState("");
-//   const [clientEmail, setClientEmail] = useState("");
-//   const [contactNumber, setContactNumber] = useState("");
-//   const [city, setCity] = useState("");
-//   const [onboardingDate, setOnboardingDate] = useState(""); // YYYY-MM-DD
-//   const [leadId, setLeadId] = useState(""); // can be set by the quick form
-
-//   // Subscription & payment
-//   const [paymentMode, setPaymentMode] = useState<string>("");
-//   const [subscriptionCycle, setSubscriptionCycle] = useState<string>(""); // "15" | "30" | "60" | "90"
-//   const [subscriptionSaleValue, setSubscriptionSaleValue] = useState<string>("");
-
-//   // Add-ons
-//   const [resumeValue, setResumeValue] = useState<string>("");
-//   const [portfolioValue, setPortfolioValue] = useState<string>("");
-//   const [linkedinValue, setLinkedinValue] = useState<string>("");
-//   const [githubValue, setGithubValue] = useState<string>("");
-
-//   // Not in this table (kept for UI)
-//   const [subscriptionSource, setSubscriptionSource] = useState<string>("");
-
-//   const [loading, setLoading] = useState(false);
-
-//   const durationFactor = useMemo(() => {
-//   switch (parseInt(subscriptionCycle || "0", 10)) {
-//     case 15: return 0.5; // half-month
-//     case 30: return 1;   // 1 month
-//     case 60: return 2;   // 2 months
-//     case 90: return 3;   // 3 months
-//     default: return 0;
-//   }
-// }, [subscriptionCycle]);
-
-
-//   // Derived
-// //   const autoTotal = useMemo(() => n(subscriptionSaleValue), [subscriptionSaleValue]);
-// const autoTotal = useMemo(
-//   () => n(subscriptionSaleValue) * durationFactor,
-//   [subscriptionSaleValue, durationFactor]
-// );
-
-
-//   // Referral extras (UI-only)
-// const [referrerId, setReferrerId] = useState("");
-// const [referrerName, setReferrerName] = useState("");
-
-
-//   const totalSale = useMemo(
-//   () =>
-//     autoTotal +
-//     n(resumeValue) +
-//     n(portfolioValue) +
-//     n(linkedinValue) +
-//     n(githubValue),
-//   [autoTotal, resumeValue, portfolioValue, linkedinValue, githubValue]
-// );
-
-//   const nextDueDate = useMemo(() => {
-//     const cyc = parseInt(subscriptionCycle || "0", 10);
-//     if (!onboardingDate || !cyc) return "-";
-//     return plusDays(onboardingDate, cyc);
-//   }, [onboardingDate, subscriptionCycle]);
-
-//   const handleSubmit = async () => {
-//     try {
-//       // Front-end validations mapped to table constraints
-//       if (!clientName.trim()) return alert("Client name is required.");
-//       if (!clientEmail.trim()) return alert("Client email is required.");
-//       if (!paymentMode) return alert("Payment mode is required.");
-//       if (!subscriptionCycle) return alert("Subscription duration is required.");
-//       if (!onboardingDate) return alert("Onboarding date is required.");
-//       if (totalSale <= 0) return alert("Total sale value must be greater than 0.");
-
-//       // Use Lead ID from quick form if provided, else auto-generate.
-//       const newLeadId = leadId.trim() || `LD-${Date.now()}`;
-//       const durationInDays = parseInt(subscriptionCycle, 10);
-
-//       // Prepare payload (correct types for Postgres)
-//       const payload = {
-//         lead_id: newLeadId,                                 // text NOT NULL
-//         email: clientEmail.trim(),                          // text NOT NULL
-//         lead_name: clientName.trim(),                       // text
-//         payment_mode: paymentMode,                          // text (must be allowed by constraint)
-//         subscription_cycle: durationInDays,                 // integer NOT NULL
-//         sale_value: totalSale,                              // numeric(12,2) NOT NULL
-//         closed_at: onboardingDate || null,                  // timestamp (optional)
-//         onboarded_date: onboardingDate || null,             // date
-//         finance_status: "Paid" as const,                    // text (allowed value)
-//         resume_sale_value: n(resumeValue) || null,          // numeric
-//         linkedin_sale_value: n(linkedinValue) || null,      // numeric
-//         github_sale_value: n(githubValue) || null,          // numeric
-//         portfolio_sale_value: n(portfolioValue) || null,    // numeric
-//         // Optional/defaulted fields from your schema:
-//         associates_email: "",
-//         associates_name: "",
-//         associates_tl_email: "",
-//         associates_tl_name: "",
-//         checkout_date: nextDueDate !== "-" ? nextDueDate : null, // date
-//         invoice_url: "",
-//         // NOTE: contactNumber, city, subscriptionSource are NOT columns in this table.
-//       };
-
-//       setLoading(true);
-//       const { error: salesInsertError } = await supabase
-//         .from("sales_closure")
-//         .insert(payload);
-//       setLoading(false);
-
-//       if (salesInsertError) throw salesInsertError;
-
-//       // Reset
-//       setClientName("");
-//       setClientEmail("");
-//       setContactNumber("");
-//       setCity("");
-//       setOnboardingDate("");
-//       setSubscriptionCycle("");
-//       setSubscriptionSaleValue("");
-//       setPaymentMode("");
-//       setResumeValue("");
-//       setPortfolioValue("");
-//       setLinkedinValue("");
-//       setGithubValue("");
-//       setSubscriptionSource("");
-//       setLeadId("");
-
-//       alert("✅ Client onboarded successfully!");
-//     } catch (err: any) {
-//       console.error("❌ Error onboarding client:", err?.message || err);
-//       alert(`Failed to onboard client: ${err?.message || "Unknown error"}`);
-//     }
-//   };
-
-//   // ---------- Quick Lead Info (RIGHT FORM) ----------
-//   const [qlName, setQlName] = useState("");
-//   const [qlEmail, setQlEmail] = useState("");
-//   const [qlPhone, setQlPhone] = useState("");
-//   const [qlLeadId, setQlLeadId] = useState("");
-
-//   const applyQuickLeadToMain = () => {
-//     // Put the quick form values into the main form
-//     if (qlName) setClientName(qlName);
-//     if (qlEmail) setClientEmail(qlEmail);
-//     if (qlPhone) setContactNumber(qlPhone);
-//     if (qlLeadId) setLeadId(qlLeadId);
-//     alert("➡️ Quick Lead Info applied to the main form.");
-//   };
-
-//   const resetQuickLead = () => {
-//     setQlName("");
-//     setQlEmail("");
-//     setQlPhone("");
-//     setQlLeadId("");
-//   };
-
-//   return (
-//     <ProtectedRoute allowedRoles={["Sales", "Sales Associate", "Super Admin"]}>
-//       <DashboardLayout>
-//         {/* Two columns: Left = Main form, Right = Quick Lead Info */}
-//         <main className="py-0 px-0 mx-0 my-0 max-w-full p-6">
-//           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-//             {/* LEFT: Main Onboarding Form */}
-//             <Card className="lg:col-span-2">
-//               <CardHeader>
-//                 <CardTitle>🧾 Onboard New Client</CardTitle>
-//               </CardHeader>
-//               <CardContent className="space-y-6">
-//                 {/* Show current Lead ID (optional) */}
-//                 <div>
-//                   <Label className="font-medium">Lead ID (optional; will auto-generate if empty)</Label>
-//                   <Input
-//                     placeholder="LD-1234567890"
-//                     value={leadId}
-//                     onChange={(e) => setLeadId(e.target.value)}
-//                     className="mt-1"
-//                   />
-//                 </div>
-
-//                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-//                   {/* Client Details */}
-//                   <div className="border rounded-md p-4 space-y-3">
-//                     <Label className="font-semibold">
-//                       Client Details <span className="text-red-500">*</span>
-//                     </Label>
-
-//                     <Input
-//                       placeholder="Client Full Name"
-//                       value={clientName}
-//                       onChange={(e) => setClientName(e.target.value)}
-//                     />
-
-//                     <Input
-//                       placeholder="Client Email"
-//                       value={clientEmail}
-//                       onChange={(e) => setClientEmail(e.target.value)}
-//                     />
-
-//                     <Input
-//                       placeholder="Contact Number with country code"
-//                       value={contactNumber}
-//                       onChange={(e) => setContactNumber(e.target.value)}
-//                     />
-
-//                     <Input
-//                       placeholder="City"
-//                       value={city}
-//                       onChange={(e) => setCity(e.target.value)}
-//                     />
-
-//                     <Input
-//                       type="date"
-//                       value={onboardingDate}
-//                       onChange={(e) => setOnboardingDate(e.target.value)}
-//                       placeholder="dd-mm-yyyy"
-//                     />
-//                   </div>
-
-//                   {/* <div className="border rounded-md p-4 space-y-3">
-//                     <Label className="font-semibold">
-//                       Subscription & Payment Info <span className="text-red-500">*</span>
-//                     </Label>
-
-//                     <Select value={paymentMode} onValueChange={setPaymentMode}>
-//                       <SelectTrigger>
-//                         <SelectValue placeholder="Select Payment Mode" />
-//                       </SelectTrigger>
-//                       <SelectContent>
-//                         <SelectItem value="UPI">UPI</SelectItem>
-//                         <SelectItem value="PayPal">PayPal</SelectItem>
-//                         <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
-//                         <SelectItem value="Credit/Debit Card">Credit/Debit Card</SelectItem>
-//                         <SelectItem value="Stripe">Stripe</SelectItem>
-//                         <SelectItem value="Other">Other</SelectItem>
-//                       </SelectContent>
-//                     </Select>
-
-//                     <Select
-//                       value={subscriptionCycle}
-//                       onValueChange={setSubscriptionCycle}
-//                     >
-//                       <SelectTrigger>
-//                         <SelectValue placeholder="Select Subscription Duration" />
-//                       </SelectTrigger>
-//                       <SelectContent>
-//                         <SelectItem value="15">15 Days</SelectItem>
-//                         <SelectItem value="30">1 Month</SelectItem>
-//                         <SelectItem value="60">2 Months</SelectItem>
-//                         <SelectItem value="90">3 Months</SelectItem>
-//                       </SelectContent>
-//                     </Select>
-
-//                     <Input
-//                       type="number"
-//                       inputMode="decimal"
-//                       placeholder="Subscription Sale Value ($)"
-//                       value={subscriptionSaleValue}
-//                       onChange={(e) => setSubscriptionSaleValue(e.target.value)}
-//                     />
-
-//                     <Input
-//                       placeholder="Auto Total (Subscription Only)"
-//                       value={autoTotal.toFixed(2)}
-//                       disabled
-//                     />
-
-//                     <Select
-//                       value={subscriptionSource}
-//                       onValueChange={setSubscriptionSource}
-//                     >
-//                       <SelectTrigger>
-//                         <SelectValue placeholder="Select Client Source" />
-//                       </SelectTrigger>
-//                       <SelectContent>
-//                         <SelectItem value="Referral">Referral</SelectItem>
-//                         <SelectItem value="NEW">NEW</SelectItem>
-//                       </SelectContent>
-//                     </Select>
-//                   </div> */}
-
-//                   {/* Subscription & Payment Info */}
-// <div className="border rounded-md p-4 space-y-3">
-//   <Label className="font-semibold">
-//     Subscription & Payment Info <span className="text-red-500">*</span>
-//   </Label>
-
-//   {/* Use a 3-col grid so we can make the 4th field span 2 cols */}
-//   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-//     {/* 1) Payment mode (full width) */}
-//     <div className="md:col-span-3">
-//       <Select value={paymentMode} onValueChange={setPaymentMode}>
-//         <SelectTrigger>
-//           <SelectValue placeholder="Select Payment Mode" />
-//         </SelectTrigger>
-//         <SelectContent>
-//           <SelectItem value="UPI">UPI</SelectItem>
-//           <SelectItem value="PayPal">PayPal</SelectItem>
-//           <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
-//           <SelectItem value="Credit/Debit Card">Credit/Debit Card</SelectItem>
-//           {/* schema also allows "Stripe" and "Other" */}
-//           <SelectItem value="Stripe">Stripe</SelectItem>
-//           <SelectItem value="Other">Other</SelectItem>
-//         </SelectContent>
-//       </Select>
-//     </div>
-
-//     {/* 2) Subscription cycle (full width) */}
-//     <div className="md:col-span-3">
-//       <Select value={subscriptionCycle} onValueChange={setSubscriptionCycle}>
-//         <SelectTrigger>
-//           <SelectValue placeholder="Select Subscription Duration" />
-//         </SelectTrigger>
-//         <SelectContent>
-//           <SelectItem value="15">15 Days</SelectItem>
-//           <SelectItem value="30">1 Month</SelectItem>
-//           <SelectItem value="60">2 Months</SelectItem>
-//           <SelectItem value="90">3 Months</SelectItem>
-//         </SelectContent>
-//       </Select>
-//     </div>
-
-//     {/* 3) & 4) Same row: Sale value (1 col) + Auto Total (spans 2 cols) */}
-//     {/* 3) & 4) Same row: equal width */}
-// <div className="md:col-span-3 grid grid-cols-2 gap-3">
-//   <Input
-//     type="number"
-//     inputMode="decimal"
-//     placeholder="Subscription Sale Value ($)"
-//     value={subscriptionSaleValue}
-//     onChange={(e) => setSubscriptionSaleValue(e.target.value)}
-//   />
-//   <Input
-//     placeholder="Auto Total (Subscription Only)"
-//     value={autoTotal.toFixed(2)}
-//     disabled
-//   />
-// </div>
-
-//     {/* 5) Client Source (full width) */}
-//     <div className="md:col-span-3">
-//       <Select value={subscriptionSource} onValueChange={setSubscriptionSource}>
-//         <SelectTrigger>
-//           <SelectValue placeholder="Select Client Source" />
-//         </SelectTrigger>
-//         <SelectContent>
-//           <SelectItem value="Referral">Referral</SelectItem>
-//           <SelectItem value="NEW">NEW</SelectItem>
-//         </SelectContent>
-//       </Select>
-//     </div>
-
-//     {/* If Referral, show two inputs in one row */}
-//     {subscriptionSource === "Referral" && (
-//       <>
-//         <div className="md:col-span-1">
-//           <Input
-//             placeholder="Referrer Id"
-//             value={referrerId}
-//             onChange={(e) => setReferrerId(e.target.value)}
-//           />
-//         </div>
-//         <div className="md:col-span-2">
-//           <Input
-//             type="email"
-//             placeholder="Referrer Name"
-//             value={referrerName}
-//             onChange={(e) => setReferrerName(e.target.value)}
-//           />
-//         </div>
-//       </>
-//     )}
-//   </div>
-// </div>
-
-//                 </div>
-
-//                 {/* Add-on Services */}
-//                 <div className="border rounded-md p-4 space-y-3">
-//                   <Label className="font-semibold">Optional Add-On Services</Label>
-//                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-//                     <Input
-//                       type="number"
-//                       inputMode="decimal"
-//                       placeholder="Resume Sale Value ($)"
-//                       value={resumeValue}
-//                       onChange={(e) => setResumeValue(e.target.value)}
-//                     />
-//                     <Input
-//                       type="number"
-//                       inputMode="decimal"
-//                       placeholder="Portfolio Creation Value ($)"
-//                       value={portfolioValue}
-//                       onChange={(e) => setPortfolioValue(e.target.value)}
-//                     />
-//                     <Input
-//                       type="number"
-//                       inputMode="decimal"
-//                       placeholder="LinkedIn Optimization Value ($)"
-//                       value={linkedinValue}
-//                       onChange={(e) => setLinkedinValue(e.target.value)}
-//                     />
-//                     <Input
-//                       type="number"
-//                       inputMode="decimal"
-//                       placeholder="GitHub Optimization Value ($)"
-//                       value={githubValue}
-//                       onChange={(e) => setGithubValue(e.target.value)}
-//                     />
-//                   </div>
-//                 </div>
-
-//                 {/* Auto Calculated */}
-//                 <div className="border rounded-md p-4">
-//                   <Label className="font-semibold">Auto Calculated</Label>
-//                   <div className="flex flex-col sm:flex-row sm:justify-between gap-2 mt-2">
-//                     <p>
-//                       Total Sale Value: <strong>${totalSale.toFixed(2)}</strong>
-//                     </p>
-//                     <p>
-//                       Next Payment Due Date:{" "}
-//                       <strong>{nextDueDate || "-"}</strong>
-//                     </p>
-                    
-//                   <Button
-//                     className="bg-green-600 text-white hover:bg-green-700"
-//                     onClick={handleSubmit}
-//                     disabled={loading}
-//                   >
-//                     {loading ? "Submitting..." : "Submit"}
-//                   </Button>
-//                 </div>
-//                   </div>
-              
-
-//                 {/* Submit */}
-               
-//               </CardContent>
-//             </Card>
-
-//             {/* RIGHT: Quick Lead Info (4 fields) */}
-//             <Card className="lg:col-span-1">
-//               <CardHeader>
-//                 <CardTitle> Quick Lead Info</CardTitle>
-//               </CardHeader>
-//               <CardContent className="space-y-4">
-//                 <div>
-//                   <Label>Name</Label>
-//                   <Input
-//                     placeholder="Lead Full Name"
-//                     value={qlName}
-//                     onChange={(e) => setQlName(e.target.value)}
-//                     className="mt-1"
-//                   />
-//                 </div>
-
-//                 <div>
-//                   <Label>Email</Label>
-//                   <Input
-//                     placeholder="lead@email.com"
-//                     value={qlEmail}
-//                     onChange={(e) => setQlEmail(e.target.value)}
-//                     className="mt-1"
-//                   />
-//                 </div>
-
-//                 <div>
-//                   <Label>Phone Number</Label>
-//                   <Input
-//                     placeholder="+1 555 123 4567"
-//                     value={qlPhone}
-//                     onChange={(e) => setQlPhone(e.target.value)}
-//                     className="mt-1"
-//                   />
-//                 </div>
-
-//                 <div>
-//                   <Label>Lead ID</Label>
-//                   <Input
-//                     placeholder="LD-XYZ-001"
-//                     value={qlLeadId}
-//                     onChange={(e) => setQlLeadId(e.target.value)}
-//                     className="mt-1"
-//                   />
-//                 </div>
-
-//                 <div className="flex gap-2 pt-2">
-//                   <Button onClick={applyQuickLeadToMain} className="bg-blue-600 hover:bg-blue-700 text-white">
-//                     Use in Main Form
-//                   </Button>
-//                   <Button variant="outline" onClick={resetQuickLead}>
-//                     Reset
-//                   </Button>
-//                 </div>
-
-//                 <p className="text-xs text-gray-500">
-//                   Tip: After you “Use in Main Form”, complete the subscription details on the left and click Submit to save into <code>sales_closure</code>.
-//                 </p>
-//               </CardContent>
-//             </Card>
-//           </div>
-//         </main>
-//       </DashboardLayout>
-//     </ProtectedRoute>
-//   );
-// }
-
-
 
 // app/SalesForm/page.tsx
 "use client";
@@ -904,6 +26,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { set } from "date-fns";
 
 // ---------- Helpers ----------
 const n = (v: string | number | null | undefined) => {
@@ -947,6 +70,8 @@ export default function SalesFormPage() {
   const [contactNumber, setContactNumber] = useState("");
   const [city, setCity] = useState("");
   const [onboardingDate, setOnboardingDate] = useState(""); // YYYY-MM-DD
+
+  const [saleCloseDate, setSalCloseDate] = useState(""); // YYYY-MM-DD
   const [leadId, setLeadId] = useState(""); // optional manual override
 
   // Subscription & payment
@@ -959,6 +84,7 @@ export default function SalesFormPage() {
   const [portfolioValue, setPortfolioValue] = useState<string>("");
   const [linkedinValue, setLinkedinValue] = useState<string>("");
   const [githubValue, setGithubValue] = useState<string>("");
+  const [jobBoardValue, setJobBoardValue] = useState<string>("");
   // Add with the other add-on states
 const [badgeValue, setBadgeValue] = useState<string>("");
 
@@ -1056,6 +182,7 @@ const fmtDate = (s?: string | null) => {
   // duration factor based on chosen days
   const durationFactor = useMemo(() => {
     switch (parseInt(subscriptionCycle || "0", 10)) {
+      case 0: return 0;
       case 15: return 0.5;
       case 30: return 1;
       case 60: return 2;
@@ -1085,15 +212,16 @@ const fmtDate = (s?: string | null) => {
       n(githubValue)+
        n(coursesValue) +
        n(badgeValue)+   // NEW
-    n(customValue),     // NEW
-    [autoTotal, resumeValue, portfolioValue, linkedinValue, githubValue, coursesValue, customValue, badgeValue]
+    n(customValue)+     // NEW
+    n(jobBoardValue) ,
+    [autoTotal, resumeValue, portfolioValue, linkedinValue, githubValue, coursesValue, customValue, badgeValue, jobBoardValue]
   );
 
   const nextDueDate = useMemo(() => {
     const cyc = parseInt(subscriptionCycle || "0", 10);
-    if (!onboardingDate || !cyc) return "-";
-    return plusDays(onboardingDate, cyc);
-  }, [onboardingDate, subscriptionCycle]);
+    if (!saleCloseDate || !cyc) return "-";
+    return plusDays(saleCloseDate, cyc);
+  }, [saleCloseDate, subscriptionCycle]);
 
   // Fetch referrer by cleaned AWL-#### id and fill the name
 const handleReferrerLookup = async () => {
@@ -1140,7 +268,7 @@ const handleReferrerLookup = async () => {
     if (!clientEmail.trim()) return alert("Client email is required.");
     if (!paymentMode) return alert("Payment mode is required.");
     if (!subscriptionCycle) return alert("Subscription duration is required.");
-    if (!onboardingDate) return alert("Onboarding date is required.");
+    if (!saleCloseDate) return alert("sale close date is required.");
     if (totalSale <= 0) return alert("Total sale value must be greater than 0.");
 
     const normalizedEmail = clientEmail.trim().toLowerCase();
@@ -1234,12 +362,14 @@ console.log("Lead insert result:", leadInsert);
         application_sale_value: applicationSaleValue,
 
       // omit closed_at to use DB default now()
+      closed_at: new Date(saleCloseDate).toISOString(),
       onboarded_date: null,
       finance_status: "Paid" as const,
       resume_sale_value: numOrNull(resumeValue),
       linkedin_sale_value: numOrNull(linkedinValue),
       github_sale_value: numOrNull(githubValue),
       portfolio_sale_value: numOrNull(portfolioValue),
+      job_board_value: numOrNull(jobBoardValue),
 
       courses_sale_value: numOrNull(coursesValue),
   custom_label: (customLabel.trim() || null),
@@ -1273,7 +403,7 @@ console.log("Lead insert result:", leadInsert);
 
     setContactNumber("");
     setCity("");
-    setOnboardingDate("");
+    setSalCloseDate("");
     setSubscriptionCycle("");
     setSubscriptionSaleValue("");
     setPaymentMode("");
@@ -1283,6 +413,7 @@ console.log("Lead insert result:", leadInsert);
     setGithubValue("");
     setCoursesValue("");
     setBadgeValue("");
+    setJobBoardValue("");
 
 setCustomLabel("");
 setCustomValue("");
@@ -1456,8 +587,8 @@ const sanitizePhone = (input: string) => {
 
                     <Input
                       type="date"
-                      value={onboardingDate}
-                      onChange={(e) => setOnboardingDate(e.target.value)}
+                      value={saleCloseDate}
+                      onChange={(e) => setSalCloseDate(e.target.value)}
                       placeholder="dd-mm-yyyy"
                     />
                   </div>
@@ -1495,6 +626,7 @@ const sanitizePhone = (input: string) => {
                             <SelectValue placeholder="Select Subscription Duration" />
                           </SelectTrigger>
                           <SelectContent>
+                            <SelectItem value="0">No Subscription</SelectItem>
                             <SelectItem value="15">15 Days</SelectItem>
                             <SelectItem value="30">1 Month</SelectItem>
                             <SelectItem value="60">2 Months</SelectItem>
@@ -1629,6 +761,24 @@ const sanitizePhone = (input: string) => {
                       value={githubValue}
                       onChange={(e) => setGithubValue(e.target.value)}
                     />
+                    <Input
+                      type="number"
+                      inputMode="decimal"
+                      min="0"
+                      step="0.01"
+                      placeholder="Badge Value ($)"
+                      value={badgeValue}
+                      onChange={(e) => setBadgeValue(e.target.value)}
+                    />
+                    <Input
+                      type="number"
+                      inputMode="decimal"
+                      min="0"
+                      step="0.01"
+                      placeholder="Job board Value ($)"
+                      value={jobBoardValue}
+                      onChange={(e) => setJobBoardValue(e.target.value)}
+                    />
                                       {/* Courses / Certifications ($) */}
 <div className="flex gap-2">
                     <Input
@@ -1655,15 +805,6 @@ const sanitizePhone = (input: string) => {
     setNoOfJobApps(cleaned);
   }}
 />
-<Input
-    type="number"
-    inputMode="decimal"
-    min="0"
-    step="0.01"
-    placeholder="Badge Value ($)"
-    value={badgeValue}
-    onChange={(e) => setBadgeValue(e.target.value)}
-  />
 
 
 </div>
