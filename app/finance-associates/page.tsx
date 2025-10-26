@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MessageSquare } from "lucide-react";
+import { MessageSquare, RefreshCw } from "lucide-react";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import Papa from "papaparse";
+
 
 
 import { useAuth } from "@/components/providers/auth-provider";
@@ -58,10 +59,23 @@ export default function FinanceAssociatesPage() {
   const [selectedReasonType, setSelectedReasonType] = useState<FinanceStatus | null>(null);
   const [reasonNote, setReasonNote] = useState("");
 
+  const [showAssignDialog, setShowAssignDialog] = useState(false);
+const [unassignedRecords, setUnassignedRecords] = useState<any[]>([]);
+const [financeAssociates, setFinanceAssociates] = useState<any[]>([]);
+const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
+
+const [matchIndex, setMatchIndex] = useState(0);
+const [matches, setMatches] = useState<Element[]>([]);
+
+
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
 const [paymentAmount, setPaymentAmount] = useState("");
 const [onboardDate, setOnboardDate] = useState<Date | null>(null);
 const [subscriptionMonths, setSubscriptionMonths] = useState("1");
+
+const [showRemoveDialog, setShowRemoveDialog] = useState(false);
+const [leadIdToRemove, setLeadIdToRemove] = useState<string | null>(null);
+
 
   const { user, hasAccess } = useAuth();
   const router = useRouter();
@@ -206,6 +220,85 @@ for (const record of salesData ?? []) {
   setSales(enrichedSales);
 };
 
+// const fetchUnassignedSales = async () => {
+//   const { data, error } = await supabase
+//     .from("sales_closure")
+//     .select("id, lead_id, email, lead_name, closed_at, onboarded_date, sale_value, associates_tl_email, associates_tl_name")
+//     .or("associates_tl_email.is.null,associates_tl_email.eq.,associates_tl_name.is.null,associates_tl_name.eq.") // NULL or empty
+//     .order("closed_at", { ascending: false });
+
+//   if (error) {
+//     console.error("Error fetching unassigned sales:", error);
+//     return;
+//   }
+
+//   // Keep one record per lead_id (latest)
+//   const uniqueMap = new Map<string, any>();
+//   for (const record of data ?? []) {
+//     if (!uniqueMap.has(record.lead_id)) uniqueMap.set(record.lead_id, record);
+//   }
+
+//   setUnassignedRecords(Array.from(uniqueMap.values()));
+// };
+
+
+const fetchUnassignedSales = async () => {
+  const { data, error } = await supabase
+    .from("sales_closure")
+    .select("id, lead_id, email, lead_name, company_application_email, closed_at, onboarded_date, associates_tl_email, associates_tl_name")
+    .or("associates_tl_email.is.null,associates_tl_email.eq.,associates_tl_name.is.null,associates_tl_name.eq.") // null or empty
+    .order("closed_at", { ascending: false }); // 🟢 oldest first
+
+    console.log(data);
+
+  if (error) {
+    console.error("Error fetching unassigned sales:", error);
+    return;
+  }
+
+  // ✅ Keep the *oldest* record per lead_id
+  const oldestMap = new Map<string, any>();
+  for (const record of data ?? []) {
+    if (!oldestMap.has(record.lead_id)) oldestMap.set(record.lead_id, record);
+  }
+
+  setUnassignedRecords(Array.from(oldestMap.values()));
+};
+
+
+const fetchFinanceAssociates = async () => {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("full_name, user_email")
+    .eq("roles", "Finance Associate");
+
+  if (error) {
+    console.error("Error fetching finance associates:", error);
+    return;
+  }
+
+  setFinanceAssociates(data ?? []);
+};
+
+const assignAssociate = async (leadId: string, fullName: string, email: string) => {
+  const { error } = await supabase
+    .from("sales_closure")
+    .update({
+      associates_tl_name: fullName,
+      associates_tl_email: email,
+    })
+    .eq("lead_id", leadId);
+
+  if (error) {
+    console.error("Error assigning associate:", error);
+    alert("❌ Failed to assign associate.");
+    return;
+  }
+
+  alert(`✅ Assigned ${fullName} to lead ${leadId}`);
+  fetchUnassignedSales(); // refresh
+};
+
 
   useEffect(() => {
     if (user === null) return;
@@ -214,6 +307,50 @@ for (const record of salesData ?? []) {
       router.push("/unauthorized");
     }
   }, [user]);
+
+  useEffect(() => {
+  // Clear previous highlights
+  const prev = document.querySelectorAll(".highlight-search");
+  prev.forEach((el) => {
+    el.classList.remove("highlight-search");
+    // Remove custom background style if applied
+    (el as HTMLElement).style.backgroundColor = "";
+  });
+
+  if (!searchTerm.trim()) {
+    setMatches([]);
+    setMatchIndex(0);
+    return;
+  }
+
+  const term = searchTerm.toLowerCase();
+  const body = document.body;
+  const walker = document.createTreeWalker(body, NodeFilter.SHOW_TEXT);
+
+  const found: Element[] = [];
+
+  while (walker.nextNode()) {
+    const node = walker.currentNode as Text;
+    const parent = node.parentElement;
+    if (!parent) continue;
+
+    const text = node.textContent?.toLowerCase() || "";
+    if (text.includes(term)) {
+      found.push(parent);
+      parent.classList.add("highlight-search");
+      (parent as HTMLElement).style.backgroundColor = "yellow";
+    }
+  }
+
+  setMatches(found);
+  setMatchIndex(0);
+
+  // Scroll to the first result if found
+  if (found.length > 0) {
+    found[0].scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+}, [searchTerm]);
+
 
   useEffect(() => {
     if (user && hasAccess("finance-associates")) {
@@ -291,13 +428,32 @@ for (const record of salesData ?? []) {
     );
   }
 };
+const removeAssociateFromLead = async (leadId: string) => {
+  const { error } = await supabase
+    .from("sales_closure")
+    .update({
+      associates_tl_email: null,
+      associates_tl_name: null,
+    })
+    .eq("lead_id", leadId);
+
+  if (error) {
+    console.error("❌ Error removing associate:", error);
+    alert("Failed to remove associate TL.");
+    return false;
+  }
+
+  return true; // ✅ success indicator
+};
 
 
 const filteredSales = sales
   .filter((sale) => {
     const matchesSearch =
       sale.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      sale.lead_id.toLowerCase().includes(searchTerm.toLowerCase());
+      sale.lead_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        sale.leads?.phone?.toLowerCase().includes(searchTerm.toLowerCase());
+
 
     const matchesStatus =
       statusFilter === "All" || sale.finance_status === statusFilter;
@@ -359,6 +515,22 @@ const filteredSales = sales
   });
 };
 
+const handleRefresh = async () => {
+  setLoading(true);
+
+  try {
+    // 🧠 Re-fetch all core data for this page
+    await fetchSales();
+    await fetchUnassignedSales();
+    await fetchFinanceAssociates();
+  } catch (err) {
+    console.error("Error refreshing data:", err);
+  } finally {
+    setLoading(false);
+  }
+};
+
+
 const handleParseCSV = (file: File) => {
   setCsvFile(file);
 
@@ -413,15 +585,56 @@ const handleCSVSubmit = async () => {
         <div className="space-y-6">
           <div className="flex justify-between items-center">
             <h1 className="text-3xl font-bold text-gray-900">Finance Associates Page</h1>
+            <Button className=" bg-orange-500 text-gray-100 hover:bg-orange-600" onClick={() => {
+  setShowAssignDialog(true);
+  fetchUnassignedSales();
+  fetchFinanceAssociates();
+}}>
+  Assign Associates
+</Button>
+
           </div>
 
-          <div className="flex items-center justify-between mt-4">
-            <Input
-              placeholder="Search by email or lead_id"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="max-w-md"
-            />
+         <div className="flex items-center justify-between mt-4">
+<div className="flex gap-2 items-center">
+  <Input
+    placeholder="Search by email or lead_id"
+    value={searchTerm}
+    onChange={(e) => setSearchTerm(e.target.value)}
+    className="max-w-lg"
+  />
+  <Button
+    size="sm"
+    disabled={matches.length === 0}
+    onClick={() => {
+      if (matches.length === 0) return;
+      const next = (matchIndex + 1) % matches.length;
+      setMatchIndex(next);
+      matches[next].scrollIntoView({ behavior: "smooth", block: "center" });
+    }}
+  >
+    Next Match ({matches.length})
+  </Button>
+    {/* 🔁 Refresh button */}
+  <Button
+  variant="outline"
+  onClick={handleRefresh}
+  disabled={loading}
+  className="flex items-center gap-2 text-gray-700 border border-gray-300 hover:bg-gray-100"
+>
+  {loading ? (
+    <RefreshCw className="h-4 w-4 animate-spin text-blue-500" />
+  ) : (
+    <RefreshCw className="h-4 w-4 text-blue-700" />
+  )}
+  <span className="text-blue-700 font-medium">
+    {loading ? "Refreshing..." : "Refresh"}
+  </span>
+</Button>
+
+
+  </div>
+
             <div className="flex space-x-4 justify-end">
             <Select value={followUpFilter} onValueChange={(value) => setFollowUpFilter(value as "Today" | "All")}>
   <SelectTrigger className="w-40">
@@ -504,6 +717,7 @@ const handleCSVSubmit = async () => {
                   <TableHead>Renewal date</TableHead>
                   <TableHead>Actions</TableHead>
                   <TableHead>Reason</TableHead>
+                  <TableHead>Remove</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -682,6 +896,25 @@ if (!confirmed) return;
     <span className="text-gray-400 text-xs italic">—</span>
   )}
 </TableCell>
+<TableCell className="p-2 text-center">
+  <Button
+    size="sm"
+    onClick={() => {
+      setLeadIdToRemove(sale.lead_id);
+      setShowRemoveDialog(true);
+    }}
+    className={`${
+      leadIdToRemove === sale.lead_id
+        ? "bg-green-600 hover:bg-green-700 text-white"
+        : "bg-blue-600 hover:bg-red-500 text-white"
+    }`}
+  >
+    {leadIdToRemove === sale.lead_id ? "Removing..." : "!"}
+  </Button>
+</TableCell>
+
+
+
 
                   </TableRow>
                 ))}
@@ -746,6 +979,180 @@ if (!confirmed) return;
     </div>
   </DialogContent>
 </Dialog> */}
+
+{/* 
+<Dialog open={showAssignDialog} onOpenChange={setShowAssignDialog}>
+  <DialogContent className="max-w-3xl">
+    <DialogHeader>
+      <DialogTitle>Assign Finance Associates</DialogTitle>
+    </DialogHeader>
+
+    {unassignedRecords.length === 0 ? (
+      <p className="text-sm text-gray-600">✅ All leads are already assigned.</p>
+    ) : (
+      <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+        {unassignedRecords.map((rec, idx) => (
+          <div key={rec.id} className="flex items-center justify-between border-b pb-2">
+            <div>
+              <p className="font-semibold text-gray-800">{rec.lead_id}</p>
+              <p className="text-sm text-gray-500">{rec.email}</p>
+              <p className="text-sm text-gray-500">{rec.lead_name}</p>
+            </div>
+
+            <Button
+              size="sm"
+              onClick={() => setSelectedLeadId(rec.lead_id)}
+              className="bg-blue-600 text-white hover:bg-blue-700"
+            >
+              Assign
+            </Button>
+          </div>
+        ))}
+      </div>
+    )}
+
+    {selectedLeadId && (
+      <div className="mt-6 border-t pt-4">
+        <h3 className="font-semibold text-gray-800 mb-2">Select Finance Associate</h3>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          {financeAssociates.map((a) => (
+            <Button
+              key={a.user_email}
+              variant="outline"
+              className="justify-start text-left"
+              onClick={() => assignAssociate(selectedLeadId, a.full_name, a.user_email)}
+            >
+              <div>
+                <p className="font-medium">{a.full_name}</p>
+                <p className="text-xs text-gray-500">{a.user_email}</p>
+              </div>
+            </Button>
+          ))}
+        </div>
+      </div>
+    )}
+  </DialogContent>
+</Dialog> */}
+<Dialog open={showRemoveDialog} onOpenChange={setShowRemoveDialog}>
+  <DialogContent className="sm:max-w-md">
+    <DialogHeader>
+      <DialogTitle>Confirmation</DialogTitle>
+    </DialogHeader>
+
+    <p className="text-gray-700 mt-2 text-sm">
+      Really this client is not yours?
+    </p>
+
+    <div className="flex justify-end gap-3 mt-6">
+      <Button
+        variant="outline"
+        onClick={() => {
+          setShowRemoveDialog(false);
+          setLeadIdToRemove(null);
+        }}
+      >
+        No
+      </Button>
+
+      <Button
+        className="bg-red-600 text-white hover:bg-red-700"
+        onClick={async () => {
+          if (!leadIdToRemove) return;
+
+          const success = await removeAssociateFromLead(leadIdToRemove);
+          if (success) {
+            // ✅ Refresh the entire table after successful removal
+            await fetchSales();
+          }
+
+          // Close dialog & reset states
+          setShowRemoveDialog(false);
+          setLeadIdToRemove(null);
+        }}
+      >
+        Yes
+      </Button>
+    </div>
+  </DialogContent>
+</Dialog>
+
+
+<Dialog open={showAssignDialog} onOpenChange={setShowAssignDialog}>
+  <DialogContent className="max-w-7xl">
+    <DialogHeader>
+      <DialogTitle>Assign Finance Associates</DialogTitle>
+    </DialogHeader>
+
+    {unassignedRecords.length === 0 ? (
+      <p className="text-sm text-gray-600">✅ All leads are already assigned.</p>
+    ) : (
+      <div className="space-y-4 max-h-[70vh] overflow-y-auto">
+        <table className="w-full text-sm border">
+          <thead className="bg-gray-100">
+            <tr>
+              <th className="p-2 text-left">S.No</th>
+              <th className="p-2 text-left">Lead ID</th>
+              <th className="p-2 text-left">Lead Name</th>
+              <th className="p-2 text-left">Email</th>
+              <th className="p-2 text-left">Company Email</th>
+              <th className="p-2 text-left">Closed At</th>
+              <th className="p-2 text-left">Onboarded Date</th>
+              <th className="p-2 text-center">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {unassignedRecords.map((rec, idx) => (
+              <tr key={rec.id} className="border-t hover:bg-gray-50">
+                <td className="p-2">{idx + 1}</td>
+                <td className="p-2 font-medium">{rec.lead_id}</td>
+                <td className="p-2">{rec.lead_name || "-"}</td>
+                <td className="p-2 text-gray-600">{rec.email}</td>
+                <td className="p-2 text-gray-600">{rec.company_application_email}</td>
+                <td className="p-2">{rec.closed_at ? new Date(rec.closed_at).toLocaleDateString("en-GB") : "-"}</td>
+                <td className="p-2">{rec.onboarded_date ? new Date(rec.onboarded_date).toLocaleDateString("en-GB") : "-"}</td>
+                <td className="p-2 text-center">
+                <Button
+  size="sm"
+  onClick={() => setSelectedLeadId(rec.lead_id)}
+  className={`${
+    selectedLeadId === rec.lead_id
+      ? "bg-green-600 hover:bg-green-700"
+      : "bg-blue-600 hover:bg-blue-700"
+  } text-white`}
+>
+  {selectedLeadId === rec.lead_id ? "Choose TL" : "Assign"}
+</Button>
+
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )}
+
+    {selectedLeadId && (
+      <div className="mt-6 border-t pt-4">
+        <h3 className="font-semibold text-gray-800 mb-2">Select Finance Associate</h3>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          {financeAssociates.map((a) => (
+            <Button
+              key={a.user_email}
+              variant="outline"
+              className="justify-start text-left"
+              onClick={() => assignAssociate(selectedLeadId, a.full_name, a.user_email)}
+            >
+              <div>
+                <p className="font-medium">{a.full_name}</p>
+                <p className="text-xs text-gray-500">{a.user_email}</p>
+              </div>
+            </Button>
+          ))}
+        </div>
+      </div>
+    )}
+  </DialogContent>
+</Dialog>
 
 
 <Dialog open={showReasonDialog} onOpenChange={setShowReasonDialog}>
@@ -984,3 +1391,7 @@ if (!confirmed) return;
     </ProtectedRoute>
   );
 }
+function toast(arg0: { title: string; description: string; }) {
+  throw new Error("Function not implemented.");
+}
+
