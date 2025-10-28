@@ -790,8 +790,7 @@ const sanitizePhone = (input: string) => {
   value={coursesValue}
   onChange={(e) => setCoursesValue(e.target.value)}
 />
-
-{/* NEW: No. of job applications per month (integer) */}
+{/* 
 <Input
   type="number"
   inputMode="numeric"
@@ -804,7 +803,18 @@ const sanitizePhone = (input: string) => {
     const cleaned = e.target.value.replace(/[^\d]/g, "");
     setNoOfJobApps(cleaned);
   }}
-/>
+/> */}
+
+<select
+  className="border rounded-md p-2 w-full"
+  value={noOfJobApps}
+  onChange={(e) => setNoOfJobApps(e.target.value)}
+>
+  <option value="">Select number of job applications</option>
+  <option value="20">20+</option>
+  <option value="40">40+</option>
+</select>
+
 
 
 </div>
