@@ -931,7 +931,206 @@ const handleOnboardClick = async (row: SalesClosure) => {
 
 
 
-// Writes/updates Project-B.pending_clients via server API
+// // Writes/updates Project-B.pending_clients via server API
+// const writePendingClientFromLead = async (leadId: string) => {
+//   // a) Read latest onboarding details from Project-A
+//   const { data: ob, error: obErr } = await supabase
+//     .from("client_onborading_details")
+//     .select(`
+//       full_name,
+//       whatsapp_number,
+//       personal_email,
+//       callable_phone,
+//       company_email,
+//       job_role_preferences,
+//       salary_range,
+//       github_url,
+//       linkedin_url,
+//       location_preferences,
+//       work_auth_details,
+//       created_at,
+//       lead_id,
+//       needs_sponsorship,
+//       visatypes
+//     `)
+//     .eq("lead_id", leadId)
+//     .order("created_at", { ascending: false })
+//     .limit(1)
+//     .maybeSingle();
+//   if (obErr) throw obErr;
+//   if (!ob) throw new Error("No onboarding details found for this client.");
+
+  
+
+
+
+// // const personalEmail = lead?.email || "not given"; // Default to "not given" if email is missing
+
+
+//   // c) ✅ Get latest badge_value from sales_closure for this lead
+//   const { data: scRow, error: scErr } = await supabase
+//     .from("sales_closure")
+//     .select("badge_value, closed_at, email, no_of_job_applications,  application_sale_value,resume_sale_value,portfolio_sale_value,linkedin_sale_value,github_sale_value,courses_sale_value,custom_sale_value,badge_value,job_board_value")
+//     .eq("lead_id", leadId)
+//     .order("closed_at", { ascending: false, nullsFirst: false })
+//     .limit(1)
+//     .maybeSingle();
+//   if (scErr) throw scErr;
+//   const latestBadgeValue: number | null =
+//     scRow?.badge_value !== null && scRow?.badge_value !== undefined
+//       ? Number(scRow.badge_value)
+//       : null;
+
+//   // d) Compose payload for pending_clients
+//   const pcPayload = {
+//     full_name: ob.full_name,
+//     personal_email: ob.personal_email,
+//     whatsapp_number: ob.whatsapp_number ?? null,
+//     callable_phone: ob.callable_phone ?? null,
+//     // company_email: ob.company_email ?? null,
+//     company_email: ob.company_email?.trim() || null,
+//     job_role_preferences: ob.job_role_preferences ?? null,
+//     salary_range: ob.salary_range ?? null,
+//     location_preferences: ob.location_preferences ?? null,
+//     work_auth_details: ob.work_auth_details ?? null,
+
+//     // extra fields
+//     visa_type: ob.visatypes ?? null,
+//     sponsorship: typeof ob.needs_sponsorship === "boolean" ? ob.needs_sponsorship : null,
+//     applywizz_id: ob.lead_id ?? leadId,
+
+//     // ✅ send badge_value along
+//     badge_value: latestBadgeValue,
+
+//     // keep created_at for first insert (server will handle upsert)
+//     created_at: ob.created_at ?? new Date().toISOString(),
+//   };
+
+//   const res = await fetch("/api/pending-clients/upsert", {
+//     method: "POST",
+//     headers: { "Content-Type": "application/json" },
+//     body: JSON.stringify(pcPayload),
+//   });
+//   if (!res.ok) {
+//     const j = await res.json().catch(() => ({}));
+//     throw new Error(j.error || "Failed to upsert pending_client in Project-B");
+//   }
+// };
+
+
+// const saveOnboardAndDetails = async () => {
+
+  
+   
+
+//   if (!currentLeadId || !currentSaleId) {
+//     alert("Missing context to save."); 
+//     return;
+//   }
+//   if (!obDate) {
+//     alert("Please choose an Onboarded Date.");
+//     return;
+//   }
+
+//   // // Validate the email format
+  
+
+//   setDialogLoading(true);
+//   try {
+
+//  const { data: lead, error: leadErr } = await supabase
+//   .from("client_onborading_details")
+//   .select("personal_email")
+//   .eq("lead_id", currentLeadId)
+//   .maybeSingle();
+
+//   if (!leadErr && lead) {
+
+//   setObPersonalEmail(lead.personal_email);
+//   }
+ 
+// if (leadErr) throw leadErr;
+// if (!validateEmail(obPersonalEmail)) {
+//     alert("Invalid email format.");
+//     return;
+//   }
+
+
+//     // Prepare the payload for client_onboarding_details
+//     const payload = {
+//       full_name: obFullName || null,
+//       // company_email: obCompanyEmail || null,
+//       company_email: obCompanyEmail?.trim() || null,
+//       personal_email: obPersonalEmail, // Ensure the email is valid
+//       callable_phone: obCallablePhone || null,
+//       job_role_preferences: csvToArray(obJobRolesText),
+//       location_preferences: csvToArray(obLocationsText),
+//       salary_range: obSalaryRange || null,
+//       work_auth_details: obWorkAuth || null,
+//       needs_sponsorship: obNeedsSponsorship,
+//       full_address: obFullAddress || null,
+//       linkedin_url: obLinkedInUrl || null,
+//       date_of_birth: obDob || null,
+//       lead_id: currentLeadId,
+//     };
+
+//     // Update or insert into client_onboarding_details
+//     if (latestOnboardRowId) {
+//       const { error: updErr } = await supabase
+//         .from("client_onborading_details")
+//         .update(payload)
+//         .eq("id", latestOnboardRowId);
+//       if (updErr) throw updErr;
+//     } else {
+//       const saleRow = rows.find(r => r.id === currentSaleId);
+//       const personalEmail = saleRow?.email ?? "";
+
+//       const { error: insErr } = await supabase
+//         .from("client_onborading_details")
+//         .insert({
+//           ...payload,
+//           personal_email: personalEmail,
+//         });
+//       if (insErr) throw insErr;
+//     }
+
+//     // UPDATE sales_closure with onboarded_date
+//     const { error: saleErr } = await supabase
+//       .from("sales_closure")
+//       .update({
+//         onboarded_date: obDate,
+//         company_application_email: obCompanyEmail || null,
+//       })
+//       .eq("id", currentSaleId);
+//     if (saleErr) throw saleErr;
+
+//     // Mirror data into pending_clients
+//     // await writePendingClientFromLead(currentLeadId);
+
+//     // Refresh table with current filter preserved
+//     await fetchData(
+//       assigneeFilter === "__all__"
+//         ? undefined
+//         : assigneeFilter === "__unassigned__"
+//         ? { unassigned: true }
+//         : { assigneeEmail: assigneeFilter }
+//     );
+
+//     setShowOnboardDialog(false);
+//     setCurrentLeadId(null);
+//     setCurrentSaleId(null);
+//     setLatestOnboardRowId(null);
+//     setObDate("");
+//   } catch (e: any) {
+//     console.error(e);
+//     alert(e?.message || "Failed to save onboarding details");
+//   } finally {
+//     setDialogLoading(false);
+//   }
+// };
+
+
+// ✅ Writes/updates Project-B.pending_clients via server API
 const writePendingClientFromLead = async (leadId: string) => {
   // a) Read latest onboarding details from Project-A
   const { data: ob, error: obErr } = await supabase
@@ -939,11 +1138,13 @@ const writePendingClientFromLead = async (leadId: string) => {
     .select(`
       full_name,
       whatsapp_number,
-    personal_email,
+      personal_email,
       callable_phone,
       company_email,
       job_role_preferences,
       salary_range,
+      github_url,
+      linkedin_url,
       location_preferences,
       work_auth_details,
       created_at,
@@ -958,26 +1159,42 @@ const writePendingClientFromLead = async (leadId: string) => {
   if (obErr) throw obErr;
   if (!ob) throw new Error("No onboarding details found for this client.");
 
-  
-
-
-
-// const personalEmail = lead?.email || "not given"; // Default to "not given" if email is missing
-
-
-  // c) ✅ Get latest badge_value from sales_closure for this lead
+  // b) Fetch latest data from sales_closure
   const { data: scRow, error: scErr } = await supabase
     .from("sales_closure")
-    .select("badge_value, closed_at, email")
+    .select(`
+      badge_value,
+      closed_at,
+      email,
+      no_of_job_applications,
+      application_sale_value,
+      resume_sale_value,
+      portfolio_sale_value,
+      linkedin_sale_value,
+      github_sale_value,
+      courses_sale_value,
+      custom_sale_value,
+      job_board_value
+    `)
     .eq("lead_id", leadId)
     .order("closed_at", { ascending: false, nullsFirst: false })
     .limit(1)
     .maybeSingle();
   if (scErr) throw scErr;
-  const latestBadgeValue: number | null =
-    scRow?.badge_value !== null && scRow?.badge_value !== undefined
-      ? Number(scRow.badge_value)
-      : null;
+
+  // c) Prepare add_ons_info array (sale_value JSON objects → text[])
+  const addOnsInfo = [
+    { type: "application_sale_value", value: scRow?.application_sale_value ?? null },
+    { type: "resume_sale_value", value: scRow?.resume_sale_value ?? null },
+    { type: "portfolio_sale_value", value: scRow?.portfolio_sale_value ?? null },
+    { type: "linkedin_sale_value", value: scRow?.linkedin_sale_value ?? null },
+    { type: "github_sale_value", value: scRow?.github_sale_value ?? null },
+    { type: "courses_sale_value", value: scRow?.courses_sale_value ?? null },
+    { type: "custom_sale_value", value: scRow?.custom_sale_value ?? null },
+    { type: "job_board_value", value: scRow?.job_board_value ?? null },
+  ]
+    .filter((item) => item.value !== null && item.value !== undefined)
+    .map((item) => JSON.stringify(item));
 
   // d) Compose payload for pending_clients
   const pcPayload = {
@@ -985,44 +1202,43 @@ const writePendingClientFromLead = async (leadId: string) => {
     personal_email: ob.personal_email,
     whatsapp_number: ob.whatsapp_number ?? null,
     callable_phone: ob.callable_phone ?? null,
-    // company_email: ob.company_email ?? null,
     company_email: ob.company_email?.trim() || null,
     job_role_preferences: ob.job_role_preferences ?? null,
     salary_range: ob.salary_range ?? null,
     location_preferences: ob.location_preferences ?? null,
     work_auth_details: ob.work_auth_details ?? null,
-
-    // extra fields
     visa_type: ob.visatypes ?? null,
     sponsorship: typeof ob.needs_sponsorship === "boolean" ? ob.needs_sponsorship : null,
     applywizz_id: ob.lead_id ?? leadId,
-
-    // ✅ send badge_value along
-    badge_value: latestBadgeValue,
-
-    // keep created_at for first insert (server will handle upsert)
+    github_url: ob.github_url ?? null,
+    linkedin_url: ob.linkedin_url ?? null,
+    badge_value: scRow?.badge_value ?? null,
+    no_of_applications: scRow?.no_of_job_applications ?? null,
+    add_ons_info: addOnsInfo,
     created_at: ob.created_at ?? new Date().toISOString(),
   };
 
+  // e) Insert / upsert into pending_clients
   const res = await fetch("/api/pending-clients/upsert", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(pcPayload),
   });
+
   if (!res.ok) {
     const j = await res.json().catch(() => ({}));
     throw new Error(j.error || "Failed to upsert pending_client in Project-B");
   }
+
+  console.log("✅ Successfully wrote pending_client:", leadId);
 };
 
 
+
+// ✅ Save onboarding details locally & trigger sync
 const saveOnboardAndDetails = async () => {
-
-  
-   
-
   if (!currentLeadId || !currentSaleId) {
-    alert("Missing context to save."); 
+    alert("Missing context to save.");
     return;
   }
   if (!obDate) {
@@ -1030,36 +1246,27 @@ const saveOnboardAndDetails = async () => {
     return;
   }
 
-  // // Validate the email format
-  
-
   setDialogLoading(true);
   try {
+    // fetch personal email
+    const { data: lead, error: leadErr } = await supabase
+      .from("client_onborading_details")
+      .select("personal_email")
+      .eq("lead_id", currentLeadId)
+      .maybeSingle();
 
- const { data: lead, error: leadErr } = await supabase
-  .from("client_onborading_details")
-  .select("personal_email")
-  .eq("lead_id", currentLeadId)
-  .maybeSingle();
+    if (leadErr) throw leadErr;
+    if (lead) setObPersonalEmail(lead.personal_email);
 
-  if (!leadErr && lead) {
+    if (!validateEmail(obPersonalEmail)) {
+      alert("Invalid email format.");
+      return;
+    }
 
-  setObPersonalEmail(lead.personal_email);
-  }
- 
-if (leadErr) throw leadErr;
-if (!validateEmail(obPersonalEmail)) {
-    alert("Invalid email format.");
-    return;
-  }
-
-
-    // Prepare the payload for client_onboarding_details
     const payload = {
       full_name: obFullName || null,
-      // company_email: obCompanyEmail || null,
       company_email: obCompanyEmail?.trim() || null,
-      personal_email: obPersonalEmail, // Ensure the email is valid
+      personal_email: obPersonalEmail,
       callable_phone: obCallablePhone || null,
       job_role_preferences: csvToArray(obJobRolesText),
       location_preferences: csvToArray(obLocationsText),
@@ -1072,7 +1279,7 @@ if (!validateEmail(obPersonalEmail)) {
       lead_id: currentLeadId,
     };
 
-    // Update or insert into client_onboarding_details
+    // Insert or update onboarding record
     if (latestOnboardRowId) {
       const { error: updErr } = await supabase
         .from("client_onborading_details")
@@ -1080,19 +1287,15 @@ if (!validateEmail(obPersonalEmail)) {
         .eq("id", latestOnboardRowId);
       if (updErr) throw updErr;
     } else {
-      const saleRow = rows.find(r => r.id === currentSaleId);
+      const saleRow = rows.find((r) => r.id === currentSaleId);
       const personalEmail = saleRow?.email ?? "";
-
       const { error: insErr } = await supabase
         .from("client_onborading_details")
-        .insert({
-          ...payload,
-          personal_email: personalEmail,
-        });
+        .insert({ ...payload, personal_email: personalEmail });
       if (insErr) throw insErr;
     }
 
-    // UPDATE sales_closure with onboarded_date
+    // Update sales_closure with onboarded date
     const { error: saleErr } = await supabase
       .from("sales_closure")
       .update({
@@ -1103,9 +1306,9 @@ if (!validateEmail(obPersonalEmail)) {
     if (saleErr) throw saleErr;
 
     // Mirror data into pending_clients
-    // await writePendingClientFromLead(currentLeadId);
+    await writePendingClientFromLead(currentLeadId);
 
-    // Refresh table with current filter preserved
+    // Refresh dashboard table
     await fetchData(
       assigneeFilter === "__all__"
         ? undefined
@@ -1114,6 +1317,7 @@ if (!validateEmail(obPersonalEmail)) {
         : { assigneeEmail: assigneeFilter }
     );
 
+    // Reset state
     setShowOnboardDialog(false);
     setCurrentLeadId(null);
     setCurrentSaleId(null);
@@ -1973,26 +2177,187 @@ const handleSendToPendingClients = async (leadId: string) => {
 //   return { success: true };
 // };
 
+// const sendToPendingClients = async (leadId: string) => {
+//   console.log("👉 Starting sendToPendingClients for:", leadId);
+
+//   // 1️⃣ Fetch latest sales_closure record
+//   const { data: sc, error: scErr } = await supabase
+//     .from("sales_closure")
+//     .select("onboarded_date, subscription_cycle, no_of_job_applications, badge_value, id")
+//     .eq("lead_id", leadId)
+//     .order("onboarded_date", { ascending: false })
+//     .limit(1)
+//     .single();
+
+//     if (scErr) console.error("sales_closure error:", scErr);
+
+
+//   if (scErr || !sc) throw new Error("No sales_closure record found for this lead.");
+
+//   const startDate = sc.onboarded_date;
+//   const endDate = startDate
+//     ? new Date(new Date(startDate).getTime() + sc.subscription_cycle * 24 * 60 * 60 * 1000)
+//         .toISOString()
+//         .split("T")[0]
+//     : null;
+
+//   // 2️⃣ Fetch from resume_progress
+//   const { data: rp, error: rpErr } = await supabase
+//     .from("resume_progress")
+//     .select("pdf_path")
+//     .eq("lead_id", leadId)
+//     .maybeSingle();
+
+//     if (rpErr) console.error("resume_progress error:", rpErr);
+
+
+//   if (rpErr) throw rpErr;
+//   const resumePath = rp?.pdf_path || null;
+//   const resumeUrl = resumePath; // same path for now
+
+//   // 3️⃣ Fetch earliest client_onborading_details
+//   const { data: ob, error: obErr } = await supabase
+//     .from("client_onborading_details")
+//     .select("*")
+//     .eq("lead_id", leadId)
+//     .order("created_at", { ascending: true })
+//     .limit(1)
+//     .maybeSingle();
+
+//     if (obErr) console.error("onboarding_details error:", obErr);
+
+
+//   if (obErr || !ob) throw new Error("No onboarding details found for this lead.");
+
+//   // 4️⃣ Build payload (matches Zod schema)
+  // const payload = {
+  //   full_name: ob.full_name,
+  //   personal_email: ob.personal_email,
+  //   whatsapp_number: ob.whatsapp_number ?? null,
+  //   callable_phone: ob.callable_phone ?? null,
+  //   // company_email: ob.company_email ?? null,
+  //   company_email: ob.company_email?.trim() || null,
+  //   job_role_preferences: ob.job_role_preferences ?? null,
+  //   salary_range: ob.salary_range ?? null,
+  //   location_preferences: ob.location_preferences ?? null,
+  //   work_auth_details: ob.work_auth_details ?? null,
+  //   applywizz_id: leadId,
+  //   created_at: new Date().toISOString(),
+  //   visa_type: ob.visatypes ?? null,
+  //   sponsorship: ob.needs_sponsorship ?? null,
+  //   resume_url: resumeUrl,
+  //   resume_path: resumePath,
+  //   start_date: startDate,
+  //   end_date: endDate,
+  //   no_of_applications: sc.no_of_job_applications ?? null,
+  //   badge_value: sc.badge_value ?? null,
+
+  //   // Extra fields
+  //   is_over_18: ob.is_over_18,
+  //   eligible_to_work_in_us: ob.eligible_to_work_in_us,
+  //   authorized_without_visa: ob.authorized_without_visa,
+  //   require_future_sponsorship: ob.require_future_sponsorship,
+  //   can_perform_essential_functions: ob.can_perform_essential_functions,
+  //   worked_for_company_before: ob.worked_for_company_before,
+  //   discharged_for_policy_violation: ob.discharged_for_policy_violation,
+  //   referred_by_agency: ob.referred_by_agency,
+  //   highest_education: ob.highest_education,
+  //   university_name: ob.university_name,
+  //   cumulative_gpa: ob.cumulative_gpa,
+  //   desired_start_date: ob.desired_start_date,
+  //   willing_to_relocate: ob.willing_to_relocate,
+  //   can_work_3_days_in_office: ob.can_work_3_days_in_office,
+  //   role: ob.role,
+  //   experience: ob.experience,
+  //   work_preferences: ob.work_preferences,
+  //   alternate_job_roles: ob.alternate_job_roles,
+  //   exclude_companies: ob.exclude_companies,
+  //   convicted_of_felony: ob.convicted_of_felony,
+  //   felony_explanation: ob.felony_explanation,
+  //   pending_investigation: ob.pending_investigation,
+  //   willing_background_check: ob.willing_background_check,
+  //   willing_drug_screen: ob.willing_drug_screen,
+  //   failed_or_refused_drug_test: ob.failed_or_refused_drug_test,
+  //   uses_substances_affecting_duties: ob.uses_substances_affecting_duties,
+  //   substances_description: ob.substances_description,
+  //   can_provide_legal_docs: ob.can_provide_legal_docs,
+  //   gender: ob.gender,
+  //   is_hispanic_latino: ob.is_hispanic_latino,
+  //   race_ethnicity: ob.race_ethnicity,
+  //   veteran_status: ob.veteran_status,
+  //   disability_status: ob.disability_status,
+  //   has_relatives_in_company: ob.has_relatives_in_company,
+  //   relatives_details: ob.relatives_details,
+  //   state_of_residence: ob.state_of_residence,
+  //   zip_or_country: ob.zip_or_country,
+  // };
+
+//   console.log("📦 Sending payload to /api/pending-clients/upsert", payload);
+
+  
+//   // 5️⃣ POST to API route
+//   const res = await fetch("/api/pending-clients/upsert", {
+//     method: "POST",
+//     headers: { "Content-Type": "application/json" },
+//     body: JSON.stringify(payload),
+//   });
+
+//   const result = await res.json();
+//   if (!res.ok) throw new Error(result?.error || "Upsert failed.");
+
+//   // 6️⃣ Update sales_closure status
+//   const { error: updateErr } = await supabase
+//     .from("sales_closure")
+//     .update({ data_sent_to_customer_dashboard: "Sent" })
+//     .eq("lead_id", leadId);
+
+//     if (updateErr) console.error("sales_closure update error:", updateErr);
+
+
+//   if (updateErr) throw updateErr;
+
+//   console.log("✅ Successfully sent data to pending_clients for:", leadId);
+//   return { success: true };
+// };
+
+
+
+
+
+// ✅ Send finalized data to pending_clients (for exported sync)
 const sendToPendingClients = async (leadId: string) => {
   console.log("👉 Starting sendToPendingClients for:", leadId);
 
   // 1️⃣ Fetch latest sales_closure record
   const { data: sc, error: scErr } = await supabase
     .from("sales_closure")
-    .select("onboarded_date, subscription_cycle, no_of_job_applications, badge_value, id")
+    .select(`
+      onboarded_date,
+      subscription_cycle,
+      no_of_job_applications,
+      badge_value,
+      id,
+      application_sale_value,
+      resume_sale_value,
+      portfolio_sale_value,
+      linkedin_sale_value,
+      github_sale_value,
+      courses_sale_value,
+      custom_sale_value,
+      job_board_value
+    `)
     .eq("lead_id", leadId)
     .order("onboarded_date", { ascending: false })
     .limit(1)
     .single();
-
-    if (scErr) console.error("sales_closure error:", scErr);
-
-
   if (scErr || !sc) throw new Error("No sales_closure record found for this lead.");
 
   const startDate = sc.onboarded_date;
   const endDate = startDate
-    ? new Date(new Date(startDate).getTime() + sc.subscription_cycle * 24 * 60 * 60 * 1000)
+    ? new Date(
+        new Date(startDate).getTime() +
+          sc.subscription_cycle * 24 * 60 * 60 * 1000
+      )
         .toISOString()
         .split("T")[0]
     : null;
@@ -2003,15 +2368,10 @@ const sendToPendingClients = async (leadId: string) => {
     .select("pdf_path")
     .eq("lead_id", leadId)
     .maybeSingle();
-
-    if (rpErr) console.error("resume_progress error:", rpErr);
-
-
   if (rpErr) throw rpErr;
   const resumePath = rp?.pdf_path || null;
-  const resumeUrl = resumePath; // same path for now
 
-  // 3️⃣ Fetch earliest client_onborading_details
+  // 3️⃣ Fetch earliest onboarding details
   const { data: ob, error: obErr } = await supabase
     .from("client_onborading_details")
     .select("*")
@@ -2019,79 +2379,216 @@ const sendToPendingClients = async (leadId: string) => {
     .order("created_at", { ascending: true })
     .limit(1)
     .maybeSingle();
-
-    if (obErr) console.error("onboarding_details error:", obErr);
-
-
   if (obErr || !ob) throw new Error("No onboarding details found for this lead.");
 
-  // 4️⃣ Build payload (matches Zod schema)
-  const payload = {
-    full_name: ob.full_name,
-    personal_email: ob.personal_email,
-    whatsapp_number: ob.whatsapp_number ?? null,
-    callable_phone: ob.callable_phone ?? null,
-    // company_email: ob.company_email ?? null,
-    company_email: ob.company_email?.trim() || null,
-    job_role_preferences: ob.job_role_preferences ?? null,
-    salary_range: ob.salary_range ?? null,
-    location_preferences: ob.location_preferences ?? null,
-    work_auth_details: ob.work_auth_details ?? null,
-    applywizz_id: leadId,
-    created_at: new Date().toISOString(),
-    visa_type: ob.visatypes ?? null,
-    sponsorship: ob.needs_sponsorship ?? null,
-    resume_url: resumeUrl,
-    resume_path: resumePath,
-    start_date: startDate,
-    end_date: endDate,
-    no_of_applications: sc.no_of_job_applications ?? null,
-    badge_value: sc.badge_value ?? null,
+  // // 4️⃣ Build add_ons_info array
+  // const addOnsInfo = [
+  //   { type: "application_sale_value", value: sc?.application_sale_value ?? null },
+  //   { type: "resume_sale_value", value: sc?.resume_sale_value ?? null },
+  //   { type: "portfolio_sale_value", value: sc?.portfolio_sale_value ?? null },
+  //   { type: "linkedin_sale_value", value: sc?.linkedin_sale_value ?? null },
+  //   { type: "github_sale_value", value: sc?.github_sale_value ?? null },
+  //   { type: "courses_sale_value", value: sc?.courses_sale_value ?? null },
+  //   { type: "custom_sale_value", value: sc?.custom_sale_value ?? null },
+  //   { type: "job_board_value", value: sc?.job_board_value ?? null },
+  // ]
+  //   .filter((i) => i.value !== null && i.value !== undefined)
+  //   .map((i) => JSON.stringify(i));
 
-    // Extra fields
-    is_over_18: ob.is_over_18,
-    eligible_to_work_in_us: ob.eligible_to_work_in_us,
-    authorized_without_visa: ob.authorized_without_visa,
-    require_future_sponsorship: ob.require_future_sponsorship,
-    can_perform_essential_functions: ob.can_perform_essential_functions,
-    worked_for_company_before: ob.worked_for_company_before,
-    discharged_for_policy_violation: ob.discharged_for_policy_violation,
-    referred_by_agency: ob.referred_by_agency,
-    highest_education: ob.highest_education,
-    university_name: ob.university_name,
-    cumulative_gpa: ob.cumulative_gpa,
-    desired_start_date: ob.desired_start_date,
-    willing_to_relocate: ob.willing_to_relocate,
-    can_work_3_days_in_office: ob.can_work_3_days_in_office,
-    role: ob.role,
-    experience: ob.experience,
-    work_preferences: ob.work_preferences,
-    alternate_job_roles: ob.alternate_job_roles,
-    exclude_companies: ob.exclude_companies,
-    convicted_of_felony: ob.convicted_of_felony,
-    felony_explanation: ob.felony_explanation,
-    pending_investigation: ob.pending_investigation,
-    willing_background_check: ob.willing_background_check,
-    willing_drug_screen: ob.willing_drug_screen,
-    failed_or_refused_drug_test: ob.failed_or_refused_drug_test,
-    uses_substances_affecting_duties: ob.uses_substances_affecting_duties,
-    substances_description: ob.substances_description,
-    can_provide_legal_docs: ob.can_provide_legal_docs,
-    gender: ob.gender,
-    is_hispanic_latino: ob.is_hispanic_latino,
-    race_ethnicity: ob.race_ethnicity,
-    veteran_status: ob.veteran_status,
-    disability_status: ob.disability_status,
-    has_relatives_in_company: ob.has_relatives_in_company,
-    relatives_details: ob.relatives_details,
-    state_of_residence: ob.state_of_residence,
-    zip_or_country: ob.zip_or_country,
-  };
+  // // 5️⃣ Build payload
+  // // const payload = {
+  // //   full_name: ob.full_name,
+  // //   personal_email: ob.personal_email,
+  // //   whatsapp_number: ob.whatsapp_number ?? null,
+  // //   callable_phone: ob.callable_phone ?? null,
+  // //   company_email: ob.company_email?.trim() || null,
+  // //   job_role_preferences: ob.job_role_preferences ?? null,
+  // //   salary_range: ob.salary_range ?? null,
+  // //   location_preferences: ob.location_preferences ?? null,
+  // //   work_auth_details: ob.work_auth_details ?? null,
+  // //   applywizz_id: leadId,
+  // //   created_at: new Date().toISOString(),
+  // //   visa_type: ob.visatypes ?? null,
+  // //   sponsorship: ob.needs_sponsorship ?? null,
+  // //   resume_url: resumePath,
+  // //   resume_path: resumePath,
+  // //   start_date: startDate,
+  // //   end_date: endDate,
+  // //   no_of_applications: sc.no_of_job_applications ?? null,
+  // //   badge_value: sc.badge_value ?? null,
+  // //   add_ons_info: addOnsInfo,
+  // //   github_url: ob.github_url ?? null,
+  // //   linkedin_url: ob.linkedin_url ?? null,
+  // // };
 
-  console.log("📦 Sending payload to /api/pending-clients/upsert", payload);
 
-  
-  // 5️⃣ POST to API route
+  //   const payload = {
+  //   full_name: ob.full_name,
+  //   personal_email: ob.personal_email,
+  //   whatsapp_number: ob.whatsapp_number ?? null,
+  //   callable_phone: ob.callable_phone ?? null,
+  //   // company_email: ob.company_email ?? null,
+  //   company_email: ob.company_email?.trim() || null,
+  //   job_role_preferences: ob.job_role_preferences ?? null,
+  //   salary_range: ob.salary_range ?? null,
+  //   location_preferences: ob.location_preferences ?? null,
+  //   work_auth_details: ob.work_auth_details ?? null,
+  //   applywizz_id: leadId,
+  //   created_at: new Date().toISOString(),
+  //   visa_type: ob.visatypes ?? null,
+  //   sponsorship: ob.needs_sponsorship ?? null,
+  //   resume_url: resumePath,
+  //   resume_path: resumePath,
+  //   start_date: startDate,
+  //   end_date: endDate,
+  //   no_of_applications: sc.no_of_job_applications ?? null,
+  //   badge_value: sc.badge_value ?? null,
+
+  //   add_ons_info: addOnsInfo,
+  //   github_url: ob.github_url ?? null,
+  //   linkedin_url: ob.linkedin_url ?? null,
+
+  //   // Extra fields
+  //   is_over_18: ob.is_over_18,
+  //   eligible_to_work_in_us: ob.eligible_to_work_in_us,
+  //   authorized_without_visa: ob.authorized_without_visa,
+  //   require_future_sponsorship: ob.require_future_sponsorship,
+  //   can_perform_essential_functions: ob.can_perform_essential_functions,
+  //   worked_for_company_before: ob.worked_for_company_before,
+  //   discharged_for_policy_violation: ob.discharged_for_policy_violation,
+  //   referred_by_agency: ob.referred_by_agency,
+  //   highest_education: ob.highest_education,
+  //   university_name: ob.university_name,
+  //   cumulative_gpa: ob.cumulative_gpa,
+  //   desired_start_date: ob.desired_start_date,
+  //   willing_to_relocate: ob.willing_to_relocate,
+  //   can_work_3_days_in_office: ob.can_work_3_days_in_office,
+  //   role: ob.role,
+  //   experience: ob.experience,
+  //   work_preferences: ob.work_preferences,
+  //   alternate_job_roles: ob.alternate_job_roles,
+  //   exclude_companies: ob.exclude_companies,
+  //   convicted_of_felony: ob.convicted_of_felony,
+  //   felony_explanation: ob.felony_explanation,
+  //   pending_investigation: ob.pending_investigation,
+  //   willing_background_check: ob.willing_background_check,
+  //   willing_drug_screen: ob.willing_drug_screen,
+  //   failed_or_refused_drug_test: ob.failed_or_refused_drug_test,
+  //   uses_substances_affecting_duties: ob.uses_substances_affecting_duties,
+  //   substances_description: ob.substances_description,
+  //   can_provide_legal_docs: ob.can_provide_legal_docs,
+  //   gender: ob.gender,
+  //   is_hispanic_latino: ob.is_hispanic_latino,
+  //   race_ethnicity: ob.race_ethnicity,
+  //   veteran_status: ob.veteran_status,
+  //   disability_status: ob.disability_status,
+  //   has_relatives_in_company: ob.has_relatives_in_company,
+  //   relatives_details: ob.relatives_details,
+  //   state_of_residence: ob.state_of_residence,
+  //   zip_or_country: ob.zip_or_country,
+  //   main_subject: ob.main_subject ?? null,
+  //   graduation_year: ob.graduation_year ?? null,
+  // };
+
+  // 4️⃣ Build add_ons_info array based on conditions
+const allowedServices = [
+  { field: "application_sale_value", label: "applications" },
+  { field: "resume_sale_value", label: "resume" },
+  { field: "portfolio_sale_value", label: "portfolio" },
+  { field: "linkedin_sale_value", label: "linkedin" },
+  { field: "github_sale_value", label: "github" },
+  { field: "courses_sale_value", label: "courses" },
+  { field: "custom_sale_value", label: "experience" },
+  { field: "badge_value", label: "badge" },
+  { field: "job_board_value", label: "job-links" }
+];
+// Create add_ons_info dynamically using `sc` instead of `scRow`
+const scAny = sc as any;
+const addOnsInfo = allowedServices
+  .filter((item) => {
+    // Check for the field value's condition
+    if (scAny?.[item.field] !== null && scAny?.[item.field] > 0) {
+      return true;
+    }
+    return false;
+  })
+  // .map((item) => JSON.stringify({ type: item.label, value: scAny?.[item.field] }));
+  .map((item) => item.label); // Only add the label, no value
+
+// 5️⃣ Build payload
+const payload = {
+  full_name: ob.full_name,
+  personal_email: ob.personal_email,
+  whatsapp_number: ob.whatsapp_number ?? null,
+  callable_phone: ob.callable_phone ?? null,
+  company_email: ob.company_email?.trim() || null,
+  job_role_preferences: ob.job_role_preferences ?? null,
+  salary_range: ob.salary_range ?? null,
+  location_preferences: ob.location_preferences ?? null,
+  work_auth_details: ob.work_auth_details ?? null,
+  applywizz_id: leadId,
+  created_at: new Date().toISOString(),
+  visa_type: ob.visatypes ?? null,
+  sponsorship: ob.needs_sponsorship ?? null,
+  resume_url: resumePath,
+  resume_path: resumePath,
+  start_date: startDate,
+  end_date: endDate,
+  no_of_applications: sc.no_of_job_applications ?? null,
+  badge_value: sc.badge_value ?? null,
+
+  // Include add_ons_info
+  add_ons_info: addOnsInfo,
+
+  // Other fields
+  github_url: ob.github_url ?? null,
+  linked_in_url: ob.linkedin_url ?? null,
+
+  // Extra fields
+  is_over_18: ob.is_over_18,
+  eligible_to_work_in_us: ob.eligible_to_work_in_us,
+  authorized_without_visa: ob.authorized_without_visa,
+  require_future_sponsorship: ob.require_future_sponsorship,
+  can_perform_essential_functions: ob.can_perform_essential_functions,
+  worked_for_company_before: ob.worked_for_company_before,
+  discharged_for_policy_violation: ob.discharged_for_policy_violation,
+  referred_by_agency: ob.referred_by_agency,
+  highest_education: ob.highest_education,
+  university_name: ob.university_name,
+  cumulative_gpa: ob.cumulative_gpa,
+  desired_start_date: ob.desired_start_date,
+  willing_to_relocate: ob.willing_to_relocate,
+  can_work_3_days_in_office: ob.can_work_3_days_in_office,
+  role: ob.role,
+  experience: ob.experience,
+  work_preferences: ob.work_preferences,
+  alternate_job_roles: ob.alternate_job_roles,
+  exclude_companies: ob.exclude_companies,
+  convicted_of_felony: ob.convicted_of_felony,
+  felony_explanation: ob.felony_explanation,
+  pending_investigation: ob.pending_investigation,
+  willing_background_check: ob.willing_background_check,
+  willing_drug_screen: ob.willing_drug_screen,
+  failed_or_refused_drug_test: ob.failed_or_refused_drug_test,
+  uses_substances_affecting_duties: ob.uses_substances_affecting_duties,
+  substances_description: ob.substances_description,
+  can_provide_legal_docs: ob.can_provide_legal_docs,
+  gender: ob.gender,
+  is_hispanic_latino: ob.is_hispanic_latino,
+  race_ethnicity: ob.race_ethnicity,
+  veteran_status: ob.veteran_status,
+  disability_status: ob.disability_status,
+  has_relatives_in_company: ob.has_relatives_in_company,
+  relatives_details: ob.relatives_details,
+  state_of_residence: ob.state_of_residence,
+  zip_or_country: ob.zip_or_country,
+  main_subject: ob.main_subject ?? null,
+  graduation_year: ob.graduation_year ?? null,
+};
+
+
+
+  // 6️⃣ Send to API
   const res = await fetch("/api/pending-clients/upsert", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -2101,20 +2598,17 @@ const sendToPendingClients = async (leadId: string) => {
   const result = await res.json();
   if (!res.ok) throw new Error(result?.error || "Upsert failed.");
 
-  // 6️⃣ Update sales_closure status
+  // 7️⃣ Update status in sales_closure
   const { error: updateErr } = await supabase
     .from("sales_closure")
     .update({ data_sent_to_customer_dashboard: "Sent" })
     .eq("lead_id", leadId);
-
-    if (updateErr) console.error("sales_closure update error:", updateErr);
-
-
   if (updateErr) throw updateErr;
 
   console.log("✅ Successfully sent data to pending_clients for:", leadId);
   return { success: true };
 };
+
 
 const handleClick = async (leadId: string) => {
   setClickedIds(prev => ({ ...prev, [leadId]: true }));
