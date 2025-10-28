@@ -2316,7 +2316,7 @@ const downloadAllTablesData = async () => {
                     />
                   </div>
                   {/* NEW: No. of job applications per month */}
-                  <div>
+                  {/* <div>
                     <Label>No. of job applications per month</Label>
                     <Input
                       type="number"
@@ -2334,6 +2334,27 @@ const downloadAllTablesData = async () => {
                       placeholder="20 or 40 applications"
                     />
                   </div>
+                  */}
+
+                  <div>
+  <Label>No. of job applications per month</Label>
+  <select
+    className="border rounded-md p-2 w-full mt-1"
+    value={saleData.no_of_job_applications ?? ""}
+    onChange={e =>
+      setSaleData(p => ({
+        ...p,
+        no_of_job_applications:
+          e.target.value === "" ? null : Number(e.target.value),
+      }))
+    }
+  >
+    <option value="">Select number of job applications</option>
+    <option value="20">20+</option>
+    <option value="40">40+</option>
+  </select>
+</div>
+
 
                   {/* <div className="grid grid-cols-2 gap-4"> */}
                     <div>
