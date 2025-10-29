@@ -5641,168 +5641,34 @@ const sendToPendingClients = async (leadId: string) => {
     .order("created_at", { ascending: true })
     .limit(1)
     .maybeSingle();
+
+    if (obErr) console.error("onboarding_details error:", obErr);
+
+
   if (obErr || !ob) throw new Error("No onboarding details found for this lead.");
 
-  // // 4️⃣ Build add_ons_info array
-  // const addOnsInfo = [
-  //   { type: "application_sale_value", value: sc?.application_sale_value ?? null },
-  //   { type: "resume_sale_value", value: sc?.resume_sale_value ?? null },
-  //   { type: "portfolio_sale_value", value: sc?.portfolio_sale_value ?? null },
-  //   { type: "linkedin_sale_value", value: sc?.linkedin_sale_value ?? null },
-  //   { type: "github_sale_value", value: sc?.github_sale_value ?? null },
-  //   { type: "courses_sale_value", value: sc?.courses_sale_value ?? null },
-  //   { type: "custom_sale_value", value: sc?.custom_sale_value ?? null },
-  //   { type: "job_board_value", value: sc?.job_board_value ?? null },
-  // ]
-  //   .filter((i) => i.value !== null && i.value !== undefined)
-  //   .map((i) => JSON.stringify(i));
-
-  // // 5️⃣ Build payload
-  // // const payload = {
-  // //   full_name: ob.full_name,
-  // //   personal_email: ob.personal_email,
-  // //   whatsapp_number: ob.whatsapp_number ?? null,
-  // //   callable_phone: ob.callable_phone ?? null,
-  // //   company_email: ob.company_email?.trim() || null,
-  // //   job_role_preferences: ob.job_role_preferences ?? null,
-  // //   salary_range: ob.salary_range ?? null,
-  // //   location_preferences: ob.location_preferences ?? null,
-  // //   work_auth_details: ob.work_auth_details ?? null,
-  // //   applywizz_id: leadId,
-  // //   created_at: new Date().toISOString(),
-  // //   visa_type: ob.visatypes ?? null,
-  // //   sponsorship: ob.needs_sponsorship ?? null,
-  // //   resume_url: resumePath,
-  // //   resume_path: resumePath,
-  // //   start_date: startDate,
-  // //   end_date: endDate,
-  // //   no_of_applications: sc.no_of_job_applications ?? null,
-  // //   badge_value: sc.badge_value ?? null,
-  // //   add_ons_info: addOnsInfo,
-  // //   github_url: ob.github_url ?? null,
-  // //   linkedin_url: ob.linkedin_url ?? null,
-  // // };
-
-
-  //   const payload = {
-  //   full_name: ob.full_name,
-  //   personal_email: ob.personal_email,
-  //   whatsapp_number: ob.whatsapp_number ?? null,
-  //   callable_phone: ob.callable_phone ?? null,
-  //   // company_email: ob.company_email ?? null,
-  //   company_email: ob.company_email?.trim() || null,
-  //   job_role_preferences: ob.job_role_preferences ?? null,
-  //   salary_range: ob.salary_range ?? null,
-  //   location_preferences: ob.location_preferences ?? null,
-  //   work_auth_details: ob.work_auth_details ?? null,
-  //   applywizz_id: leadId,
-  //   created_at: new Date().toISOString(),
-  //   visa_type: ob.visatypes ?? null,
-  //   sponsorship: ob.needs_sponsorship ?? null,
-  //   resume_url: resumePath,
-  //   resume_path: resumePath,
-  //   start_date: startDate,
-  //   end_date: endDate,
-  //   no_of_applications: sc.no_of_job_applications ?? null,
-  //   badge_value: sc.badge_value ?? null,
-
-  //   add_ons_info: addOnsInfo,
-  //   github_url: ob.github_url ?? null,
-  //   linkedin_url: ob.linkedin_url ?? null,
-
-  //   // Extra fields
-  //   is_over_18: ob.is_over_18,
-  //   eligible_to_work_in_us: ob.eligible_to_work_in_us,
-  //   authorized_without_visa: ob.authorized_without_visa,
-  //   require_future_sponsorship: ob.require_future_sponsorship,
-  //   can_perform_essential_functions: ob.can_perform_essential_functions,
-  //   worked_for_company_before: ob.worked_for_company_before,
-  //   discharged_for_policy_violation: ob.discharged_for_policy_violation,
-  //   referred_by_agency: ob.referred_by_agency,
-  //   highest_education: ob.highest_education,
-  //   university_name: ob.university_name,
-  //   cumulative_gpa: ob.cumulative_gpa,
-  //   desired_start_date: ob.desired_start_date,
-  //   willing_to_relocate: ob.willing_to_relocate,
-  //   can_work_3_days_in_office: ob.can_work_3_days_in_office,
-  //   role: ob.role,
-  //   experience: ob.experience,
-  //   work_preferences: ob.work_preferences,
-  //   alternate_job_roles: ob.alternate_job_roles,
-  //   exclude_companies: ob.exclude_companies,
-  //   convicted_of_felony: ob.convicted_of_felony,
-  //   felony_explanation: ob.felony_explanation,
-  //   pending_investigation: ob.pending_investigation,
-  //   willing_background_check: ob.willing_background_check,
-  //   willing_drug_screen: ob.willing_drug_screen,
-  //   failed_or_refused_drug_test: ob.failed_or_refused_drug_test,
-  //   uses_substances_affecting_duties: ob.uses_substances_affecting_duties,
-  //   substances_description: ob.substances_description,
-  //   can_provide_legal_docs: ob.can_provide_legal_docs,
-  //   gender: ob.gender,
-  //   is_hispanic_latino: ob.is_hispanic_latino,
-  //   race_ethnicity: ob.race_ethnicity,
-  //   veteran_status: ob.veteran_status,
-  //   disability_status: ob.disability_status,
-  //   has_relatives_in_company: ob.has_relatives_in_company,
-  //   relatives_details: ob.relatives_details,
-  //   state_of_residence: ob.state_of_residence,
-  //   zip_or_country: ob.zip_or_country,
-  //   main_subject: ob.main_subject ?? null,
-  //   graduation_year: ob.graduation_year ?? null,
-  // };
-
-// 4️⃣ Build add_ons_info array based on conditions
-const allowedServices = [
-  { field: "application_sale_value", label: "applications" },
-  { field: "resume_sale_value", label: "resume" },
-  { field: "portfolio_sale_value", label: "portfolio" },
-  { field: "linkedin_sale_value", label: "linkedin" },
-  { field: "github_sale_value", label: "github" },
-  { field: "courses_sale_value", label: "courses" },
-  { field: "experience", label: "experience" },
-  { field: "badge_value", label: "badge" },
-  { field: "job_board_value", label: "job-links" }
-];
-// Create add_ons_info dynamically using `sc` instead of `scRow`
-// cast `sc` to any for dynamic key access to satisfy TS
-const scAny = sc as any;
-const addOnsInfo = allowedServices
-  .filter((item) => {
-    // Read the value once and coerce to number where appropriate
-    const val = scAny?.[item.field];
-    return val !== null && val !== undefined && Number(val) > 0;
-  })
-  .map((item) => JSON.stringify({ type: item.label, value: scAny?.[item.field] }));
-
-// 5️⃣ Build payload
-const payload = {
-  full_name: ob.full_name,
-  personal_email: ob.personal_email,
-  whatsapp_number: ob.whatsapp_number ?? null,
-  callable_phone: ob.callable_phone ?? null,
-  company_email: ob.company_email?.trim() || null,
-  job_role_preferences: ob.job_role_preferences ?? null,
-  salary_range: ob.salary_range ?? null,
-  location_preferences: ob.location_preferences ?? null,
-  work_auth_details: ob.work_auth_details ?? null,
-  applywizz_id: leadId,
-  created_at: new Date().toISOString(),
-  visa_type: ob.visatypes ?? null,
-  sponsorship: ob.needs_sponsorship ?? null,
-  resume_url: resumePath,
-  resume_path: resumePath,
-  start_date: startDate,
-  end_date: endDate,
-  no_of_applications: sc.no_of_job_applications ?? null,
-  badge_value: sc.badge_value ?? null,
-
-  // Include add_ons_info
-  add_ons_info: addOnsInfo,
-
-  // Other fields
-  github_url: ob.github_url ?? null,
-  linkedin_url: ob.linkedin_url ?? null,
+  // 4️⃣ Build payload (matches Zod schema)
+  const payload = {
+    full_name: ob.full_name,
+    personal_email: ob.personal_email,
+    whatsapp_number: ob.whatsapp_number ?? null,
+    callable_phone: ob.callable_phone ?? null,
+    // company_email: ob.company_email ?? null,
+    company_email: ob.company_email?.trim() || null,
+    job_role_preferences: ob.job_role_preferences ?? null,
+    salary_range: ob.salary_range ?? null,
+    location_preferences: ob.location_preferences ?? null,
+    work_auth_details: ob.work_auth_details ?? null,
+    applywizz_id: leadId,
+    created_at: new Date().toISOString(),
+    visa_type: ob.visatypes ?? null,
+    sponsorship: ob.needs_sponsorship ?? null,
+    resume_url: resumePath,
+    resume_path: resumePath,
+    start_date: startDate,
+    end_date: endDate,
+    no_of_applications: sc.no_of_job_applications ?? null,
+    badge_value: sc.badge_value ?? null,
 
   // Extra fields
   is_over_18: ob.is_over_18,
