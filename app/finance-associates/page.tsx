@@ -725,7 +725,9 @@ const handleCSVSubmit = async () => {
                   <TableRow key={sale.id}>
                     <TableCell>{idx + 1}</TableCell>
                     <TableCell>{sale.lead_id}</TableCell>
-                    <TableCell>{sale.leads?.name || "-"}</TableCell>
+                    <TableCell  className="font-medium  break-words whitespace-normal cursor-pointer text-blue-600 hover:underline"
+                            onClick={() => window.open(`/leads/${sale.lead_id}`, "_blank")}
+                    >{sale.leads?.name || "-"}</TableCell>
                     <TableCell>{sale.email}</TableCell>
                     <TableCell>{sale.leads?.phone || "-"}</TableCell>
                     {/* <TableCell>${sale.sale_value}</TableCell> */}
@@ -1105,7 +1107,8 @@ if (!confirmed) return;
               <tr key={rec.id} className="border-t hover:bg-gray-50">
                 <td className="p-2">{idx + 1}</td>
                 <td className="p-2 font-medium">{rec.lead_id}</td>
-                <td className="p-2">{rec.lead_name || "-"}</td>
+                <td className="p-2 font-medium  break-words whitespace-normal cursor-pointer text-blue-600 hover:underline"
+                            onClick={() => window.open(`/leads/${rec.lead_id}`, "_blank")}>{rec.lead_name || "-"}</td>
                 <td className="p-2 text-gray-600">{rec.email}</td>
                 <td className="p-2 text-gray-600">{rec.company_application_email}</td>
                 <td className="p-2">{rec.closed_at ? new Date(rec.closed_at).toLocaleDateString("en-GB") : "-"}</td>
@@ -1394,4 +1397,3 @@ if (!confirmed) return;
 function toast(arg0: { title: string; description: string; }) {
   throw new Error("Function not implemented.");
 }
-
