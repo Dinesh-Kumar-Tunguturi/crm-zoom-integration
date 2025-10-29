@@ -694,12 +694,35 @@ useEffect(() => {
       alert("Failed to save sale.");
     }
   };
-const handleUpdateAssignedTo = async (leadId: string, selectedName: string) => {
+
+// const handleUpdateAssignedTo = async (leadId: string, selectedName: string, selectedEmail: string) => {
+//   try {
+//     const { error } = await supabase
+//       .from("leads")
+//       .update({
+//         assigned_to: selectedName,
+//         assigned_to_email:selectedEmail,
+//         assigned_at: new Date().toISOString(),
+//       })
+//       .eq("id", leadId);
+
+//     if (error) throw error;
+//     alert(`Lead assigned to ${selectedName}`);
+//     if (userProfile) await fetchLeads(userProfile);
+//   } catch (err: any) {
+//     console.error("Error updating assigned_to:", err.message);
+//     alert("Failed to update assignment.");
+//   }
+// };
+
+
+const handleUpdateAssignedTo = async (leadId: string, selectedName: string, selectedEmail: string) => {
   try {
     const { error } = await supabase
       .from("leads")
       .update({
         assigned_to: selectedName,
+        assigned_to_email: selectedEmail,
         assigned_at: new Date().toISOString(),
       })
       .eq("id", leadId);
@@ -1767,7 +1790,7 @@ const downloadAllTablesData = async () => {
                         <TableCell >{lead.assigned_to}</TableCell>
 
                        <TableCell>
-  <Select
+  {/* <Select
     value={lead.assigned_to || ""}
     onValueChange={(selectedName) => handleUpdateAssignedTo(lead.id, selectedName)}
   >
@@ -1782,7 +1805,30 @@ const downloadAllTablesData = async () => {
         </SelectItem>
       ))}
     </SelectContent>
-  </Select>
+  </Select> */}
+
+  <Select
+  value={lead.assigned_to || ""}
+  onValueChange={(selectedName) => {
+    const selectedUser = salesUsers.find(user => user.full_name === selectedName);
+    const selectedEmail = selectedUser ? selectedUser.user_email : ""; // Get the email from the selected user
+    handleUpdateAssignedTo(lead.id, selectedName, selectedEmail); // Pass both name and email
+  }}
+>
+  <SelectTrigger className="w-52">
+    <SelectValue placeholder="Assign to..." />
+  </SelectTrigger>
+
+  <SelectContent>
+    {salesUsers.map((user) => (
+      <SelectItem key={user.full_name} value={user.full_name}>
+        {user.full_name}{" "}
+        <span className="text-gray-500 text-xs">({user.user_email})</span>
+      </SelectItem>
+    ))}
+  </SelectContent>
+</Select>
+
 </TableCell>
 
 
