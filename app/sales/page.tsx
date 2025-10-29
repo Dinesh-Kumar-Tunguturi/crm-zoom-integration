@@ -137,6 +137,8 @@ export default function SalesPage() {
   const [userProfile, setUserProfile] = useState<Profile | null>(null);
   const [salesClosedTotal, setSalesClosedTotal] = useState(0);
 
+  const [salesUsers, setSalesUsers] = useState<{ full_name: string; user_email: string }[]>([]);
+
   const [prDialogOpen, setPrDialogOpen] = useState(false);
   const [prLoading, setPrLoading] = useState(false);
   const [prRows, setPrRows] = useState<PRRow[]>([]);
@@ -216,6 +218,10 @@ export default function SalesPage() {
     setTotalSale(autoTotal + resume + linkedin + github + portfolio);
   }, [autoTotal, resumeValue, linkedinValue, githubValue, portfolioValue]);
 
+
+useEffect(() => {
+  fetchSalesUsers();
+}, []);
 
 
   useEffect(() => {
@@ -688,6 +694,24 @@ export default function SalesPage() {
       alert("Failed to save sale.");
     }
   };
+const handleUpdateAssignedTo = async (leadId: string, selectedName: string) => {
+  try {
+    const { error } = await supabase
+      .from("leads")
+      .update({
+        assigned_to: selectedName,
+        assigned_at: new Date().toISOString(),
+      })
+      .eq("id", leadId);
+
+    if (error) throw error;
+    alert(`Lead assigned to ${selectedName}`);
+    if (userProfile) await fetchLeads(userProfile);
+  } catch (err: any) {
+    console.error("Error updating assigned_to:", err.message);
+    alert("Failed to update assignment.");
+  }
+};
 
 
   const filteredLeads = leads.filter((lead) => {
@@ -1035,6 +1059,21 @@ if (
     }));
     return callHistoryData;
   };
+
+
+const fetchSalesUsers = async () => {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("full_name, user_email")
+    .in("roles", ["Sales", "Sales Associate"]);
+
+  if (error) {
+    console.error("Error fetching sales users:", error);
+    return [];
+  }
+
+  setSalesUsers(data || []);
+};
 
 
 
@@ -1692,6 +1731,7 @@ const downloadAllTablesData = async () => {
                           </span>
                         </div>
                       </TableHead>
+                      <TableHead>Re-assign</TableHead>
                       <TableHead>Stage</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
@@ -1725,6 +1765,27 @@ const downloadAllTablesData = async () => {
                         </TableCell>
 
                         <TableCell >{lead.assigned_to}</TableCell>
+
+                       <TableCell>
+  <Select
+    value={lead.assigned_to || ""}
+    onValueChange={(selectedName) => handleUpdateAssignedTo(lead.id, selectedName)}
+  >
+    <SelectTrigger className="w-52">
+      <SelectValue placeholder="Assign to..." />
+    </SelectTrigger>
+    <SelectContent>
+      {salesUsers.map((user) => (
+        <SelectItem key={user.full_name} value={user.full_name}>
+          {user.full_name}{" "}
+          <span className="text-gray-500 text-xs">({user.user_email})</span>
+        </SelectItem>
+      ))}
+    </SelectContent>
+  </Select>
+</TableCell>
+
+
 
                         <TableCell className="flex items-center gap-4">
                           <Select
