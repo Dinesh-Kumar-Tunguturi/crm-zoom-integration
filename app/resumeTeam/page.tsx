@@ -5815,7 +5815,7 @@ const payload = {
 
   // Other fields
   github_url: ob.github_url ?? null,
-  linkedin_url: ob.linkedin_url ?? null,
+  linked_in_url: ob.linkedin_url ?? null,
 
   // Extra fields
   is_over_18: ob.is_over_18,
