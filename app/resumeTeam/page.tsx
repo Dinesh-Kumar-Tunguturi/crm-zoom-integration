@@ -5774,8 +5774,11 @@ const allowedServices = [
   { field: "badge_value", label: "badge" },
   { field: "job_board_value", label: "job-links" }
 ];
+
 // Create add_ons_info dynamically using `sc` instead of `scRow`
 // cast `sc` to any for dynamic key access to satisfy TS
+// const scAny = sc as any;
+
 const scAny = sc as any;
 const addOnsInfo = allowedServices
   .filter((item) => {
@@ -5783,7 +5786,7 @@ const addOnsInfo = allowedServices
     const val = scAny?.[item.field];
     return val !== null && val !== undefined && Number(val) > 0;
   })
-  .map((item) => JSON.stringify({ type: item.label, value: scAny?.[item.field] }));
+  .map((item) => item.label);  // Directly return the label instead of stringifying
 
 // 5️⃣ Build payload
 const payload = {
