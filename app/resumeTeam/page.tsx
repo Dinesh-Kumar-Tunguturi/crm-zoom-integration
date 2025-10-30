@@ -4619,34 +4619,104 @@ const saveOnboardAndDetails = async () => {
     return "\\x" + hex;
   };
 
+
+
+// const uploadOrReplaceResume = async (leadId: string, file: File, previousPath?: string | null) => {
+//   ensurePdf(file);
+
+//   const fileName = ensurePdfFilename(file.name);
+//   const path = `${leadId}/${fileName}`.replace(/^\/+/, "");
+
+//   const up = await supabase.storage.from(BUCKET).upload(path, file, {
+//     cacheControl: "3600",
+//     upsert: true,
+//     contentType: "application/pdf",
+//   });
+//   if (up.error) {
+//     console.error("STORAGE UPLOAD ERROR:", up.error);
+//     throw new Error(up.error.message || "Upload to Storage failed");
+//   }
+
+//   if (previousPath && previousPath !== path) {
+//     const del = await supabase.storage.from(BUCKET).remove([previousPath]);
+//     if (del.error) console.warn("STORAGE REMOVE WARNING:", del.error);
+//   }
+
+//   const db = await supabase
+//     .from("resume_progress")
+//     .upsert(
+//       {
+//         lead_id: leadId,
+//         status: "completed",
+//         pdf_path: path,
+//         pdf_uploaded_at: new Date().toISOString(),
+//       },
+//       { onConflict: "lead_id" }
+//     );
+//   if (db.error) {
+//     console.error("DB UPSERT ERROR resume_progress:", db.error);
+//     throw new Error(db.error.message || "DB upsert failed");
+//   }
+
+//   const publicUrl = supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
+//   return { path, publicUrl };
+// };
+
+
 const uploadOrReplaceResume = async (leadId: string, file: File, previousPath?: string | null) => {
   ensurePdf(file);
-
-  const fileName = ensurePdfFilename(file.name);
-  const path = `${leadId}/${fileName}`.replace(/^\/+/, "");
-
-  const up = await supabase.storage.from(BUCKET).upload(path, file, {
-    cacheControl: "3600",
-    upsert: true,
-    contentType: "application/pdf",
+ 
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("lead_id", leadId);
+ 
+  const path = await supabase
+  .from("resume_progress")
+  .select("pdf_path")
+  .eq("lead_id", leadId)
+  .maybeSingle();
+ 
+  if(path.data?.pdf_path){
+    if(path.data.pdf_path.startsWith("CRM")){
+      const del = await fetch("/api/resumes/delete", {
+        headers: { "Content-Type": "application/json" },
+        method: "POST",
+        body: JSON.stringify({ key: path.data.pdf_path}),
+      });
+      if (!del.ok) {
+        const errData = await del.json().catch(() => ({}));
+        throw new Error(
+          errData?.error || `Failed to delete past CRM resume: ${del.status}`
+        );
+      }
+    }
+    else{
+      const del = await supabase.storage.from(BUCKET).remove([path.data.pdf_path]);
+      if (del.error) console.warn("STORAGE REMOVE WARNING:", del.error);
+    }
+  }
+ 
+  const res = await fetch("/api/resumes/upload", {
+    method: "POST",
+    body: formData,
   });
-  if (up.error) {
-    console.error("STORAGE UPLOAD ERROR:", up.error);
-    throw new Error(up.error.message || "Upload to Storage failed");
+ 
+  const data = await res.json();
+ 
+  if (!res.ok) {
+    console.error("Upload failed:", data);
+    throw new Error(data.error || "Upload failed");
   }
-
-  if (previousPath && previousPath !== path) {
-    const del = await supabase.storage.from(BUCKET).remove([previousPath]);
-    if (del.error) console.warn("STORAGE REMOVE WARNING:", del.error);
-  }
-
+ 
+  console.log("✅ Uploaded to backend → S3:", data);
+ 
   const db = await supabase
     .from("resume_progress")
     .upsert(
       {
         lead_id: leadId,
         status: "completed",
-        pdf_path: path,
+        pdf_path: data.key,
         pdf_uploaded_at: new Date().toISOString(),
       },
       { onConflict: "lead_id" }
@@ -4655,34 +4725,83 @@ const uploadOrReplaceResume = async (leadId: string, file: File, previousPath?: 
     console.error("DB UPSERT ERROR resume_progress:", db.error);
     throw new Error(db.error.message || "DB upsert failed");
   }
-
-  const publicUrl = supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
-  return { path, publicUrl };
+ 
+  return { key: data.key, publicUrl: data.publicUrl };
 };
 
 
 
+// const downloadResume = async (path: string) => {
+//   try {
+//     const segments = (path || "").split("/");
+//     const fileName = segments[segments.length - 1] || "resume.pdf";
+
+//     const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, 60 * 60);
+//     if (error) throw error;
+//     if (!data?.signedUrl) throw new Error("No signed URL");
+
+//     const res = await fetch(data.signedUrl);
+//     if (!res.ok) throw new Error(`Download failed (${res.status})`);
+//     const blob = await res.blob();
+//     const objectUrl = URL.createObjectURL(blob);
+
+//     const a = document.createElement("a");
+//     a.href = objectUrl;
+//     a.download = fileName; 
+//     document.body.appendChild(a);
+//     a.click();
+//     a.remove();
+//     URL.revokeObjectURL(objectUrl);
+//   } catch (e: any) {
+//     alert(e?.message || "Could not download PDF");
+//   }
+// };
+
+
 const downloadResume = async (path: string) => {
   try {
-    const segments = (path || "").split("/");
-    const fileName = segments[segments.length - 1] || "resume.pdf";
-
-    const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, 60 * 60);
-    if (error) throw error;
-    if (!data?.signedUrl) throw new Error("No signed URL");
-
-    const res = await fetch(data.signedUrl);
-    if (!res.ok) throw new Error(`Download failed (${res.status})`);
-    const blob = await res.blob();
-    const objectUrl = URL.createObjectURL(blob);
-
-    const a = document.createElement("a");
-    a.href = objectUrl;
-    a.download = fileName; 
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(objectUrl);
+    if(path.startsWith("CRM")){
+    const base = "https://applywizz-dev.s3.us-east-2.amazonaws.com";
+     // Combine base + path to form full URL
+    const fileUrl = `${base}/${path}`;
+ 
+    // Create a hidden link and trigger click (forces download)
+     // fetch the file data and create a Blob URL so browser downloads it
+    const response = await fetch(fileUrl);
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+ 
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = path.split("/").pop() || "resume.pdf"; // force download
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+ 
+    // cleanup
+    window.URL.revokeObjectURL(url);
+    }
+    else{
+      const segments = (path || "").split("/");
+      const fileName = segments[segments.length - 1] || "resume.pdf";
+ 
+      const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, 60 * 60);
+      if (error) throw error;
+      if (!data?.signedUrl) throw new Error("No signed URL");
+ 
+      const res = await fetch(data.signedUrl);
+      if (!res.ok) throw new Error(`Download failed (${res.status})`);
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+ 
+      const a = document.createElement("a");
+      a.href = objectUrl;
+      a.download = fileName; 
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(objectUrl);
+    }
   } catch (e: any) {
     alert(e?.message || "Could not download PDF");
   }
@@ -5585,7 +5704,6 @@ const handleSendToPendingClients = async (leadId: string) => {
 
 
 
-
 // ✅ Send finalized data to pending_clients (for exported sync)
 const sendToPendingClients = async (leadId: string) => {
   console.log("👉 Starting sendToPendingClients for:", leadId);
@@ -5641,34 +5759,60 @@ const sendToPendingClients = async (leadId: string) => {
     .order("created_at", { ascending: true })
     .limit(1)
     .maybeSingle();
-
-    if (obErr) console.error("onboarding_details error:", obErr);
-
-
   if (obErr || !ob) throw new Error("No onboarding details found for this lead.");
 
-  // 4️⃣ Build payload (matches Zod schema)
-  const payload = {
-    full_name: ob.full_name,
-    personal_email: ob.personal_email,
-    whatsapp_number: ob.whatsapp_number ?? null,
-    callable_phone: ob.callable_phone ?? null,
-    // company_email: ob.company_email ?? null,
-    company_email: ob.company_email?.trim() || null,
-    job_role_preferences: ob.job_role_preferences ?? null,
-    salary_range: ob.salary_range ?? null,
-    location_preferences: ob.location_preferences ?? null,
-    work_auth_details: ob.work_auth_details ?? null,
-    applywizz_id: leadId,
-    created_at: new Date().toISOString(),
-    visa_type: ob.visatypes ?? null,
-    sponsorship: ob.needs_sponsorship ?? null,
-    resume_url: resumePath,
-    resume_path: resumePath,
-    start_date: startDate,
-    end_date: endDate,
-    no_of_applications: sc.no_of_job_applications ?? null,
-    badge_value: sc.badge_value ?? null,
+
+// 4️⃣ Build add_ons_info array based on conditions
+const allowedServices = [
+  { field: "application_sale_value", label: "applications" },
+  { field: "resume_sale_value", label: "resume" },
+  { field: "portfolio_sale_value", label: "portfolio" },
+  { field: "linkedin_sale_value", label: "linkedin" },
+  { field: "github_sale_value", label: "github" },
+  { field: "courses_sale_value", label: "courses" },
+  { field: "experience", label: "experience" },
+  { field: "badge_value", label: "badge" },
+  { field: "job_board_value", label: "job-links" }
+];
+// Create add_ons_info dynamically using `sc` instead of `scRow`
+// cast `sc` to any for dynamic key access to satisfy TS
+const scAny = sc as any;
+const addOnsInfo = allowedServices
+  .filter((item) => {
+    // Read the value once and coerce to number where appropriate
+    const val = scAny?.[item.field];
+    return val !== null && val !== undefined && Number(val) > 0;
+  })
+  .map((item) => JSON.stringify({ type: item.label, value: scAny?.[item.field] }));
+
+// 5️⃣ Build payload
+const payload = {
+  full_name: ob.full_name,
+  personal_email: ob.personal_email,
+  whatsapp_number: ob.whatsapp_number ?? null,
+  callable_phone: ob.callable_phone ?? null,
+  company_email: ob.company_email?.trim() || null,
+  job_role_preferences: ob.job_role_preferences ?? null,
+  salary_range: ob.salary_range ?? null,
+  location_preferences: ob.location_preferences ?? null,
+  work_auth_details: ob.work_auth_details ?? null,
+  applywizz_id: leadId,
+  created_at: new Date().toISOString(),
+  visa_type: ob.visatypes ?? null,
+  sponsorship: ob.needs_sponsorship ?? null,
+  resume_url: resumePath,
+  resume_path: resumePath,
+  start_date: startDate,
+  end_date: endDate,
+  no_of_applications: sc.no_of_job_applications ?? null,
+  badge_value: sc.badge_value ?? null,
+
+  // Include add_ons_info
+  add_ons_info: addOnsInfo,
+
+  // Other fields
+  github_url: ob.github_url ?? null,
+  linkedin_url: ob.linkedin_url ?? null,
 
   // Extra fields
   is_over_18: ob.is_over_18,
