@@ -2865,6 +2865,81 @@ const handleImportSubmit = async () => {
     }
   };
 
+
+//   const BUCKET = "resumes"; 
+//   const ENABLE_DB_COPY = false; 
+
+//   const ensurePdf = (file: File) => {
+//     if (file.type !== "application/pdf") throw new Error("Please select a PDF file.");
+//     if (file.size > 20 * 1024 * 1024) throw new Error("Max file size is 20MB.");
+//   };
+
+//   const ensurePdfFilename = (name: string) => {
+//   const cleaned = cleanName(name);
+//   return /\.pdf$/i.test(cleaned) ? cleaned : `${cleaned}.pdf`;
+// };
+
+
+//   const cleanName = (name: string) => name.replace(/[^\w.\-]+/g, "_");
+
+//   const fileToHexBytea = async (file: File) => {
+//     const buf = await file.arrayBuffer();
+//     const bytes = new Uint8Array(buf);
+//     let hex = "";
+//     for (let i = 0; i < bytes.length; i++) hex += bytes[i].toString(16).padStart(2, "0");
+//     return "\\x" + hex;
+//   };
+
+  
+//   const downloadResume = async (path: string) => {
+//     try {
+//       if(path.startsWith("CRM")){
+//       const base = "https://applywizz-dev.s3.us-east-2.amazonaws.com";
+//        // Combine base + path to form full URL
+//       const fileUrl = `${base}/${path}`;
+   
+//       // Create a hidden link and trigger click (forces download)
+//        // fetch the file data and create a Blob URL so browser downloads it
+//       const response = await fetch(fileUrl);
+//       const blob = await response.blob();
+//       const url = window.URL.createObjectURL(blob);
+   
+//       const link = document.createElement("a");
+//       link.href = url;
+//       link.download = path.split("/").pop() || "resume.pdf"; // force download
+//       document.body.appendChild(link);
+//       link.click();
+//       document.body.removeChild(link);
+   
+//       // cleanup
+//       window.URL.revokeObjectURL(url);
+//       }
+//       else{
+//         const segments = (path || "").split("/");
+//         const fileName = segments[segments.length - 1] || "resume.pdf";
+   
+//         const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, 60 * 60);
+//         if (error) throw error;
+//         if (!data?.signedUrl) throw new Error("No signed URL");
+   
+//         const res = await fetch(data.signedUrl);
+//         if (!res.ok) throw new Error(`Download failed (${res.status})`);
+//         const blob = await res.blob();
+//         const objectUrl = URL.createObjectURL(blob);
+   
+//         const a = document.createElement("a");
+//         a.href = objectUrl;
+//         a.download = fileName; 
+//         document.body.appendChild(a);
+//         a.click();
+//         a.remove();
+//         URL.revokeObjectURL(objectUrl);
+//       }
+//     } catch (e: any) {
+//       alert(e?.message || "Could not download PDF");
+//     }
+//   };
+
   // Update portfolio status
   // const handlePortfolioStatusChange = async (
   //   sale: SalesClosure,
