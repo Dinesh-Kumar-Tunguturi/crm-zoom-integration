@@ -14,6 +14,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import Papa from "papaparse";
+import { format } from "date-fns"; // Importing format function from date-fns
+import { Edit } from "lucide-react";
 
 
 
@@ -58,6 +60,13 @@ export default function FinanceAssociatesPage() {
   const [showReasonDialog, setShowReasonDialog] = useState(false);
   const [selectedReasonType, setSelectedReasonType] = useState<FinanceStatus | null>(null);
   const [reasonNote, setReasonNote] = useState("");
+
+  
+const [showOnboardDialog, setShowOnboardDialog] = useState(false);
+// const [selectedSaleId, setSelectedSaleId] = useState<string | null>(null);
+const [selectedOnboardDate, setSelectedOnboardDate] = useState<Date | null>(null);
+const [updatedSaleId, setUpdatedSaleId] = useState<string | null>(null); // Track updated sale ID
+
 
   const [showAssignDialog, setShowAssignDialog] = useState(false);
 const [unassignedRecords, setUnassignedRecords] = useState<any[]>([]);
@@ -579,6 +588,66 @@ const handleCSVSubmit = async () => {
   setCsvRowCount(0);
 };
 
+
+const handleOnboardClient = async (clientId: string) => {
+  const confirmed = window.confirm("Are you sure you want to onboard this client?");
+  if (!confirmed) return;
+
+  const today = new Date().toISOString();
+
+  const { error } = await supabase
+    .from("sales_closure")
+    .update({ onboarded_date: today })
+    .eq("id", clientId);
+
+  if (error) {
+    console.error("Failed to onboard client:", error);
+    alert("❌ Failed to onboard client. Try again.");
+  } else {
+    alert("✅ Client onboarded successfully.");
+    // Refresh data or re-fetch the sales data
+  }
+};
+
+// To open the dialog when the edit button is clicked
+const openOnboardDialog = (saleId: string, currentOnboardDate: string | null) => {
+  setSelectedSaleId(saleId);
+  setSelectedOnboardDate(currentOnboardDate ? new Date(currentOnboardDate) : null);
+  setShowOnboardDialog(true);
+};
+
+const handleUpdateOnboardDate = async () => {
+  if (!selectedOnboardDate || !selectedSaleId) return;
+
+  const { error } = await supabase
+    .from("sales_closure")
+    .update({ onboarded_date: selectedOnboardDate.toISOString() })
+    .eq("id", selectedSaleId);
+
+  if (error) {
+    console.error("Error updating onboard date:", error);
+    alert("❌ Failed to update onboard date.");
+  } else {
+    alert("✅ Onboard date updated successfully.");
+    
+    // Update the sales state to reflect the change
+    setSales((prevSales) =>
+      prevSales.map((sale) =>
+        sale.id === selectedSaleId
+          ? { ...sale, onboarded_date: selectedOnboardDate.toISOString() }
+          : sale
+      )
+    );
+    
+        setUpdatedSaleId(selectedSaleId);
+
+    // Close the dialog and reset selected date
+    setShowOnboardDialog(false);
+    setSelectedSaleId(null);
+    setSelectedOnboardDate(null);
+  }
+};
+
   return (
     <ProtectedRoute allowedRoles={["Finance Associate", "Super Admin"]}>
       <DashboardLayout>
@@ -722,8 +791,11 @@ const handleCSVSubmit = async () => {
               </TableHeader>
               <TableBody>
                 {filteredSales.map((sale, idx) => (
-                  <TableRow key={sale.id}>
-                    <TableCell>{idx + 1}</TableCell>
+<TableRow
+  key={sale.id}
+  className={sale.id === updatedSaleId ? "bg-green-100" : ""} // Apply green background to the updated row
+>
+                     <TableCell>{idx + 1}</TableCell>
                     <TableCell>{sale.lead_id}</TableCell>
                     <TableCell  className="font-medium  break-words whitespace-normal cursor-pointer text-blue-600 hover:underline"
                             onClick={() => window.open(`/leads/${sale.lead_id}`, "_blank")}
@@ -742,7 +814,20 @@ const handleCSVSubmit = async () => {
     : "-"}
 </TableCell>
 
-                    <TableCell>{sale.onboarded_date ? new Date(sale.onboarded_date).toLocaleDateString("en-GB") : "-"}</TableCell>
+                    {/* <TableCell>{sale.onboarded_date ? new Date(sale.onboarded_date).toLocaleDateString("en-GB") : "-"}</TableCell> */}
+                   
+            <TableCell>
+  {sale.onboarded_date ? new Date(sale.onboarded_date).toLocaleDateString("en-GB") : "-"}
+  <Button
+    onClick={() => openOnboardDialog(sale.id, sale.onboarded_date || null)}
+    className="ml-2 text-gray-500 bg-inherit hover:text-blue-600 hover:bg-inherit"
+        title="Edit onboarded date"  >
+           <Edit className="w-4 h-4" />
+   
+  </Button>
+</TableCell>
+
+
                     <TableCell>
   {getRenewWithinBadge(sale.onboarded_date || "", sale.subscription_cycle)}
 </TableCell>
@@ -917,7 +1002,6 @@ if (!confirmed) return;
 
 
 
-
                   </TableRow>
                 ))}
               </TableBody>
@@ -1078,6 +1162,37 @@ if (!confirmed) return;
   </DialogContent>
 </Dialog>
 
+
+{/*  Dialog for selecting a new onboard date */}
+<Dialog open={showOnboardDialog} onOpenChange={setShowOnboardDialog}>
+  <DialogContent>
+    <DialogHeader>
+      <DialogTitle>Update Onboarded Date</DialogTitle>
+    </DialogHeader>
+
+    <Input
+      type="date"
+      value={selectedOnboardDate ? format(selectedOnboardDate, "yyyy-MM-dd") : ""}
+      onChange={(e) => setSelectedOnboardDate(new Date(e.target.value))}
+      required
+    />
+
+    <div className="flex justify-end mt-4">
+      <Button
+        variant="outline"
+        onClick={() => setShowOnboardDialog(false)}
+      >
+        Cancel
+      </Button>
+      <Button
+        onClick={handleUpdateOnboardDate}
+        disabled={!selectedOnboardDate}
+      >
+        Update
+      </Button>
+    </div>
+  </DialogContent>
+</Dialog>
 
 <Dialog open={showAssignDialog} onOpenChange={setShowAssignDialog}>
   <DialogContent className="max-w-7xl">
