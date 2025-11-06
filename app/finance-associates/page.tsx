@@ -90,65 +90,6 @@ const [leadIdToRemove, setLeadIdToRemove] = useState<string | null>(null);
   const router = useRouter();
 
   
-// const fetchSales = async () => {
-//   if (!user) return;
-
-//   // 1. Fetch TL's profile (name & email are already in `user`)
-//   const { name, email } = user;
-
-//   const { data: salesData, error: salesError } = await supabase
-//     .from("sales_closure")
-//     .select("*")
-//     .eq("associates_tl_email", email)
-//     .eq("associates_tl_name", name)
-//     .not("onboarded_date", "is", null);
-
-//   if (salesError) {
-//     console.error("Failed to fetch sales data:", salesError);
-//     return;
-//   }
-
-//   // 2. Get the latest record per lead_id
-//   const latestSalesMap = new Map<string, SalesClosure>();
-//   for (const record of salesData ?? []) {
-//     const existing = latestSalesMap.get(record.lead_id);
-
-//     const existingDate = existing?.onboarded_date || existing?.closed_at || "";
-//     const currentDate = record?.onboarded_date || record?.closed_at || "";
-
-//     if (!existing || new Date(currentDate) > new Date(existingDate)) {
-//       latestSalesMap.set(record.lead_id, record);
-//     }
-//   }
-
-//   const latestSales = Array.from(latestSalesMap.values());
-
-//   // 3. Enrich with name & phone
-//   const leadIds = latestSales.map((s) => s.lead_id);
-
-//   const { data: leadsData, error: leadsError } = await supabase
-//     .from("leads")
-//     .select("business_id, name, phone")
-//     .in("business_id", leadIds);
-
-//   if (leadsError) {
-//     console.error("Failed to fetch leads data:", leadsError);
-//     return;
-//   }
-
-//   const leadMap = new Map(
-//     leadsData?.map((l) => [l.business_id, { name: l.name, phone: l.phone }])
-//   );
-
-//   const enrichedSales = latestSales.map((sale) => ({
-//     ...sale,
-//     leads: leadMap.get(sale.lead_id) || { name: "-", phone: "-" },
-//   }));
-
-//   setSales(enrichedSales);
-// };
-
-
 const fetchSales = async () => {
   if (!user) return;
 
@@ -214,11 +155,6 @@ for (const record of salesData ?? []) {
     leadsData?.map((l) => [l.business_id, { name: l.name, phone: l.phone }])
   );
 
-  // const enrichedSales = latestSales.map((sale) => ({
-  //   ...sale,
-  //   leads: leadMap.get(sale.lead_id) || { name: "-", phone: "-" },
-  // }));
-
   const enrichedSales = latestSales.map((sale) => ({
   ...sale,
   leads: leadMap.get(sale.lead_id) || { name: "-", phone: "-" },
@@ -229,26 +165,6 @@ for (const record of salesData ?? []) {
   setSales(enrichedSales);
 };
 
-// const fetchUnassignedSales = async () => {
-//   const { data, error } = await supabase
-//     .from("sales_closure")
-//     .select("id, lead_id, email, lead_name, closed_at, onboarded_date, sale_value, associates_tl_email, associates_tl_name")
-//     .or("associates_tl_email.is.null,associates_tl_email.eq.,associates_tl_name.is.null,associates_tl_name.eq.") // NULL or empty
-//     .order("closed_at", { ascending: false });
-
-//   if (error) {
-//     console.error("Error fetching unassigned sales:", error);
-//     return;
-//   }
-
-//   // Keep one record per lead_id (latest)
-//   const uniqueMap = new Map<string, any>();
-//   for (const record of data ?? []) {
-//     if (!uniqueMap.has(record.lead_id)) uniqueMap.set(record.lead_id, record);
-//   }
-
-//   setUnassignedRecords(Array.from(uniqueMap.values()));
-// };
 
 
 const fetchUnassignedSales = async () => {
@@ -777,7 +693,7 @@ const handleUpdateOnboardDate = async () => {
                   <TableHead>Name</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Phone</TableHead>
-                  {/* <TableHead>Sale Value</TableHead> */}
+                  <TableHead>Sale Value</TableHead>
                   <TableHead>Subscription</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Sale Date</TableHead>
@@ -790,7 +706,15 @@ const handleUpdateOnboardDate = async () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredSales.map((sale, idx) => (
+
+                {
+   
+
+                filteredSales.map((sale, idx) => (
+
+                  
+
+                  
 <TableRow
   key={sale.id}
   className={sale.id === updatedSaleId ? "bg-green-100" : ""} // Apply green background to the updated row
@@ -802,7 +726,7 @@ const handleUpdateOnboardDate = async () => {
                     >{sale.leads?.name || "-"}</TableCell>
                     <TableCell>{sale.email}</TableCell>
                     <TableCell>{sale.leads?.phone || "-"}</TableCell>
-                    {/* <TableCell>${sale.sale_value}</TableCell> */}
+                    <TableCell>${sale.sale_value}</TableCell>
                     <TableCell>{sale.subscription_cycle} days</TableCell>
                     <TableCell>
                       <Badge className={getStageColor(sale.finance_status)}>{sale.finance_status}</Badge>
@@ -828,11 +752,32 @@ const handleUpdateOnboardDate = async () => {
 </TableCell>
 
 
-                    <TableCell>
+                    {/* <TableCell>
   {getRenewWithinBadge(sale.onboarded_date || "", sale.subscription_cycle)}
-</TableCell>
+</TableCell> */}
+
+
 <TableCell>
   {(() => {
+    // Check if the status is one of the "closed", "unpaid", or "got placed"
+    const stage = String(sale.finance_status || "").trim().toLowerCase();
+    const forClosed = ["closed", "unpaid", "got placed"].includes(stage);
+
+    // Show renewal badge only if the status is not one of the closed statuses
+    return forClosed ? null : getRenewWithinBadge(sale.onboarded_date || "", sale.subscription_cycle);
+  })()}
+</TableCell>
+
+<TableCell>
+  {(() => {
+
+     const stage = String(sale.finance_status || "").trim().toLowerCase();
+    const isFinalized = ["closed","unpaid", "got placed"].includes(stage);
+    
+    // Show next renewal calculation only if the status is not finalized
+    return isFinalized ? null :
+    
+  (() => {
     const onboarded = sale.onboarded_date ? new Date(sale.onboarded_date) : null;
     const cycle = sale.subscription_cycle || 0;
 
@@ -841,6 +786,7 @@ const handleUpdateOnboardDate = async () => {
     const renewalDate = new Date(onboarded);
     renewalDate.setDate(renewalDate.getDate() + cycle);
     return renewalDate.toLocaleDateString("en-GB");
+  })();
   })()}
 </TableCell>
 
@@ -853,7 +799,7 @@ const handleUpdateOnboardDate = async () => {
 
     if (onboarded) {
       const diffDays = Math.floor((today.getTime() - onboarded.getTime()) / (1000 * 60 * 60 * 24));
-      isOlderThan25 = diffDays < 25;
+      isOlderThan25 = diffDays < sale.subscription_cycle;
     }
 
     const disableDropdown = isOlderThan25;
@@ -862,22 +808,7 @@ const handleUpdateOnboardDate = async () => {
     return (
 <Select
   value={actionSelections[sale.id] || ""}
-//   onValueChange={(value) => {
-//   setActionSelections((prev) => ({
-//     ...prev,
-//     [sale.id]: value,
-//   }));
 
-//   if (value === "Closed") {
-//     setSelectedSaleId(sale.id);
-//     setShowCloseDialog(true);
-//   } else if (value === "Paused") {
-//     setPendingAction({ saleId: sale.id, newStatus: value as FinanceStatus });
-//     setShowConfirmDialog(true);
-//   } else {
-//     updateFinanceStatus(sale.id, value as FinanceStatus);
-//   }
-// }}
 
 onValueChange={(value) => {
   setActionSelections((prev) => ({
@@ -949,22 +880,6 @@ if (!confirmed) return;
 </TableCell>
 
 
-                    {/* <TableCell>
-                      {sale.finance_status === "Closed" && sale.reason_for_close ? (
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <button className="hover:text-blue-600">
-                              <MessageSquare className="w-5 h-5" />
-                            </button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-[300px] bg-white shadow-lg border p-4 text-sm text-gray-700">
-                            Reason: '{sale.reason_for_close}'
-                          </PopoverContent>
-                        </Popover>
-                      ) : (
-                        <span className="text-gray-400 text-xs italic">—</span>
-                      )}
-                    </TableCell> */}
 
 
 <TableCell>
@@ -1008,117 +923,7 @@ if (!confirmed) return;
             </Table>
           </div>
           
-                {/* <Dialog open={showCloseDialog} onOpenChange={setShowCloseDialog}>
-  <DialogContent className="sm:max-w-md">
-    <DialogHeader>
-      <DialogTitle>Reason for Closing</DialogTitle>
-    </DialogHeader>
-
-    <Textarea
-      placeholder="Enter reason for closing this record..."
-      value={closingNote}
-      onChange={(e) => setClosingNote(e.target.value)}
-      className="min-h-[100px]"
-    />
-
-    <div className="flex justify-end mt-4">
-      <Button
-        onClick={async () => {
-          if (!selectedSaleId || closingNote.trim() === "") {
-            alert("Please enter a reason.");
-            return;
-          }
-
-          const { error } = await supabase
-            .from("sales_closure")
-            .update({
-              finance_status: "Closed",
-              reason_for_close: closingNote.trim(),
-            })
-            .eq("id", selectedSaleId);
-
-          if (error) {
-            console.error("Error saving close reason:", error);
-            alert("❌ Failed to close record.");
-            return;
-          }
-
-          setSales((prev) =>
-            prev.map((sale) =>
-              sale.id === selectedSaleId
-                ? {
-                    ...sale,
-                    finance_status: "Closed",
-                    reason_for_close: closingNote.trim(),
-                  }
-                : sale
-            )
-          );
-
-          setShowCloseDialog(false);
-          setSelectedSaleId(null);
-          setClosingNote("");
-        }}
-      >
-        Submit
-      </Button>
-    </div>
-  </DialogContent>
-</Dialog> */}
-
-{/* 
-<Dialog open={showAssignDialog} onOpenChange={setShowAssignDialog}>
-  <DialogContent className="max-w-3xl">
-    <DialogHeader>
-      <DialogTitle>Assign Finance Associates</DialogTitle>
-    </DialogHeader>
-
-    {unassignedRecords.length === 0 ? (
-      <p className="text-sm text-gray-600">✅ All leads are already assigned.</p>
-    ) : (
-      <div className="space-y-4 max-h-[60vh] overflow-y-auto">
-        {unassignedRecords.map((rec, idx) => (
-          <div key={rec.id} className="flex items-center justify-between border-b pb-2">
-            <div>
-              <p className="font-semibold text-gray-800">{rec.lead_id}</p>
-              <p className="text-sm text-gray-500">{rec.email}</p>
-              <p className="text-sm text-gray-500">{rec.lead_name}</p>
-            </div>
-
-            <Button
-              size="sm"
-              onClick={() => setSelectedLeadId(rec.lead_id)}
-              className="bg-blue-600 text-white hover:bg-blue-700"
-            >
-              Assign
-            </Button>
-          </div>
-        ))}
-      </div>
-    )}
-
-    {selectedLeadId && (
-      <div className="mt-6 border-t pt-4">
-        <h3 className="font-semibold text-gray-800 mb-2">Select Finance Associate</h3>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-          {financeAssociates.map((a) => (
-            <Button
-              key={a.user_email}
-              variant="outline"
-              className="justify-start text-left"
-              onClick={() => assignAssociate(selectedLeadId, a.full_name, a.user_email)}
-            >
-              <div>
-                <p className="font-medium">{a.full_name}</p>
-                <p className="text-xs text-gray-500">{a.user_email}</p>
-              </div>
-            </Button>
-          ))}
-        </div>
-      </div>
-    )}
-  </DialogContent>
-</Dialog> */}
+         
 <Dialog open={showRemoveDialog} onOpenChange={setShowRemoveDialog}>
   <DialogContent className="sm:max-w-md">
     <DialogHeader>
