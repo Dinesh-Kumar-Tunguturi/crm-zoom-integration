@@ -99,7 +99,10 @@ const fetchSales = async () => {
   let salesQuery = supabase
     .from("sales_closure")
     .select("*")
-    .not("onboarded_date", "is", null);
+    .not("onboarded_date", "is", null)
+   .gt("application_sale_value", 0)    // Ensures application_sale_value is greater than 0
+    .not("application_sale_value", "is", null); // Ensures application_sale_value is not null
+
 
   // Only apply TL filters if not Super Admin
   if (user.role !== "Super Admin" && user.role !== "Finance") {
