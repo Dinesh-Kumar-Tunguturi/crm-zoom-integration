@@ -6911,26 +6911,126 @@ const saveOnboardAndDetails = async () => {
 
 
 
+// const uploadOrReplaceResume = async (leadId: string, file: File, previousPath?: string | null) => {
+//   ensurePdf(file);
+
+//   const fileName = ensurePdfFilename(file.name);
+//   const path = `${leadId}/${fileName}`.replace(/^\/+/, "");
+
+//     // const path = `CRM/${Date.now()}-${fileName}`.replace(/^\/+/, "");
+
+//   const up = await supabase.storage.from(BUCKET).upload(path, file, {
+//     cacheControl: "3600",
+//     upsert: true,
+//     contentType: "application/pdf",
+//   });
+//   if (up.error) {
+//     console.error("STORAGE UPLOAD ERROR:", up.error);
+//     throw new Error(up.error.message || "Upload to Storage failed");
+//   }
+
+//   if (previousPath && previousPath !== path) {
+//     const del = await supabase.storage.from(BUCKET).remove([previousPath]);
+//     if (del.error) console.warn("STORAGE REMOVE WARNING:", del.error);
+//   }
+
+//   const db = await supabase
+//     .from("resume_progress")
+//     .upsert(
+//       {
+//         lead_id: leadId,
+//         status: "completed",
+//         pdf_path: path,
+//         pdf_uploaded_at: new Date().toISOString(),
+//       },
+//       { onConflict: "lead_id" }
+//     );
+//   if (db.error) {
+//     console.error("DB UPSERT ERROR resume_progress:", db.error);
+//     throw new Error(db.error.message || "DB upsert failed");
+//   }
+
+//   const publicUrl = supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
+//   return { path, publicUrl };
+// };
+
+
+
+// const downloadResume = async (path: string) => {
+//   try {
+//     const segments = (path || "").split("/");
+//     const fileName = segments[segments.length - 1] || "resume.pdf";
+
+//     const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, 60 * 60);
+//     if (error) throw error;
+//     if (!data?.signedUrl) throw new Error("No signed URL");
+
+//     const res = await fetch(data.signedUrl);
+//     if (!res.ok) throw new Error(`Download failed (${res.status})`);
+//     const blob = await res.blob();
+//     const objectUrl = URL.createObjectURL(blob);
+
+//     const a = document.createElement("a");
+//     a.href = objectUrl;
+//     a.download = fileName; 
+//     document.body.appendChild(a);
+//     a.click();
+//     a.remove();
+//     URL.revokeObjectURL(objectUrl);
+//   } catch (e: any) {
+//     alert(e?.message || "Could not download PDF");
+//   }
+// };
+
+
+
+
 const uploadOrReplaceResume = async (leadId: string, file: File, previousPath?: string | null) => {
   ensurePdf(file);
 
-  const fileName = ensurePdfFilename(file.name);
-  const path = `${leadId}/${fileName}`.replace(/^\/+/, "");
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("lead_id", leadId);
 
-  const up = await supabase.storage.from(BUCKET).upload(path, file, {
-    cacheControl: "3600",
-    upsert: true,
-    contentType: "application/pdf",
+  const path = await supabase
+  .from("resume_progress")
+  .select("pdf_path")
+  .eq("lead_id", leadId)
+  .maybeSingle();
+
+  if(path.data?.pdf_path){
+    if(path.data.pdf_path.startsWith("CRM")){
+      const del = await fetch("/api/resumes/delete", {
+        headers: { "Content-Type": "application/json" },
+        method: "POST",
+        body: JSON.stringify({ key: path.data.pdf_path}),
+      });
+      if (!del.ok) {
+        const errData = await del.json().catch(() => ({}));
+        throw new Error(
+          errData?.error || `Failed to delete past CRM resume: ${del.status}`
+        );
+      }
+    }
+    else{
+      const del = await supabase.storage.from(BUCKET).remove([path.data.pdf_path]);
+      if (del.error) console.warn("STORAGE REMOVE WARNING:", del.error);
+    }
+  }
+
+  const res = await fetch("/api/resumes/upload", {
+    method: "POST",
+    body: formData,
   });
-  if (up.error) {
-    console.error("STORAGE UPLOAD ERROR:", up.error);
-    throw new Error(up.error.message || "Upload to Storage failed");
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    console.error("Upload failed:", data);
+    throw new Error(data.error || "Upload failed");
   }
 
-  if (previousPath && previousPath !== path) {
-    const del = await supabase.storage.from(BUCKET).remove([previousPath]);
-    if (del.error) console.warn("STORAGE REMOVE WARNING:", del.error);
-  }
+  console.log("✅ Uploaded to backend → S3:", data);
 
   const db = await supabase
     .from("resume_progress")
@@ -6938,7 +7038,7 @@ const uploadOrReplaceResume = async (leadId: string, file: File, previousPath?: 
       {
         lead_id: leadId,
         status: "completed",
-        pdf_path: path,
+        pdf_path: data.key,
         pdf_uploaded_at: new Date().toISOString(),
       },
       { onConflict: "lead_id" }
@@ -6948,36 +7048,59 @@ const uploadOrReplaceResume = async (leadId: string, file: File, previousPath?: 
     throw new Error(db.error.message || "DB upsert failed");
   }
 
-  const publicUrl = supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
-  return { path, publicUrl };
+  return { key: data.key, publicUrl: data.publicUrl };
 };
 
 
 
 const downloadResume = async (path: string) => {
   try {
-    const segments = (path || "").split("/");
-    const fileName = segments[segments.length - 1] || "resume.pdf";
+    if(path.startsWith("CRM")){
+    const base = "https://applywizz-prod.s3.us-east-2.amazonaws.com";
+     // Combine base + path to form full URL
+    const fileUrl = `${base}/${path}`;
 
-    const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, 60 * 60);
-    if (error) throw error;
-    if (!data?.signedUrl) throw new Error("No signed URL");
+    // Create a hidden link and trigger click (forces download)
+     // fetch the file data and create a Blob URL so browser downloads it
+    const response = await fetch(fileUrl);
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
 
-    const res = await fetch(data.signedUrl);
-    if (!res.ok) throw new Error(`Download failed (${res.status})`);
-    const blob = await res.blob();
-    const objectUrl = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = path.split("/").pop() || "resume.pdf"; // force download
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 
-    const a = document.createElement("a");
-    a.href = objectUrl;
-    a.download = fileName; 
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(objectUrl);
+    // cleanup
+    window.URL.revokeObjectURL(url);
+    }
+    else{
+      const segments = (path || "").split("/");
+      const fileName = segments[segments.length - 1] || "resume.pdf";
+
+      const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, 60 * 60);
+      if (error) throw error;
+      if (!data?.signedUrl) throw new Error("No signed URL");
+
+      const res = await fetch(data.signedUrl);
+      if (!res.ok) throw new Error(`Download failed (${res.status})`);
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = objectUrl;
+      a.download = fileName; 
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(objectUrl);
+    }
   } catch (e: any) {
     alert(e?.message || "Could not download PDF");
   }
+  
 };
 
 
