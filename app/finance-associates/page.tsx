@@ -1,3 +1,4 @@
+//app/finance-associates/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -34,6 +35,7 @@ interface SalesClosure {
   onboarded_date?: string;
   finance_status: FinanceStatus;
   reason_for_close?: string;
+  associates_tl_name ?: string;
   leads?: {
     name: string;
     phone: string;
@@ -60,6 +62,7 @@ export default function FinanceAssociatesPage() {
   const [showReasonDialog, setShowReasonDialog] = useState(false);
   const [selectedReasonType, setSelectedReasonType] = useState<FinanceStatus | null>(null);
   const [reasonNote, setReasonNote] = useState("");
+const [activeClientsCount, setActiveClientsCount] = useState<number>(0);
 
   
 const [showOnboardDialog, setShowOnboardDialog] = useState(false);
@@ -113,6 +116,7 @@ const fetchSales = async () => {
     return;
   }
 
+
   // 2. Get the latest record per lead_id
   const latestSalesMap = new Map<string, SalesClosure>();
   for (const record of salesData ?? []) {
@@ -127,6 +131,12 @@ const fetchSales = async () => {
   }
 
   const latestSales = Array.from(latestSalesMap.values());
+
+  
+  // 2. Get the count of "Paid" records from the most recent ones
+  const paidClients = latestSales.filter((sale) => sale.finance_status === "Paid");
+  setActiveClientsCount(paidClients.length); // Update the count of active clients
+
 
   // 🧠 Step: Build a map of oldest closed_at per lead_id
 const oldestDatesMap = new Map<string, string>();
@@ -158,6 +168,7 @@ for (const record of salesData ?? []) {
   const enrichedSales = latestSales.map((sale) => ({
   ...sale,
   leads: leadMap.get(sale.lead_id) || { name: "-", phone: "-" },
+    associates_tl_name: sale.associates_tl_name || "-", // Ensure associates_tl_name is included
   oldest_closed_at: oldestDatesMap.get(sale.lead_id) || sale.closed_at,
 }));
 
@@ -581,7 +592,7 @@ const handleUpdateOnboardDate = async () => {
           </div>
 
          <div className="flex items-center justify-between mt-4">
-<div className="flex gap-2 items-center">
+<div className="flex gap-2 items-center justify-center">
   <Input
     placeholder="Search by email or lead_id"
     value={searchTerm}
@@ -618,7 +629,14 @@ const handleUpdateOnboardDate = async () => {
 </Button>
 
 
+
   </div>
+
+ {/* Display Active Clients Count */}
+ <div className="flex items-center text-sm font-semibold space-x-2">
+  <span className="text-gray-700">Total Active Clients:</span>
+  <span className="text-green-600">{activeClientsCount}</span>
+</div>
 
             <div className="flex space-x-4 justify-end">
             <Select value={followUpFilter} onValueChange={(value) => setFollowUpFilter(value as "Today" | "All")}>
@@ -702,6 +720,7 @@ const handleUpdateOnboardDate = async () => {
                   <TableHead>Renewal date</TableHead>
                   <TableHead>Actions</TableHead>
                   <TableHead>Reason</TableHead>
+                  <TableHead>TL</TableHead>
                   <TableHead>Remove</TableHead>
                 </TableRow>
               </TableHeader>
@@ -898,6 +917,7 @@ if (!confirmed) return;
     <span className="text-gray-400 text-xs italic">—</span>
   )}
 </TableCell>
+<TableCell>{sale.associates_tl_name || "-"}</TableCell>
 <TableCell className="p-2 text-center">
   <Button
     size="sm"
