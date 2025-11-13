@@ -25,6 +25,12 @@ import { useRouter } from "next/navigation";
 
 type FinanceStatus = "Paid" | "Unpaid" | "Paused" | "Closed" | "Got Placed";
 
+type TLClientCount = {
+  associates_tl_email: string | null;
+  paid_leads_count: number;
+};
+
+
 interface SalesClosure {
   id: string;
   lead_id: string;
@@ -36,6 +42,7 @@ interface SalesClosure {
   finance_status: FinanceStatus;
   reason_for_close?: string;
   associates_tl_name ?: string;
+  associates_tl_email ?: string;
   leads?: {
     name: string;
     phone: string;
@@ -64,6 +71,13 @@ export default function FinanceAssociatesPage() {
   const [reasonNote, setReasonNote] = useState("");
 const [activeClientsCount, setActiveClientsCount] = useState<number>(0);
 
+const [sortField, setSortField] = useState<string | null>(null);
+const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+
+const [tlClientCounts, setTlClientCounts] = useState<
+  { associates_tl_email: string | null; paid_leads_count: number }[]
+>([]);
+
   
 const [showOnboardDialog, setShowOnboardDialog] = useState(false);
 // const [selectedSaleId, setSelectedSaleId] = useState<string | null>(null);
@@ -91,6 +105,18 @@ const [leadIdToRemove, setLeadIdToRemove] = useState<string | null>(null);
 
   const { user, hasAccess } = useAuth();
   const router = useRouter();
+
+
+  const fetchTLCounts = async () => {
+  const { data, error } = await supabase.rpc("get_tl_paid_counts");
+
+  if (error) {
+    console.error("Error loading TL counts:", error);
+    return;
+  }
+
+  setTlClientCounts(data as TLClientCount[]);
+};
 
   
 const fetchSales = async () => {
@@ -175,6 +201,25 @@ for (const record of salesData ?? []) {
   oldest_closed_at: oldestDatesMap.get(sale.lead_id) || sale.closed_at,
 }));
 
+// ----------------------------------------------
+const tlCountsMap = new Map<string | null, number>();
+
+// Loop only through latest records
+latestSales.forEach((sale) => {
+  if (sale.finance_status === "Paid") {
+    const tlEmail = sale.associates_tl_email || null;
+    tlCountsMap.set(tlEmail, (tlCountsMap.get(tlEmail) || 0) + 1);
+  }
+});
+
+// Convert map → array for UI
+const tlCountsArray = Array.from(tlCountsMap.entries()).map(([email, count]) => ({
+  associates_tl_email: email,
+  paid_leads_count: count,
+}));
+
+// Update state
+setTlClientCounts(tlCountsArray);
 
   setSales(enrichedSales);
 };
@@ -238,6 +283,34 @@ const assignAssociate = async (leadId: string, fullName: string, email: string) 
   fetchUnassignedSales(); // refresh
 };
 
+const renderSortableHeader = (label: string, field: string) => (
+  <TableHead
+    className="cursor-pointer select-none"
+    onClick={() => handleSort(field)}
+  >
+    <div className="flex items-center gap-1">
+      <span>{label}</span>
+      <span
+        className={`text-[10px] ${
+          sortField === field && sortOrder === "asc"
+            ? "text-blue-600"
+            : "text-gray-400"
+        }`}
+      >
+        ▲
+      </span>
+      <span
+        className={`text-[10px] ${
+          sortField === field && sortOrder === "desc"
+            ? "text-blue-600"
+            : "text-gray-400"
+        }`}
+      >
+        ▼
+      </span>
+    </div>
+  </TableHead>
+);
 
   useEffect(() => {
     if (user === null) return;
@@ -290,6 +363,12 @@ const assignAssociate = async (leadId: string, fullName: string, email: string) 
   }
 }, [searchTerm]);
 
+useEffect(() => {
+  if (user) {
+    fetchSales();
+    fetchTLCounts();
+  }
+}, [user]);
 
   useEffect(() => {
     if (user && hasAccess("finance-associates")) {
@@ -304,6 +383,14 @@ const assignAssociate = async (leadId: string, fullName: string, email: string) 
 
 
 
+function handleSort(field: string) {
+  if (sortField === field) {
+    setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+  } else {
+    setSortField(field);
+    setSortOrder("asc");
+  }
+}
 
 
   const getStageColor = (status: FinanceStatus) => {
@@ -386,34 +473,133 @@ const removeAssociateFromLead = async (leadId: string) => {
 };
 
 
-const filteredSales = sales
-  .filter((sale) => {
-    const matchesSearch =
-      sale.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      sale.lead_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        sale.leads?.phone?.toLowerCase().includes(searchTerm.toLowerCase());
+// const filteredSales = sales
+//   .filter((sale) => {
+//     const matchesSearch =
+//       sale.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+//       sale.lead_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+//         sale.leads?.phone?.toLowerCase().includes(searchTerm.toLowerCase());
 
 
-    const matchesStatus =
-      statusFilter === "All" || sale.finance_status === statusFilter;
+//     const matchesStatus =
+//       statusFilter === "All" || sale.finance_status === statusFilter;
 
-    const onboardedDate = sale.onboarded_date ? new Date(sale.onboarded_date) : null;
-    const today = new Date();
-    const subscriptionCycle = sale.subscription_cycle || 0; // Default to 0 if not set
-    const diffInDays = onboardedDate
-      ? Math.floor((today.getTime() - onboardedDate.getTime()) / (1000 * 60 * 60 * 24))
-      : null;
+//     const onboardedDate = sale.onboarded_date ? new Date(sale.onboarded_date) : null;
+//     const today = new Date();
+//     const subscriptionCycle = sale.subscription_cycle || 0; // Default to 0 if not set
+//     const diffInDays = onboardedDate
+//       ? Math.floor((today.getTime() - onboardedDate.getTime()) / (1000 * 60 * 60 * 24))
+//       : null;
 
-    const matchesFollowUp =
-      followUpFilter === "All" || (diffInDays !== null && diffInDays >= subscriptionCycle);
+//     const matchesFollowUp =
+//       followUpFilter === "All" || (diffInDays !== null && diffInDays >= subscriptionCycle);
 
-    return matchesSearch && matchesStatus && matchesFollowUp;
-  })
-  .sort((a, b) => {
-    const dateA = new Date(a.onboarded_date || a.closed_at || "");
-    const dateB = new Date(b.onboarded_date || b.closed_at || "");
-    return  dateB.getTime()-dateA.getTime(); // 🟢 descending
-  });
+//     return matchesSearch && matchesStatus && matchesFollowUp;
+//   })
+//   .sort((a, b) => {
+//     const dateA = new Date(a.onboarded_date || a.closed_at || "");
+//     const dateB = new Date(b.onboarded_date || b.closed_at || "");
+//     return  dateB.getTime()-dateA.getTime(); // 🟢 descending
+//   });
+
+const filteredSales = sales.filter((sale) => {
+  const matchesSearch =
+    sale.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    sale.lead_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    sale.leads?.phone?.toLowerCase().includes(searchTerm.toLowerCase());
+
+  const matchesStatus =
+    statusFilter === "All" || sale.finance_status === statusFilter;
+
+  const onboardedDate = sale.onboarded_date ? new Date(sale.onboarded_date) : null;
+  const today = new Date();
+  const subscriptionCycle = sale.subscription_cycle || 0;
+  const diffInDays = onboardedDate
+    ? Math.floor(
+        (today.getTime() - onboardedDate.getTime()) / (1000 * 60 * 60 * 24)
+      )
+    : null;
+
+  const matchesFollowUp =
+    followUpFilter === "All" ||
+    (diffInDays !== null && diffInDays >= subscriptionCycle);
+
+  return matchesSearch && matchesStatus && matchesFollowUp;
+});
+
+const sortedSales = [...filteredSales].sort((a, b) => {
+  // default sort: newest onboarded/closed first
+  if (!sortField) {
+    const dateA = new Date(a.onboarded_date || a.closed_at || "").getTime();
+    const dateB = new Date(b.onboarded_date || b.closed_at || "").getTime();
+    return dateB - dateA;
+  }
+
+  const direction = sortOrder === "asc" ? 1 : -1;
+
+  if (sortField === "lead_id") {
+    // if your IDs like AWL-123, sort by number
+    const aNum = parseInt(a.lead_id.split("-").pop() || "0", 10);
+    const bNum = parseInt(b.lead_id.split("-").pop() || "0", 10);
+    if (!isNaN(aNum) && !isNaN(bNum)) {
+      return (aNum - bNum) * direction;
+    }
+    return a.lead_id.localeCompare(b.lead_id) * direction;
+  }
+
+  if (sortField === "name") {
+    const nameA = (a.leads?.name ?? "").toLowerCase();
+    const nameB = (b.leads?.name ?? "").toLowerCase();
+    return nameA.localeCompare(nameB) * direction;
+  }
+
+  if (sortField === "sale_value") {
+    return (a.sale_value - b.sale_value) * direction;
+  }
+
+  if (sortField === "subscription_cycle") {
+    return ((a.subscription_cycle || 0) - (b.subscription_cycle || 0)) * direction;
+  }
+
+  if (sortField === "finance_status") {
+    const sA = a.finance_status || "";
+    const sB = b.finance_status || "";
+    return sA.localeCompare(sB) * direction;
+  }
+
+  if (sortField === "sale_date") {
+    const dateA = new Date(a.oldest_closed_at || a.closed_at || "").getTime();
+    const dateB = new Date(b.oldest_closed_at || b.closed_at || "").getTime();
+    return (dateA - dateB) * direction;
+  }
+
+  if (sortField === "onboarded_date") {
+    const dateA = new Date(a.onboarded_date || "").getTime();
+    const dateB = new Date(b.onboarded_date || "").getTime();
+    return (dateA - dateB) * direction;
+  }
+
+  if (sortField === "renewal_date") {
+    const getRenewal = (s: SalesClosure) => {
+      if (!s.onboarded_date || !s.subscription_cycle) return Infinity;
+      const d = new Date(s.onboarded_date);
+      d.setDate(d.getDate() + s.subscription_cycle);
+      return d.getTime();
+    };
+    const dateA = getRenewal(a);
+    const dateB = getRenewal(b);
+    return (dateA - dateB) * direction;
+  }
+
+  if (sortField === "tl") {
+    const tlA = (a.associates_tl_name || a.associates_tl_email || "").toLowerCase();
+    const tlB = (b.associates_tl_name || b.associates_tl_email || "").toLowerCase();
+    return tlA.localeCompare(tlB) * direction;
+  }
+
+  return 0;
+});
+
 
   const handleCSVUpload = (file: File) => {
   Papa.parse(file, {
@@ -584,6 +770,7 @@ const handleUpdateOnboardDate = async () => {
         <div className="space-y-6">
           <div className="flex justify-between items-center">
             <h1 className="text-3xl font-bold text-gray-900">Finance Associates Page</h1>
+            
             <Button className=" bg-orange-500 text-gray-100 hover:bg-orange-600" onClick={() => {
   setShowAssignDialog(true);
   fetchUnassignedSales();
@@ -593,6 +780,84 @@ const handleUpdateOnboardDate = async () => {
 </Button>
 
           </div>
+
+ {/* Display Active Clients Count */}
+{/*  
+<div className="grid grid-cols-1 sm:grid-cols-6 md:grid-cols-6 gap-4 mt-4">
+  {tlClientCounts.map((tl) => (
+    <div
+      key={tl.associates_tl_email || "unassigned"}
+      className="p-4 border rounded-lg bg-white shadow hover:shadow-md transition"
+    >
+      <p className="font-semibold text-gray-800">
+        {tl.associates_tl_email || "Unassigned"}
+      </p>
+      <p className="text-2xl font-bold text-blue-600">
+        {tl.paid_leads_count}
+      </p>
+      <p className="text-xs text-gray-500 mt-1">Active Paid Clients</p>
+    </div>
+  ))}
+</div> */}
+{/* 
+<div className="grid grid-cols-1 sm:grid-cols-8 md:grid-cols-8 gap-4 mt-4">
+  {tlClientCounts
+    .slice()                                   // copy so original state is not mutated
+    .sort((a, b) => b.paid_leads_count - a.paid_leads_count)  // 🔥 sort DESC
+    .map((tl) => (
+      <div
+        key={tl.associates_tl_email || "unassigned"}
+        className="p-4 border rounded-lg bg-white shadow hover:shadow-md transition"
+      >
+        <p className="font-semibold text-gray-800">
+          {tl.associates_tl_email || "Unassigned"}
+        </p>
+        <p className="text-2xl font-bold text-blue-600">
+          {tl.paid_leads_count}
+        </p>
+        <p className="text-xs text-gray-500 mt-1">Active Paid Clients</p>
+      </div>
+    ))}
+</div> */}
+
+<div className="grid grid-cols-1 sm:grid-cols-8 md:grid-cols-8 gap-4 mt-4">
+
+  {/* 🔹 TL CARDS */}
+  {tlClientCounts
+    .slice()
+    .sort((a, b) => b.paid_leads_count - a.paid_leads_count)
+    .map((tl) => (
+      <div
+        key={tl.associates_tl_email || "unassigned"}
+        className="p-4 border rounded-lg bg-white shadow hover:shadow-md transition"
+      >
+        <p className="font-semibold text-gray-800">
+          {tl.associates_tl_email || "Unassigned"}
+        </p>
+
+        <p className="text-2xl font-bold text-blue-600">
+          {tl.paid_leads_count}
+        </p>
+
+        <p className="text-xs text-gray-500 mt-1">Active Paid Clients</p>
+      </div>
+    ))}
+
+  {/* ⭐ TOTAL CLIENTS CARD */}
+  <div className="p-4 border rounded-lg bg-green-50 shadow hover:shadow-md transition">
+    <p className="font-semibold text-gray-900">
+      Total Clients
+    </p>
+    <p className="text-3xl font-bold text-green-600">
+      {
+        tlClientCounts.reduce((sum, tl) => sum + (tl.paid_leads_count || 0), 0)
+      }
+    </p>
+    <p className="text-xs text-gray-600 mt-1">Sum of All TL active clients count</p>
+  </div>
+
+</div>
+
 
          <div className="flex items-center justify-between mt-4">
 <div className="flex gap-2 items-center justify-center">
@@ -634,12 +899,11 @@ const handleUpdateOnboardDate = async () => {
 
 
   </div>
-
- {/* Display Active Clients Count */}
- <div className="flex items-center text-sm font-semibold space-x-2">
+  <div className="flex items-center text-sm font-semibold space-x-2">
   <span className="text-gray-700">Total Active Clients:</span>
   <span className="text-green-600">{activeClientsCount}</span>
 </div>
+
 
             <div className="flex space-x-4 justify-end">
             <Select value={followUpFilter} onValueChange={(value) => setFollowUpFilter(value as "Today" | "All")}>
@@ -706,8 +970,9 @@ const handleUpdateOnboardDate = async () => {
 
 </div>
           <div className="rounded-md border mt-4">
+            
             <Table>
-              <TableHeader>
+              {/* <TableHeader>
                 <TableRow>
                   <TableHead>S.No</TableHead>
                   <TableHead>Client ID</TableHead>
@@ -726,13 +991,40 @@ const handleUpdateOnboardDate = async () => {
                   <TableHead>TL</TableHead>
                   <TableHead>Remove</TableHead>
                 </TableRow>
-              </TableHeader>
+              </TableHeader> */}
+
+              <TableHeader>
+  <TableRow>
+    <TableHead>S.No</TableHead>
+
+    {renderSortableHeader("Client ID", "lead_id")}
+    {renderSortableHeader("Name", "name")}
+
+    <TableHead>Email</TableHead>
+    <TableHead>Phone</TableHead>
+
+    {renderSortableHeader("Sale Value", "sale_value")}
+    {renderSortableHeader("Subscription", "subscription_cycle")}
+    {renderSortableHeader("Status", "finance_status")}
+    {renderSortableHeader("Sale Date", "sale_date")}
+    {renderSortableHeader("Onboarded / last payment at", "onboarded_date")}
+    {renderSortableHeader("Deadline", "renewal_date")}
+    {renderSortableHeader("Renewal date", "renewal_date")}
+
+    <TableHead>Actions</TableHead>
+    <TableHead>Reason</TableHead>
+    {renderSortableHeader("TL", "tl")}
+    <TableHead>Remove</TableHead>
+  </TableRow>
+</TableHeader>
+
+
               <TableBody>
 
                 {
    
 
-                filteredSales.map((sale, idx) => (
+                sortedSales.map((sale, idx) => (
 
                   
 

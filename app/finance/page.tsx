@@ -18,6 +18,12 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner"; // or wherever your toast system comes from
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { MoreVertical, Edit, RefreshCw  } from "lucide-react"; // or use any icon you like
+import {
+  Accordion,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent,
+} from "@/components/ui/accordion";
 
 
 import {
@@ -55,6 +61,7 @@ interface SalesClosure {
   leads?: { name: string, phone: string };
   oldest_sale_done_at?: string; // 🆕
   application_sale_value: number;
+  associates_tl_email ?: string;
 }
 
 
@@ -181,6 +188,8 @@ export default function FinancePage() {
 
   const [refreshing, setRefreshing] = useState(false);
 
+  const [selectedTLFilter, setSelectedTLFilter] = useState<string | null>(null);
+
 
   const [sortField, setSortField] = useState<string | null>(null);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
@@ -235,6 +244,9 @@ const [updatingDate, setUpdatingDate] = useState(false);
   const [commitments, setCommitments] = useState('');
   const [closerName, setCloserName] = useState('');
 
+const [tlActiveCounts, setTlActiveCounts] = useState<
+  { associates_tl_email: string | null; count: number }[]
+>([]);
 
 
 
@@ -305,6 +317,26 @@ const [updatingDate, setUpdatingDate] = useState(false);
         new Date(b.onboarded_date ?? "").getTime() -
         new Date(a.onboarded_date ?? "").getTime()
     );
+// -----------------------------
+// 🧠 Calculate TL-wise Active Paid Clients
+// -----------------------------
+const tlMap = new Map<string | null, number>();
+
+latestRows.forEach((row) => {
+  if (row.finance_status === "Paid") {
+    const tl = row.associates_tl_email || null;
+    tlMap.set(tl, (tlMap.get(tl) || 0) + 1);
+  }
+});
+
+// Convert map → array for UI
+const tlArray = Array.from(tlMap.entries()).map(([email, count]) => ({
+  associates_tl_email: email,
+  count,
+}));
+
+// Store in state
+setTlActiveCounts(tlArray);
 
     // Step 1: Build oldest sale_done map
     const oldestSaleDateMap = new Map<string, string>();
@@ -456,34 +488,97 @@ const [updatingDate, setUpdatingDate] = useState(false);
   }, [startDate, subscriptionCycle]);
 
 
-  const filteredSales = sales.filter((sale) => {
+  // const filteredSales = sales.filter((sale) => {
+  //   const matchesSearch =
+  //     sale.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  //     sale.lead_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  //     (sale.leads?.name ?? "").toLowerCase().includes(searchTerm.toLowerCase()) || // ✅ search by name
+  //     (sale.leads?.phone ?? "").toLowerCase().includes(searchTerm.toLowerCase()) ||  // ✅ search by phone
+  //     (sale.sale_value.toString().includes(searchTerm)) ||
+  //     (sale.subscription_cycle.toString().includes(searchTerm));
+
+  //   const matchesStatus = statusFilter === "All" || sale.finance_status === statusFilter;
+
+  //   if (followUpFilter === "Today") {
+  //     // due = onboarded_date + subscription_cycle
+  //     if (!sale.onboarded_date || !sale.subscription_cycle) return false;
+  //     const start = new Date(sale.onboarded_date);
+  //     const due = new Date(start);
+  //     due.setHours(0, 0, 0, 0);
+  //     due.setDate(due.getDate() + sale.subscription_cycle);
+
+  //     const today = new Date();
+  //     today.setHours(0, 0, 0, 0);
+
+  //     // show “due today” and “overdue”
+  //     return (due.getTime() <= today.getTime()) && matchesSearch && matchesStatus;
+  //   }
+
+  //   return matchesSearch && matchesStatus;
+  // });
+
+  const filteredSales = sales
+  .filter((sale) => {
+    // --------------------------------------------
+    // 🔍 1. TL FILTER (NEW)
+    // --------------------------------------------
+    if (selectedTLFilter && sale.associates_tl_email !== selectedTLFilter) {
+      return false;
+    }
+
+    // --------------------------------------------
+    // 🔍 2. SEARCH FILTERS
+    // --------------------------------------------
     const matchesSearch =
       sale.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       sale.lead_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (sale.leads?.name ?? "").toLowerCase().includes(searchTerm.toLowerCase()) || // ✅ search by name
-      (sale.leads?.phone ?? "").toLowerCase().includes(searchTerm.toLowerCase()) ||  // ✅ search by phone
-      (sale.sale_value.toString().includes(searchTerm)) ||
-      (sale.subscription_cycle.toString().includes(searchTerm));
+      (sale.leads?.name ?? "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (sale.leads?.phone ?? "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      sale.sale_value.toString().includes(searchTerm) ||
+      sale.subscription_cycle.toString().includes(searchTerm);
 
-    const matchesStatus = statusFilter === "All" || sale.finance_status === statusFilter;
+    // --------------------------------------------
+    // 🔍 3. STATUS FILTER
+    // --------------------------------------------
+    const matchesStatus =
+      statusFilter === "All" || sale.finance_status === statusFilter;
 
+    // --------------------------------------------
+    // 🔍 4. TODAY FILTER (due today + overdue)
+    // --------------------------------------------
     if (followUpFilter === "Today") {
-      // due = onboarded_date + subscription_cycle
       if (!sale.onboarded_date || !sale.subscription_cycle) return false;
+
       const start = new Date(sale.onboarded_date);
+      start.setHours(0, 0, 0, 0);
+
       const due = new Date(start);
+      due.setDate(start.getDate() + sale.subscription_cycle);
       due.setHours(0, 0, 0, 0);
-      due.setDate(due.getDate() + sale.subscription_cycle);
 
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      // show “due today” and “overdue”
-      return (due.getTime() <= today.getTime()) && matchesSearch && matchesStatus;
+      const isDueTodayOrOverdue = due.getTime() <= today.getTime();
+
+      return (
+        isDueTodayOrOverdue &&
+        matchesSearch &&
+        matchesStatus
+      );
     }
 
+    // --------------------------------------------
+    // 🔍 5. DEFAULT (NO TODAY FILTER)
+    // --------------------------------------------
     return matchesSearch && matchesStatus;
+  })
+  .sort((a, b) => {
+    const dateA = new Date(a.onboarded_date || a.closed_at || "");
+    const dateB = new Date(b.onboarded_date || b.closed_at || "");
+    return dateB.getTime() - dateA.getTime();
   });
+
 
   function handleSort(field: string) {
     if (sortField === field) {
@@ -541,6 +636,15 @@ const [updatingDate, setUpdatingDate] = useState(false);
       const dateB = new Date(calculateNextRenewal(b.onboarded_date, b.subscription_cycle)).getTime();
       return sortOrder === "asc" ? dateA - dateB : dateB - dateA;
     }
+    if (sortField === "assigned_to") {
+  const aTL = (a.associates_tl_email ?? "").toLowerCase();
+  const bTL = (b.associates_tl_email ?? "").toLowerCase();
+
+  return sortOrder === "asc"
+    ? aTL.localeCompare(bTL)
+    : bTL.localeCompare(aTL);
+}
+
 
     return 0;
   });
@@ -1232,6 +1336,7 @@ const formattedTotalAmount = subscription_puls_addons.toFixed(2);
     }
   };
 
+const totalTLCount = tlActiveCounts.reduce((sum, tl) => sum + tl.count, 0);
 
   return (
     <ProtectedRoute allowedRoles={["Finance", "Super Admin"]}>
@@ -1257,8 +1362,76 @@ const formattedTotalAmount = subscription_puls_addons.toFixed(2);
     {refreshing ? "Refreshing..." : "Refresh"}
   </span>
 </Button>
+
+
     </div>
               <p className="text-gray-600 mt-2">Track revenue and manage payments</p>
+              {/* <div className="mt-6">
+  <Accordion type="single" collapsible className="w-full">
+    <AccordionItem value="active-tl-counts">
+      <AccordionTrigger className="text-lg font-bold text-blue-700">
+        Today Active Count List
+      </AccordionTrigger>
+
+      <AccordionContent>
+        <div className="grid grid-cols-1 sm:grid-cols-8 md:grid-cols-8 gap-4 mt-4">
+
+          {tlActiveCounts
+            .slice()
+            .sort((a, b) => b.count - a.count)
+            .map((tl) => (
+              <div
+  key={tl.associates_tl_email || "unassigned"}
+  onClick={() => {
+    setSelectedTLFilter((prev) =>
+      prev === tl.associates_tl_email ? null : tl.associates_tl_email
+    );
+  }}
+  className={`cursor-pointer p-4 border rounded-lg shadow transition
+    ${selectedTLFilter === tl.associates_tl_email ? "bg-blue-100 border-blue-500" : "bg-white"}
+  `}
+>
+  <span className="flex flex-col items-center">
+    <p className="font-semibold text-gray-800">
+      {tl.associates_tl_email || "Unassigned"}:
+      <span className="font-semibold text-blue-600">
+        {tl.count}
+      </span>
+    </p>
+  </span>
+  <p className="text-center text-xs text-gray-500 mt-1">Active Paid Clients</p>
+</div>
+
+            ))}
+
+          <div className="p-4 border rounded-lg bg-yellow-50 shadow hover:shadow-md transition">
+            <span className="flex flex-col items-center">
+              <p className="font-semibold text-gray-900">
+                Total Clients&nbsp;:&nbsp;
+                <span className="text-2xl font-bold text-green-600">
+                  {totalTLCount}
+                </span>
+              </p>
+            </span>
+            <p className="text-center text-xs text-gray-500 mt-1">
+              Overall Active
+            </p>
+          </div>
+{selectedTLFilter && (
+  <button
+    className="mt-2 text-sm text-red-600 underline"
+    onClick={() => setSelectedTLFilter(null)}
+  >
+    Reset TL Filter
+  </button>
+)}
+        </div>
+      </AccordionContent>
+    </AccordionItem>
+  </Accordion>
+</div> */}
+
+
             </div>
             {/* <Button onClick={() => setShowRevenueDialog(true)}>Revenue</Button> */}
             <div className="flex gap-2">
@@ -1291,6 +1464,75 @@ const formattedTotalAmount = subscription_puls_addons.toFixed(2);
               </DropdownMenu>
             </div>
           </div>
+{/* <div className="mt-6">
+  <h2 className="text-xl font-bold text-gray-800 mb-3">
+    Active Clients Per TL
+  </h2>
+
+  <div className="grid grid-cols-1 sm:grid-cols-6 md:grid-cols-6 gap-4">
+    {tlActiveCounts
+      .slice() // avoid mutating state
+      .sort((a, b) => b.count - a.count) // sort DESC
+      .map((tl) => (
+        <div
+          key={tl.associates_tl_email || "unassigned"}
+          className="p-4 border rounded-lg bg-white shadow hover:shadow-md transition"
+        >
+          <span className="flex flex-col items-center">
+          <p className="font-semibold text-gray-800">
+            {tl.associates_tl_email || "Unassigned"}
+          &nbsp;:&nbsp;
+          <span className="font-semibold text-blue-600">
+            {tl.count}
+          </span>
+          </p>
+          </span>
+        </div>
+      ))}
+  </div>
+</div> */}
+
+{/* 
+<div className="mt-6">
+ 
+
+  <div className="grid grid-cols-1 sm:grid-cols-7 md:grid-cols-7 gap-4">
+    {tlActiveCounts
+      .slice()
+      .sort((a, b) => b.count - a.count)
+      .map((tl) => (
+        <div
+          key={tl.associates_tl_email || "unassigned"}
+          className="p-4 border rounded-lg bg-white shadow hover:shadow-md transition"
+        >
+          <span className="flex flex-col items-center">
+            <p className="font-semibold text-gray-800">
+              {tl.associates_tl_email || "Unassigned"}
+              &nbsp;:&nbsp;
+              <span className="font-semibold text-blue-600">
+                {tl.count}
+              </span>
+            </p>
+          </span>
+          <p className=" text-center text-xs text-gray-500 mt-1">
+            Active Paid Clients
+          </p>
+        </div>
+      ))}
+
+    <div className="p-4 border rounded-lg bg-yellow-50 shadow hover:shadow-md transition">
+      <span className="flex flex-col items-center">
+        <p className="font-semibold text-gray-900">
+          Total&nbsp;Clients&nbsp;:&nbsp;
+          <span className="text-2xl font-bold text-green-600">
+            {totalTLCount}
+          </span>
+        </p>
+      </span>
+    </div>
+  </div>
+</div> */}
+
 
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <Card>
@@ -1370,6 +1612,56 @@ const formattedTotalAmount = subscription_puls_addons.toFixed(2);
 {/* </div> */}
 
             <div className="flex space-x-4 justify-end">
+
+<div className="w-72">
+  <Select
+    value={selectedTLFilter ?? undefined}
+    onValueChange={(value) => {
+      if (value === "reset") {
+        setSelectedTLFilter(null);
+      } else {
+        setSelectedTLFilter(value);
+      }
+    }}
+  >
+    <SelectTrigger className="w-full">
+      <SelectValue placeholder="Today Active Count List" />
+    </SelectTrigger>
+
+    <SelectContent>
+      <div className="px-2 py-1 text-xs font-bold text-gray-500">
+        Today Active Count List
+      </div>
+
+      {tlActiveCounts
+        .slice()
+        .sort((a, b) => b.count - a.count)
+        .map((tl) => (
+          <SelectItem
+            key={tl.associates_tl_email || "unassigned"}
+            value={tl.associates_tl_email || "unassigned"}
+            className="flex justify-between"
+          >
+            <span>{tl.associates_tl_email || "Unassigned"}</span> &nbsp;:&nbsp;
+            <span className="font-semibold text-blue-600">
+              {tl.count}
+            </span>
+          </SelectItem>
+        ))}
+
+      <div className="px-3 py-2 border-t flex justify-between font-semibold">
+        <span>Total Clients</span>
+        <span className="text-green-600">{totalTLCount}</span>
+      </div>
+
+      <SelectItem value="reset" className="text-red-600 font-medium">
+        Reset Filter
+      </SelectItem>
+    </SelectContent>
+  </Select>
+</div>
+
+
               <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as FinanceStatus | "All")}>
                 <SelectTrigger className="w-40">
                   <SelectValue placeholder="Filter by Status" />
@@ -1578,7 +1870,32 @@ const formattedTotalAmount = subscription_puls_addons.toFixed(2);
                     </TableHead>
 
                     <TableHead>Subscription Cycle</TableHead>
-                    <TableHead>Assigned To</TableHead>
+<TableHead
+  className="cursor-pointer items-center gap-1"
+  onClick={() => handleSort("assigned_to")}
+>
+  <div className="flex flex-center gap-1">
+    Assigned To
+    <span
+      className={`text-xs leading-none ${
+        sortField === "assigned_to" && sortOrder === "desc"
+          ? "text-blue-600"
+          : "text-gray-400"
+      }`}
+    >
+      ▲
+    </span>
+    <span
+      className={`text-xs leading-none ${
+        sortField === "assigned_to" && sortOrder === "asc"
+          ? "text-blue-600"
+          : "text-gray-400"
+      }`}
+    >
+      ▼
+    </span>
+  </div>
+</TableHead>
                     {/* <TableHead>Stage</TableHead> */}
 
                     <TableHead
@@ -1673,7 +1990,7 @@ const formattedTotalAmount = subscription_puls_addons.toFixed(2);
                           <TableCell>{formatCurrency(sale.sale_value)}</TableCell>
                           <TableCell>{sale.subscription_cycle} days</TableCell>
 
-                          <TableCell>Finance Team A</TableCell>
+                          <TableCell>{sale.associates_tl_email}</TableCell>
 
                           <TableCell>
                             {sale.oldest_sale_done_at
