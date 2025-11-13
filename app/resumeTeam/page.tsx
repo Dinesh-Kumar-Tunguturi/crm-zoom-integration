@@ -6047,6 +6047,7 @@ interface SalesClosure {
   badge_value?: number | null;
   data_sent_to_customer_dashboard?: string | null;
   job_board_value?: number | null;
+  application_sale_value?: number | null;
 
 
   // joined
@@ -6378,7 +6379,7 @@ const fetchData = async (opts?: {
   let salesQuery = supabase
     .from("sales_closure")
     .select(
-      "id, lead_id, email, finance_status, closed_at, resume_sale_value, portfolio_sale_value, commitments, company_application_email, onboarded_date, badge_value,data_sent_to_customer_dashboard, job_board_value",
+      "id, lead_id, email, finance_status, closed_at, resume_sale_value, portfolio_sale_value, commitments, company_application_email, onboarded_date, badge_value,data_sent_to_customer_dashboard, job_board_value, application_sale_value",
     )
     .not("resume_sale_value", "is", null)
     .neq("resume_sale_value", 0) // Ensure we only select rows where resume_sale_value > 0
@@ -6540,6 +6541,7 @@ const fetchData = async (opts?: {
       onboarded_date_raw: onboardRaw,
       onboarded_date_label: formatOnboardLabel(onboardRaw),
       resume_sale_value: r.resume_sale_value ?? null,
+      application_sale_value: r.application_sale_value ?? null,
       commitments: r.commitments ?? null,
       badge_value: r.badge_value ?? null,
       data_sent_to_customer_dashboard: r.data_sent_to_customer_dashboard ?? null,
@@ -7144,7 +7146,7 @@ const fetchMyTasks = async () => {
     // 1) sales_closure base (limit to my lead ids)
     const { data: sales, error: salesErr } = await supabase
       .from("sales_closure")
-      .select("id, lead_id, email, finance_status, closed_at, resume_sale_value, portfolio_sale_value, commitments, company_application_email, onboarded_date")
+      .select("id, lead_id, email, finance_status, closed_at, resume_sale_value, portfolio_sale_value, commitments, company_application_email, onboarded_date, application_sale_value")
       .in("lead_id", allowLeadIds)
       .not("resume_sale_value", "is", null)
       .neq("resume_sale_value", 0);
@@ -7259,6 +7261,7 @@ const fetchMyTasks = async () => {
         onboarded_date_raw: onboardRaw,
         onboarded_date_label: formatOnboardLabel(onboardRaw),
         resume_sale_value: r.resume_sale_value ?? null,
+        application_sale_value: r.application_sale_value ?? null,
         commitments: r.commitments ?? null,
 badge_value: r.badge_value ?? null,
 data_sent_to_customer_dashboard: r.data_sent_to_customer_dashboard ?? null,
@@ -7465,6 +7468,7 @@ const fetchFilteredClients = async (mode: "notOnboarded" | "resumeOnly" | "jobBo
         resume_sale_value: r.resume_sale_value ?? null,
         commitments: r.commitments ?? null,
         badge_value: r.badge_value ?? null,
+        application_sale_value: r.application_sale_value ?? null,
         data_sent_to_customer_dashboard: r.data_sent_to_customer_dashboard ?? null,
         portfolio_sale_value: r.portfolio_sale_value ?? null,
         portfolio_paid: portfolioPaid,
@@ -7891,6 +7895,7 @@ const filteredRows = rows.filter((r) => {
     <TableHead>Portfolio Link</TableHead>
     <TableHead>Portfolio Assignee</TableHead>
     <TableHead>Client Requirements</TableHead>
+    <TableHead>Application Status</TableHead>
     <TableHead>Onboard</TableHead>
     <TableHead>Forward to TT</TableHead>
   </TableRow>
@@ -8117,6 +8122,18 @@ const filteredRows = rows.filter((r) => {
                   <span className="text-gray-400 text-sm">—</span>
                 )}
               </TableCell>
+{/* Application Status */}
+<TableCell className="min-w-[140px] text-center">
+  {Number(row.application_sale_value) > 0 ? (
+    <span className="bg-green-500 text-white text-sm py-1 px-3 rounded-full">
+      Paid
+    </span>
+  ) : (
+    <span className="bg-red-500 text-white text-sm py-1 px-3 rounded-full">
+      Not Paid
+    </span>
+  )}
+</TableCell>
 
 
 <TableCell>
