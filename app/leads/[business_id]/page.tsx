@@ -75,6 +75,9 @@ interface ClientOnboardingDetails {
   full_address: string | null;
   linkedin_url: string | null;
   date_of_birth: string | null; // date as ISO string
+
+  visatypes: string | null; // new field
+
 }
 
 // helper to find first non-null positive value by closed_at (desc)
@@ -308,7 +311,8 @@ setLatestAddons(mergedAddons);
           primary_phone,
           addons,
           date_of_birth,
-          lead_id
+          lead_id,
+          visatypes
         `)
         .eq("lead_id", business_id as string)
         .order("created_at", { ascending: false })
@@ -594,6 +598,7 @@ setLatestAddons(mergedAddons);
 
                   {/* Sponsorship & DOB */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <Label>Sponsorship?</Label>
                       {isEditOnboarding ? (
@@ -606,6 +611,17 @@ setLatestAddons(mergedAddons);
                         <Input value={yn(onboarding.needs_sponsorship)} readOnly />
                       )}
                     </div>
+
+                    <div className="space-y-1.5">
+                      <Label>Visa type</Label>
+                      <Input
+                        value={(isEditOnboarding ? onboardingForm?.visatypes : onboarding.visatypes) ?? ""}
+                        readOnly={!isEditOnboarding}
+                        onChange={(e) => isEditOnboarding && handleOB("visatypes", e.target.value)}
+                      />
+                    </div>
+</div>
+
 
                     <div className="space-y-1.5">
                       <Label>Date of Birth</Label>
