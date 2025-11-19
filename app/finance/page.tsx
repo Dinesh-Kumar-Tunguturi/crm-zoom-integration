@@ -2635,10 +2635,27 @@ const totalTLCount = tlActiveCounts.reduce((sum, tl) => sum + tl.count, 0);
                     <Input type="number" placeholder="Custom Add-on Value ($)" value={customValue} onChange={(e) => setCustomValue(e.target.value)} className="col-span-1" />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 items-center">
-                    <Label className="text-muted-foreground col-span-1">No. of applications</Label>
-                    <Input type="number" placeholder="No. of Job Applications per Month" value={noOfJobApps} onChange={(e) => setNoOfJobApps(e.target.value)} className="col-span-1" />
-                  </div>
+                 <div className="grid grid-cols-2 gap-2 items-center">
+  <Label className="text-muted-foreground col-span-1">
+    No. of applications
+  </Label>
+
+  <Select
+    value={noOfJobApps ? noOfJobApps.toString() : ""}
+    onValueChange={(value) => setNoOfJobApps(value)}
+  >
+    <SelectTrigger className="col-span-1">
+      <SelectValue placeholder="Select count" />
+    </SelectTrigger>
+
+    <SelectContent>
+      <SelectItem value="0">0</SelectItem>
+      <SelectItem value="20">20+</SelectItem>
+      <SelectItem value="40">40+</SelectItem>
+    </SelectContent>
+  </Select>
+</div>
+
 
                   <div className="py-1">
                     <Label className="font-semibold">Total Amount : {Number(formattedTotalAmount).toFixed(2)} </Label>

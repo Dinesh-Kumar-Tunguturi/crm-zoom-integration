@@ -360,8 +360,15 @@ const [loadingTeam, setLoadingTeam] = useState(false);
 
   const handleSaveRecord = async () => {
     if (!recordForm || !selectedRecord) return;
+ // VALIDATION FIRST — do NOT set savingRecord yet
+  if (
+    !recordForm.no_of_job_applications ||
+    recordForm.no_of_job_applications.trim() === ""
+  ) {
+    alert("Please select 'No. of Job Applications' (required)");
+    return; // ❗ Stop here
+  }
     setSavingRecord(true);
-
 
     const payload = {
       subscription_cycle: recordForm.subscription_cycle
@@ -402,9 +409,11 @@ const [loadingTeam, setLoadingTeam] = useState(false);
       badge_value: recordForm.badge_value
         ? Number(recordForm.badge_value)
         : null,
-      no_of_job_applications: recordForm.no_of_job_applications
-        ? Number(recordForm.no_of_job_applications)
-        : null,
+      // no_of_job_applications: recordForm.no_of_job_applications  !== ""
+      //   ? Number(recordForm.no_of_job_applications)
+      //   : null,
+          no_of_job_applications: Number(recordForm.no_of_job_applications),
+
       associates_tl_name: recordForm.associates_tl_name || null,
     };
 
@@ -1134,8 +1143,15 @@ const [loadingTeam, setLoadingTeam] = useState(false);
                     <div>
                      <Label>No of Job Applications</Label>
 <select
-  className="border rounded p-2 w-full"
-  value={recordForm.no_of_job_applications}
+className={`border rounded p-2 w-full ${
+  !recordForm.no_of_job_applications ||
+  recordForm.no_of_job_applications.trim() === ""
+    ? "border-red-500"
+    : ""
+}`}
+
+  required
+  value={recordForm.no_of_job_applications || ""}
   onChange={(e) =>
     setRecordForm({
       ...recordForm,
@@ -1143,6 +1159,8 @@ const [loadingTeam, setLoadingTeam] = useState(false);
     })
   }
 >
+  <option value="">Select...</option>
+    <option value="0">No applications</option>
   <option value="20">20+</option>
   <option value="40">40+</option>
 </select>

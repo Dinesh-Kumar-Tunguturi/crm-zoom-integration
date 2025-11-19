@@ -2448,6 +2448,7 @@ const downloadAllTablesData = async () => {
   <select
     className="border rounded-md p-2 w-full mt-1"
     value={saleData.no_of_job_applications ?? ""}
+    required
     onChange={e =>
       setSaleData(p => ({
         ...p,
@@ -2457,6 +2458,7 @@ const downloadAllTablesData = async () => {
     }
   >
     <option value="">Select number of job applications</option>
+    <option value="0"> No applications</option>
     <option value="20">20+</option>
     <option value="40">40+</option>
   </select>

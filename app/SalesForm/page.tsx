@@ -270,6 +270,7 @@ const handleReferrerLookup = async () => {
     if (!subscriptionCycle) return alert("Subscription duration is required.");
     if (!saleCloseDate) return alert("sale close date is required.");
     if (totalSale <= 0) return alert("Total sale value must be greater than 0.");
+    if (noOfJobApps.trim() === "") return alert("Number of job applications is required.");
 
     const normalizedEmail = clientEmail.trim().toLowerCase();
     const durationInDays = parseInt(subscriptionCycle, 10);
@@ -808,9 +809,11 @@ const sanitizePhone = (input: string) => {
 <select
   className="border rounded-md p-2 w-full"
   value={noOfJobApps}
+  required
   onChange={(e) => setNoOfJobApps(e.target.value)}
 >
   <option value="">Select number of job applications</option>
+  <option value="0"> No applications</option>
   <option value="20">20+</option>
   <option value="40">40+</option>
 </select>
