@@ -2697,6 +2697,8 @@ export default function SalesPage() {
   const [editingNote, setEditingNote] = useState(false);
   const [editedNote, setEditedNote] = useState("");
 
+const [allLeads, setAllLeads] = useState<Lead[]>([]);
+const [kpiFilteredLeads, setKpiFilteredLeads] = useState<Lead[]>([]);
 
 
   const [page, setPage] = useState(1);
@@ -2855,7 +2857,80 @@ useEffect(() => {
 
     setUserProfile(profile);
     fetchLeads(profile);   // pass profile here
+    fetchAllLeads(profile);    // FULL leads (KPI)
+
   };
+
+
+const fetchAllLeads = async (profile: Profile) => {
+  let q = supabase
+    .from("leads")
+    .select(`
+      id, business_id, name, email, phone,
+      assigned_to, current_stage, status,
+      created_at, assigned_at
+    `)
+    .eq("status", "Assigned");
+
+  if (profile.roles === "Sales Associate") {
+    q = q.eq("assigned_to", profile.full_name);
+  }
+
+  const { data, error } = await q;
+
+  if (error) {
+    console.error("Error fetching all leads:", error);
+    return;
+  }
+
+  // ✅ FIX: Convert supabase rows → Lead type
+  const mapped = (data || []).map((row: any) => ({
+    id: row.id,
+    business_id: row.business_id,
+    client_name: row.name,         // ✔ map name → client_name
+    email: row.email,
+    phone: row.phone,
+    assigned_to: row.assigned_to,
+    current_stage: row.current_stage,
+    call_history: [],              // ✔ required by interface
+    created_at: row.created_at,
+    assigned_at: row.assigned_at
+  })) as Lead[];
+
+  setAllLeads(mapped);
+};
+
+
+
+  useEffect(() => {
+  if (!allLeads) return;
+
+  const filtered = allLeads.filter((lead) => {
+    const matchesStage =
+      stageFilter === "all" || lead.current_stage === stageFilter;
+
+    const matchesDate =
+      !startDate || !endDate ||
+      (lead.assigned_at &&
+        dayjs(lead.assigned_at).isBetween(
+          dayjs(startDate).startOf("day"),
+          dayjs(endDate).endOf("day"),
+          null,
+          "[]"
+        ));
+
+    const matchesSearch =
+      !searchTerm.trim() ||
+      lead.business_id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      lead.client_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      lead.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      lead.phone?.toLowerCase().includes(searchTerm.toLowerCase());
+
+    return matchesStage && matchesDate && matchesSearch;
+  });
+
+  setKpiFilteredLeads(filtered);
+}, [allLeads, stageFilter, startDate, endDate, searchTerm]);
 
 
 useEffect(() => {
@@ -3244,15 +3319,33 @@ const filteredLeads = leads.filter((lead) => {
     return acc;
   }, {} as Record<SalesStage, number>);
 
+  
   const prospectCount = stageCounts["Prospect"] ?? 0;
   const dnpCount = stageCounts["DNP"] ?? 0;
   const convoDoneCount = stageCounts["Conversation Done"] ?? 0;
   const targetCount = stageCounts["Target"] ?? 0;
   const saleDoneCount = stageCounts["sale done"] ?? 0;
 
-  // If you still want an “Others” bucket using the same list:
-  const othersCount = totalLeadsCount - (prospectCount + dnpCount + convoDoneCount + saleDoneCount + targetCount);
+  const kpiFilteredTotal = kpiFilteredLeads.length;
+const kpiFilteredProspect = kpiFilteredLeads.filter(l => l.current_stage === "Prospect").length;
+const kpiFilteredDnp = kpiFilteredLeads.filter(l => l.current_stage === "DNP").length;
+const kpiFilteredConvo = kpiFilteredLeads.filter(l => l.current_stage === "Conversation Done").length;
+const kpiFilteredTarget = kpiFilteredLeads.filter(l => l.current_stage === "Target").length;
+const kpiFilteredSale = kpiFilteredLeads.filter(l => l.current_stage === "sale done").length;
 
+
+const actualTotal = allLeads.length;
+const actualProspect = allLeads.filter(l => l.current_stage === "Prospect").length;
+const actualDnp = allLeads.filter(l => l.current_stage === "DNP").length;
+const actualConvo = allLeads.filter(l => l.current_stage === "Conversation Done").length;
+const actualTarget = allLeads.filter(l => l.current_stage === "Target").length;
+const actualSale = allLeads.filter(l => l.current_stage === "sale done").length;
+
+
+  // If you still want an “Others” bucket using the same list:
+  const kpiOthersCount = kpiFilteredTotal - (kpiFilteredProspect + kpiFilteredDnp + kpiFilteredConvo + kpiFilteredTarget + + kpiFilteredSale);
+
+  const othersCount= totalLeadsCount - (prospectCount + dnpCount + convoDoneCount + targetCount + saleDoneCount);
   const fetchCallHistory = async (leadId: string) => {
     const lead = leads.find((l) => l.id === leadId);
     if (!lead) return [];
@@ -3514,7 +3607,7 @@ const downloadAllTablesData = async () => {
             </div>
 
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             <Dialog open={followUpsDialogOpen} onOpenChange={setFollowUpsDialogOpen}>
               <DialogContent className="max-w-7xl" onPointerDownOutside={(e) => e.preventDefault()}>
 
@@ -3631,20 +3724,26 @@ const downloadAllTablesData = async () => {
             </Dialog>
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">All leads</CardTitle>
+                <CardTitle className="text-sm font-medium ">All leads</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{totalLeadsCount}</div>
-              </CardContent>
+    <div className="text-2xl font-bold">{kpiFilteredTotal}</div>
+    <p className="text-xs text-green-600 font-bold">
+      Total (Based on filter and pagination): {totalLeadsCount}
+    </p>
+  </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium">Prospects</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{prospectCount}</div>
-              </CardContent>
+               <CardContent>
+    <div className="text-2xl font-bold">{kpiFilteredProspect}</div>
+    <p className="text-xs text-green-600 font-bold">
+      Total: {prospectCount}
+    </p>
+  </CardContent>
             </Card>
 
             <Card>
@@ -3652,8 +3751,11 @@ const downloadAllTablesData = async () => {
                 <CardTitle className="text-sm font-medium">DNP & Conversation Done</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{(dnpCount + convoDoneCount)}</div>
-              </CardContent>
+    <div className="text-2xl font-bold">{kpiFilteredDnp + kpiFilteredConvo }</div>
+    <p className="text-xs text-green-600 font-bold">
+      Total: {dnpCount + convoDoneCount}
+    </p>
+  </CardContent>
             </Card>
 
 
@@ -3662,8 +3764,22 @@ const downloadAllTablesData = async () => {
                 <CardTitle className="text-sm font-medium">Sales Done (from leads)</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{saleDoneCount}</div>
-              </CardContent>
+    <div className="text-2xl font-bold">{kpiFilteredSale }</div>
+    <p className="text-xs text-green-600 font-bold">
+      Total: {saleDoneCount}
+    </p>
+  </CardContent>
+            </Card>
+             <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Target</CardTitle>
+              </CardHeader>
+              <CardContent>
+    <div className="text-2xl font-bold">{kpiFilteredTarget }</div>
+    <p className="text-xs text-green-600 font-bold">
+      Total: {targetCount }
+    </p>
+  </CardContent>
             </Card>
 
 
@@ -3672,7 +3788,10 @@ const downloadAllTablesData = async () => {
                 <CardTitle className="text-sm font-medium">Others</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{othersCount}</div>
+                <div className="text-2xl font-bold">{kpiOthersCount}</div>
+                <p className="text-xs text-green-600 font-bold">
+                  Total: {othersCount}
+                </p>
               </CardContent>
             </Card>
 
