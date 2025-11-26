@@ -7654,7 +7654,7 @@ const payload = {
   experience: ob.experience,
   work_preferences: ob.work_preferences,
   alternate_job_roles: ob.alternate_job_roles,
-  exclude_companies: ob.exclude_companies,
+  exclude_companies: ob.exclude_companies || "NA",
   convicted_of_felony: ob.convicted_of_felony,
   felony_explanation: ob.felony_explanation,
   pending_investigation: ob.pending_investigation,
