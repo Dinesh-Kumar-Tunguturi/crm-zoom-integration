@@ -21,6 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Console } from "console";
 
 export default function RenewalPage() {
   const { leadId } = useParams();
@@ -99,7 +100,7 @@ const [showHistoryPane, setShowHistoryPane] = useState(true); // always true
 
   async function fetchData() {
 
-          // console.log("Fetched id:", leadId);
+          console.log("Fetched id:", leadId);
 
    
     // fetch lead
@@ -125,7 +126,7 @@ if (!lead || lead.length === 0) {
   .limit(1)
   .single(); // This works because result will be exactly 1 row
 
-      // console.log("Fetched id:", sale);
+      console.log("Fetched id:", sale);
 
     if (!lead) {
       toast.error("Lead not found.");
@@ -134,7 +135,7 @@ if (!lead || lead.length === 0) {
       return;
     }
 
-    // console.log(lead);
+    console.log(lead);
 
     setClient(lead);
 
@@ -247,18 +248,26 @@ async function handleSubmit() {
   if (!originalClosedAtDate) return; // safety check
 
 const closedPlus45 = new Date(
-  originalClosedAtDate.getTime() + 45 * 24 * 60 * 60 * 1000
+  originalClosedAtDate.getTime() +Number(subscriptionCycle)* 24 * 60 * 60 * 1000 + 45 * 24 * 60 * 60 * 1000
 );
 
+// console.log("Subscription cycle days:", Number(subscriptionCycle));
+// console.log("original closed at date:", originalClosedAtDate.getTime());
+// console.log("45 * 24 * 60 * 60 * 1000",45 * 24 * 60 * 60 * 1000)
+// console.log("==========================================")
 // Apply onboarded date logic based on original closed date
 const onboardedDate =
-  closedPlus45 > new Date() ? originalClosedAtDate.toISOString().split("T")[0] : null;
+  closedPlus45 > new Date() ? closedAtDate: null;
 
 // console.log("Original closed:", originalClosedAtDate);
 // console.log("Closed + 45 days:", closedPlus45);
 // console.log("Onboarded date:", onboardedDate);
 
-  
+// console.log("==========================================")
+//   console.log("Subscription cycle days:", Number(subscriptionCycle));
+// console.log("original closed at date:", originalClosedAtDate.getTime());
+// console.log("45 * 24 * 60 * 60 * 1000",45 * 24 * 60 * 60 * 1000)
+
 const { error } = await supabase.from("sales_closure").insert({
     lead_id: leadId,
     lead_name: clientName,
