@@ -4,8 +4,8 @@
 // import React, { useEffect, useRef, useState } from "react";
 // import { useRouter } from "next/navigation";
 // import { supabase } from "@/utils/supabase/client";
-// import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-// import { MoreVertical } from "lucide-react";
+
+
 // import {
 //   Table,
 //   TableBody,
@@ -157,7 +157,7 @@
 //    ========================= */
 
 
-// export default function ResumeTeamPage() {
+// export default function NotOnboardedClientsPage() {
 //   const router = useRouter();
 //   const { user } = useAuth();
 
@@ -272,7 +272,7 @@
 
 
 //     let query = supabase
-//       .from("full_client_status_final")
+//       .from("full_client_status_pending_onboarding")
 //       .select("*", { count: "exact" });
 
 
@@ -570,7 +570,9 @@
 //   };
 
 
-
+// const handleOnboardClick = (leadId: string) => {
+//   router.push(`/resumeTeam/onboarding/${leadId}`);
+// }; 
 
 //   /* =========================
 //      Sorting (optional)
@@ -1079,7 +1081,7 @@
 //               </TableCell>
 
 
-             
+              
 //             </TableRow>
 //           ))}
 
@@ -1140,13 +1142,12 @@
 //   /* =========================
 //      JSX
 //      ========================= */
-// const handleOnboardClick = (leadId: string) => {
-//   router.push(`/resumeTeam/onboarding/${leadId}`);
-// }; 
-  
+
 
 //   return (
-//     <ProtectedRoute allowedRoles={["Super Admin", "Resume Head", "Resume Associate"]}>
+//     // <ProtectedRoute
+//     //   allowedRoles={["Super Admin", "Resume Head", "Resume Associate"]}
+//     // >
 //       <DashboardLayout>
 //         <input
 //           ref={fileRef}
@@ -1158,14 +1159,13 @@
 
 
 //         <div className="space-y-6">
-//             <div>
+//           <div className="flex items-center justify-start gap-4">
 //             <h1 className="text-3xl font-bold text-gray-900">
-//              Resume Team
+//              Not onboarded clients — Resume Team
 //             </h1>
-//             </div>
-//             {/* Assignee filter (simple version) */}
-//                       <div className="flex items-center justify-start gap-4">
 
+
+//             {/* Assignee filter (simple version) */}
 //             <div className="flex items-center gap-3">
 //               <div className="text-sm font-medium">Assigned To:</div>
 //               <Select
@@ -1251,7 +1251,7 @@
 //        }
 //      }}
 //    />
-//    {/* <Button
+//    <Button
 //      onClick={async () => {
 //        setSearchQuery(searchText);
 //        setPage(1);
@@ -1259,7 +1259,7 @@
 //      }}
 //    >
 //      Search
-//    </Button> */}
+//    </Button>
 
 
 //    <Button
@@ -1277,43 +1277,6 @@
 // >
 //   {showMyTasks ? "Show All" : "My Tasks"}
 // </Button>
-
-//  <div className="flex flex-col sm:flex-row gap-2 items-center">
- 
-//   <DropdownMenu>
-//   <DropdownMenuTrigger asChild>
-//     <Button variant="outline" size="icon">
-//       <MoreVertical className="h-5 w-5" />
-//     </Button>
-//   </DropdownMenuTrigger>
-//   <DropdownMenuContent align="end">
-//     {/* Not Onboarded Clients Dialog */}
-//     <DropdownMenuItem
-//       onClick={()=>{ window.open(`/resumeTeam/notOnboardedClients`, "_blank")
- 
-//       }}
-//     >
-//       Not onboarded clients
-//     </DropdownMenuItem>
- 
-//     {/* Only for Resumes Dialog */}
-   
-   
-//     <DropdownMenuItem
-//       onClick={async () => { window.open(`/resumeTeam/jobBoardClients`, "_blank") }}
-//     >
-//       Job Board Clients
-//     </DropdownMenuItem>
-//     <DropdownMenuItem
-//       onClick={()=>{ window.open(`/resumeTeam/applications`, "_blank") }}
-//     >
-//       Only for Applications
-//     </DropdownMenuItem>
-//   </DropdownMenuContent>
-// </DropdownMenu>
- 
-// </div>
- 
  
 //  </div>
 //      <span className="text-green-500 gap-3 mt-2 ml-4 font-semibold">Total Rows : {totalRows}</span>
@@ -1421,11 +1384,8 @@
 
 
 //       </DashboardLayout>
-//       </ProtectedRoute>
 //   );
 // }
-
-
 
 
 
@@ -1442,8 +1402,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { MoreVertical } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -1571,7 +1529,7 @@ const ensurePdf = (file: File) => {
    Main Page Component
    ========================= */
 
-export default function ResumeTeamPage() {
+export default function NotOnboardedClientsPage() {
   const router = useRouter();
   const { user } = useAuth();
 
@@ -1672,7 +1630,7 @@ export default function ResumeTeamPage() {
       const to = from + newLimit - 1;
 
       let query = supabase
-        .from("full_client_status_final")
+        .from("full_client_status_pending_onboarding")
         .select("*", { count: "exact" });
 
       // 🔍 Apply server-side search
@@ -1797,156 +1755,9 @@ export default function ResumeTeamPage() {
     }
   };
 
-// ✅ Send finalized data to pending_clients (for exported sync)
-const sendToPendingClients = async (leadId: string) => {
-  console.log("👉 Starting sendToPendingClients for:", leadId);
-
-  // 1️⃣ Fetch latest sales_closure record
-  const { data: sc, error: scErr } = await supabase
-    .from("sales_closure")
-    .select(`
-      onboarded_date,
-      subscription_cycle,
-      no_of_job_applications,
-      badge_value,
-      id,
-      application_sale_value,
-      resume_sale_value,
-      portfolio_sale_value,
-      linkedin_sale_value,
-      github_sale_value,
-      courses_sale_value,
-      custom_sale_value,
-      job_board_value
-    `)
-    .eq("lead_id", leadId)
-    .order("onboarded_date", { ascending: false })
-    .limit(1)
-    .single();
-  if (scErr || !sc) throw new Error("No sales_closure record found for this lead.");
-
-  const startDate = sc.onboarded_date;
-  const endDate = startDate
-    ? new Date(
-        new Date(startDate).getTime() +
-          sc.subscription_cycle * 24 * 60 * 60 * 1000
-      )
-        .toISOString()
-        .split("T")[0]
-    : null;
-
-  // 2️⃣ Fetch from resume_progress
-  const { data: rp, error: rpErr } = await supabase
-    .from("resume_progress")
-    .select("pdf_path")
-    .eq("lead_id", leadId)
-    .maybeSingle();
-  if (rpErr) throw rpErr;
-  const resumePath = rp?.pdf_path || null;
-
-  // 3️⃣ Fetch earliest onboarding details
-  const { data: ob, error: obErr } = await supabase
-    .from("client_onborading_details")
-    .select("*")
-    .eq("lead_id", leadId)
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .maybeSingle();
-  if (obErr || !ob) throw new Error("No onboarding details found for this lead.");
-
-
-// 4️⃣ Build add_ons_info array based on conditions
-const allowedServices = [
-  { field: "application_sale_value", label: "applications" },
-  { field: "resume_sale_value", label: "resume" },
-  { field: "portfolio_sale_value", label: "portfolio" },
-  { field: "linkedin_sale_value", label: "linkedin" },
-  { field: "github_sale_value", label: "github" },
-  { field: "courses_sale_value", label: "courses" },
-  { field: "experience", label: "experience" },
-  { field: "badge_value", label: "badge" },
-  { field: "job_board_value", label: "job-links" }
-];
-
-const scAny = sc as any;
-const addOnsInfo = allowedServices
-  .filter((item) => {
-    // Read the value once and coerce to number where appropriate
-    const val = scAny?.[item.field];
-    return val !== null && val !== undefined && Number(val) > 0;
-  })
-  .map((item) => item.label);  // Directly return the label instead of stringifying
-
-// 5️⃣ Build payload
-const payload = {
-  full_name: ob.full_name,
-  personal_email: ob.personal_email,
-  whatsapp_number: ob.whatsapp_number ?? null,
-  callable_phone: ob.callable_phone ?? null,
-  company_email: ob.company_email?.trim() || null,
-  job_role_preferences: ob.job_role_preferences ?? null,
-  salary_range: ob.salary_range ?? null,
-  location_preferences: ob.location_preferences ?? null,
-  work_auth_details: ob.work_auth_details ?? null,
-  applywizz_id: leadId,
-  created_at: new Date().toISOString(),
-  visa_type: ob.visatypes ?? null,
-  sponsorship: ob.needs_sponsorship ?? null,
-  resume_url: resumePath,
-  resume_path: resumePath,
-  start_date: startDate,
-  end_date: endDate,
-  no_of_applications: sc.no_of_job_applications ?? null,
-  badge_value: sc.badge_value ?? null,
-
-  // Include add_ons_info
-  add_ons_info: addOnsInfo,
-
-  // Other fields
-  github_url: ob.github_url ?? null,
-  linked_in_url: ob.linkedin_url ?? null,
-
-  // Extra fields
-  is_over_18: ob.is_over_18,
-  eligible_to_work_in_us: ob.eligible_to_work_in_us,
-  authorized_without_visa: ob.authorized_without_visa,
-  require_future_sponsorship: ob.require_future_sponsorship,
-  can_perform_essential_functions: ob.can_perform_essential_functions,
-  worked_for_company_before: ob.worked_for_company_before,
-  discharged_for_policy_violation: ob.discharged_for_policy_violation,
-  referred_by_agency: ob.referred_by_agency,
-  highest_education: ob.highest_education,
-  university_name: ob.university_name,
-  cumulative_gpa: ob.cumulative_gpa,
-  desired_start_date: ob.desired_start_date,
-  willing_to_relocate: ob.willing_to_relocate,
-  can_work_3_days_in_office: ob.can_work_3_days_in_office,
-  role: ob.role,
-  experience: ob.experience,
-  work_preferences: ob.work_preferences,
-  alternate_job_roles: ob.alternate_job_roles,
-  exclude_companies: ob.exclude_companies || "NA",
-  convicted_of_felony: ob.convicted_of_felony,
-  felony_explanation: ob.felony_explanation,
-  pending_investigation: ob.pending_investigation,
-  willing_background_check: ob.willing_background_check,
-  willing_drug_screen: ob.willing_drug_screen,
-  failed_or_refused_drug_test: ob.failed_or_refused_drug_test,
-  uses_substances_affecting_duties: ob.uses_substances_affecting_duties,
-  substances_description: ob.substances_description,
-  can_provide_legal_docs: ob.can_provide_legal_docs,
-  gender: ob.gender,
-  is_hispanic_latino: ob.is_hispanic_latino,
-  race_ethnicity: ob.race_ethnicity,
-  veteran_status: ob.veteran_status,
-  disability_status: ob.disability_status,
-  has_relatives_in_company: ob.has_relatives_in_company,
-  relatives_details: ob.relatives_details,
-  state_of_residence: ob.state_of_residence,
-  zip_or_country: ob.zip_or_country,
-  main_subject: ob.main_subject ?? null,
-  graduation_year: ob.graduation_year ?? null,
-};
+  const onChangeStatus = async (row: SalesClosure, newStatus: ResumeStatus) => {
+    try {
+      await updateStatus(row.lead_id, newStatus);
 
       if (newStatus === "completed" && !row.rp_pdf_path) {
         setUploadForLead(row.lead_id);
@@ -2089,6 +1900,10 @@ const payload = {
       await fetchData(page, limit, searchQuery, showMyTasks, assigneeFilter);
     }
   };
+
+  const handleOnboardClick = (leadId: string) => {
+    router.push(`/resumeTeam/onboarding/${leadId}`);
+  }; 
 
   /* =========================
      Sorting (optional)
@@ -2576,12 +2391,11 @@ const payload = {
   /* =========================
      JSX
      ========================= */
-  const handleOnboardClick = (leadId: string) => {
-    router.push(`/resumeTeam/onboarding/${leadId}`);
-  }; 
-  
+
   return (
-    <ProtectedRoute allowedRoles={["Super Admin", "Resume Head", "Resume Associate"]}>
+    // <ProtectedRoute
+    //   allowedRoles={["Super Admin", "Resume Head", "Resume Associate"]}
+    // >
       <DashboardLayout>
         <input
           ref={fileRef}
@@ -2592,14 +2406,12 @@ const payload = {
         />
 
         <div className="space-y-6">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">
-              Resume Team
-            </h1>
-          </div>
-          
-          {/* Assignee filter */}
           <div className="flex items-center justify-start gap-4">
+            <h1 className="text-3xl font-bold text-gray-900">
+              Not onboarded clients — Resume Team
+            </h1>
+
+            {/* Assignee filter */}
             <div className="flex items-center gap-3">
               <div className="text-sm font-medium">Assigned To:</div>
               <Select
@@ -2679,7 +2491,16 @@ const payload = {
                   }
                 }}
               />
-              
+              <Button
+                onClick={async () => {
+                  setSearchQuery(searchText);
+                  setPage(1);
+                  await fetchData(1, limit, searchText, showMyTasks, assigneeFilter);
+                }}
+              >
+                Search
+              </Button>
+
               <Button
                 variant={showMyTasks ? "default" : "outline"}
                 className={showMyTasks ? "bg-blue-600 text-white" : ""}
@@ -2692,39 +2513,6 @@ const payload = {
               >
                 {showMyTasks ? "Show All" : "My Tasks"}
               </Button>
-
-              <div className="flex flex-col sm:flex-row gap-2 items-center">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="icon">
-                      <MoreVertical className="h-5 w-5" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                      onClick={() => { 
-                        window.open(`/resumeTeam/notOnboardedClients`, "_blank")
-                      }}
-                    >
-                      Not onboarded clients
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={async () => { 
-                        window.open(`/resumeTeam/jobBoardClients`, "_blank") 
-                      }}
-                    >
-                      Job Board Clients
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => { 
-                        window.open(`/resumeTeam/applications`, "_blank") 
-                      }}
-                    >
-                      Only for Applications
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
             </div>
             <span className="text-green-500 gap-3 mt-2 ml-4 font-semibold">Total Rows : {totalRows}</span>
           </div>
@@ -2821,6 +2609,6 @@ const payload = {
           </DialogContent>
         </Dialog>
       </DashboardLayout>
-    </ProtectedRoute>
+    // </ProtectedRoute>
   );
 }

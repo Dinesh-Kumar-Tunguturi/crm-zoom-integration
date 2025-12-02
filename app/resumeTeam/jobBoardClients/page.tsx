@@ -4,8 +4,8 @@
 // import React, { useEffect, useRef, useState } from "react";
 // import { useRouter } from "next/navigation";
 // import { supabase } from "@/utils/supabase/client";
-// import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-// import { MoreVertical } from "lucide-react";
+
+
 // import {
 //   Table,
 //   TableBody,
@@ -157,7 +157,7 @@
 //    ========================= */
 
 
-// export default function ResumeTeamPage() {
+// export default function JobBoardPage() {
 //   const router = useRouter();
 //   const { user } = useAuth();
 
@@ -272,7 +272,7 @@
 
 
 //     let query = supabase
-//       .from("full_client_status_final")
+//       .from("full_client_status_pending_jobboard")
 //       .select("*", { count: "exact" });
 
 
@@ -287,6 +287,8 @@
 //     const myTasks = overrideShowMyTasks ?? showMyTasks;
 
 
+   
+// // 🔥 My Tasks filter
 // if (myTasks && user?.email) {
 //   query = query.eq("resume_assigned_email", user.email);
 // }
@@ -544,6 +546,9 @@
 //     }
 //   };
 
+//   const handleOnboardClick = (leadId: string) => {
+//   router.push(`/resumeTeam/onboarding/${leadId}`);
+// }; 
 
 //   const onFilePicked = async (e: React.ChangeEvent<HTMLInputElement>) => {
 //     const file = e.target.files?.[0] || null;
@@ -1079,7 +1084,7 @@
 //               </TableCell>
 
 
-             
+          
 //             </TableRow>
 //           ))}
 
@@ -1140,13 +1145,12 @@
 //   /* =========================
 //      JSX
 //      ========================= */
-// const handleOnboardClick = (leadId: string) => {
-//   router.push(`/resumeTeam/onboarding/${leadId}`);
-// }; 
-  
+
 
 //   return (
-//     <ProtectedRoute allowedRoles={["Super Admin", "Resume Head", "Resume Associate"]}>
+//     // <ProtectedRoute
+//     //   allowedRoles={["Super Admin", "Resume Head", "Resume Associate"]}
+//     // >
 //       <DashboardLayout>
 //         <input
 //           ref={fileRef}
@@ -1158,14 +1162,13 @@
 
 
 //         <div className="space-y-6">
-//             <div>
+//           <div className="flex items-center justify-start gap-4">
 //             <h1 className="text-3xl font-bold text-gray-900">
-//              Resume Team
+//              Job Board Clients — Resume Team
 //             </h1>
-//             </div>
-//             {/* Assignee filter (simple version) */}
-//                       <div className="flex items-center justify-start gap-4">
 
+
+//             {/* Assignee filter (simple version) */}
 //             <div className="flex items-center gap-3">
 //               <div className="text-sm font-medium">Assigned To:</div>
 //               <Select
@@ -1202,7 +1205,7 @@
 //             {/* Pagination Controls */}
 // <div className="flex items-center gap-4">
  
-//   <div className="flex items-center gap-2">
+//  <div className="flex items-center gap-2">
 //     <span className="text-sm">Rows per page:</span>
 //     <Select
 //       value={String(limit)}
@@ -1237,32 +1240,32 @@
 
 
 //           </div>
-//            <div className="flex flex-auto">
-//            <div className="flex items-center gap-3 w-full max-w-lg">
-//    <Input
-//      placeholder="Search by Lead ID, Name or Email"
-//      value={searchText}
-//      onChange={(e) => setSearchText(e.target.value)}
-//      onKeyDown={async (e) => {
-//        if (e.key === "Enter") {
-//          setSearchQuery(searchText);
-//          setPage(1);
-//          await fetchData(1, limit, searchText, showMyTasks);
-//        }
-//      }}
-//    />
-//    {/* <Button
-//      onClick={async () => {
-//        setSearchQuery(searchText);
-//        setPage(1);
-//        await fetchData(1, limit, searchText, showMyTasks);
-//      }}
-//    >
-//      Search
-//    </Button> */}
+//           <div className="flex flex-auto">
+//           <div className="flex items-center gap-3 w-full max-w-lg">
+//   <Input
+//     placeholder="Search by Lead ID, Name or Email"
+//     value={searchText}
+//     onChange={(e) => setSearchText(e.target.value)}
+//     onKeyDown={async (e) => {
+//       if (e.key === "Enter") {
+//         setSearchQuery(searchText);
+//         setPage(1);
+//         await fetchData(1, limit, searchText, showMyTasks);
+//       }
+//     }}
+//   />
+//   <Button
+//     onClick={async () => {
+//       setSearchQuery(searchText);
+//       setPage(1);
+//       await fetchData(1, limit, searchText, showMyTasks);
+//     }}
+//   >
+//     Search
+//   </Button>
 
 
-//    <Button
+//  <Button
 //   variant={showMyTasks ? "default" : "outline"}
 //   className={showMyTasks ? "bg-blue-600 text-white" : ""}
 //   onClick={async () => {
@@ -1278,47 +1281,16 @@
 //   {showMyTasks ? "Show All" : "My Tasks"}
 // </Button>
 
-//  <div className="flex flex-col sm:flex-row gap-2 items-center">
- 
-//   <DropdownMenu>
-//   <DropdownMenuTrigger asChild>
-//     <Button variant="outline" size="icon">
-//       <MoreVertical className="h-5 w-5" />
-//     </Button>
-//   </DropdownMenuTrigger>
-//   <DropdownMenuContent align="end">
-//     {/* Not Onboarded Clients Dialog */}
-//     <DropdownMenuItem
-//       onClick={()=>{ window.open(`/resumeTeam/notOnboardedClients`, "_blank")
- 
-//       }}
-//     >
-//       Not onboarded clients
-//     </DropdownMenuItem>
- 
-//     {/* Only for Resumes Dialog */}
-   
-   
-//     <DropdownMenuItem
-//       onClick={async () => { window.open(`/resumeTeam/jobBoardClients`, "_blank") }}
-//     >
-//       Job Board Clients
-//     </DropdownMenuItem>
-//     <DropdownMenuItem
-//       onClick={()=>{ window.open(`/resumeTeam/applications`, "_blank") }}
-//     >
-//       Only for Applications
-//     </DropdownMenuItem>
-//   </DropdownMenuContent>
-// </DropdownMenu>
- 
+
+
+
+
+
 // </div>
- 
- 
-//  </div>
-//      <span className="text-green-500 gap-3 mt-2 ml-4 font-semibold">Total Rows : {totalRows}</span>
- 
-//  </div>
+//     <span className="text-green-500 gap-3 mt-2 ml-4 font-semibold">Total Rows : {totalRows}</span>
+
+
+// </div>
 
 
 //           {loading ? (
@@ -1421,29 +1393,18 @@
 
 
 //       </DashboardLayout>
-//       </ProtectedRoute>
 //   );
 // }
 
 
-
-
-
-
-
-
-
-
-
-
-
 "use client";
+
 
 import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { MoreVertical } from "lucide-react";
+
+
 import {
   Table,
   TableBody,
@@ -1471,22 +1432,30 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+
+
 import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+
+
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { useAuth } from "@/components/providers/auth-provider";
+
 
 /* =========================
    Types & Labels
    ========================= */
 
+
 type FinanceStatus = "Paid" | "Unpaid" | "Paused" | "Closed" | "Got Placed";
+
 
 type ResumeStatus =
   | "not_started"
   | "pending"
   | "waiting_client_approval"
   | "completed";
+
 
 const STATUS_LABEL: Record<ResumeStatus, string> = {
   not_started: "Not started",
@@ -1495,11 +1464,13 @@ const STATUS_LABEL: Record<ResumeStatus, string> = {
   completed: "Completed",
 };
 
+
 type PortfolioStatus =
   | "not_started"
   | "pending"
   | "waiting_client_approval"
   | "success";
+
 
 type TeamMember = {
   id: string;
@@ -1507,6 +1478,7 @@ type TeamMember = {
   email: string | null;
   role: string | null;
 };
+
 
 interface SalesClosure {
   id: string;
@@ -1525,8 +1497,10 @@ interface SalesClosure {
   badge_value?: number | null;
   data_sent_to_customer_dashboard?: string | null;
 
+
   // joined lead data
   leads?: { name: string; phone: string };
+
 
   // resume_progress (from view)
   rp_status: ResumeStatus;
@@ -1534,32 +1508,41 @@ interface SalesClosure {
   assigned_to_email: string | null;
   assigned_to_name: string | null;
 
+
   // portfolio_progress
   pp_status: PortfolioStatus | null;
   pp_assigned_email: string | null;
   pp_assigned_name: string | null;
   pp_link: string | null;
 
+
   portfolio_paid: boolean;
 }
+
 
 /* =========================
    Small helpers
    ========================= */
 
+
 const formatDateLabel = (d: string | null) =>
   d ? new Date(d).toLocaleDateString("en-GB") : "-";
+
 
 const formatOnboardLabel = (d: string | null) =>
   d ? new Date(d).toLocaleDateString("en-GB") : "Not Started";
 
+
 const csvFromArray = (arr?: string[] | null) =>
   arr && arr.length ? arr.join(", ") : "";
+
 
 const csvToArray = (s: string) =>
   s.split(",").map((v) => v.trim()).filter(Boolean);
 
+
 const BUCKET = "resumes";
+
 
 const ensurePdf = (file: File) => {
   if (file.type !== "application/pdf")
@@ -1567,42 +1550,52 @@ const ensurePdf = (file: File) => {
   if (file.size > 20 * 1024 * 1024) throw new Error("Max file size is 20MB.");
 };
 
+
 /* =========================
    Main Page Component
    ========================= */
 
-export default function ResumeTeamPage() {
+
+export default function JobBoardPage() {
   const router = useRouter();
   const { user } = useAuth();
+
 
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<SalesClosure[]>([]);
   const [resumeTeamMembers, setResumeTeamMembers] = useState<TeamMember[]>([]);
   const [assigneeFilter, setAssigneeFilter] = useState<string>("__all__");
 
+
   // file upload
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [uploadForLead, setUploadForLead] = useState<string | null>(null);
   const [replacingOldPath, setReplacingOldPath] = useState<string | null>(null);
 
+
   // Requirements dialog
   const [reqDialogOpen, setReqDialogOpen] = useState(false);
   const [reqRow, setReqRow] = useState<SalesClosure | null>(null);
 
+
   const [showMyTasks, setShowMyTasks] = useState(false);
 
-  // Pagination
-  const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(30);
-  const [totalRows, setTotalRows] = useState(0);
 
-  // Search
-  const [searchText, setSearchText] = useState("");
-  const [searchQuery, setSearchQuery] = useState(""); // actual query on Enter
+  // Pagination
+const [page, setPage] = useState(1);
+const [limit, setLimit] = useState(30);
+const [totalRows, setTotalRows] = useState(0);
+
+
+// Search
+const [searchText, setSearchText] = useState("");
+const [searchQuery, setSearchQuery] = useState(""); // actual query on Enter
+
 
   /* =========================
      Role gate + initial load
      ========================= */
+
 
   useEffect(() => {
     if (user === null) return;
@@ -1611,18 +1604,23 @@ export default function ResumeTeamPage() {
       router.push("/unauthorized");
       return;
     }
-    Promise.all([fetchTeamMembers(), fetchData(1, limit)]).finally(() =>
-      setLoading(false)
-    );
+   Promise.all([fetchTeamMembers(), fetchData(1, limit, "", false, "__all__")]).finally(() =>
+  setLoading(false)
+);
+
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
+
 
   /* =========================
      Fetch helpers
      ========================= */
 
+
   const fetchTeamMembers = async () => {
     let members: TeamMember[] = [];
+
 
     try {
       const { data, error } = await supabase
@@ -1630,10 +1628,12 @@ export default function ResumeTeamPage() {
         .select("id,name,email,role")
         .in("role", ["Resume Head", "Resume Associate"]);
 
+
       if (!error && data) members = data as TeamMember[];
     } catch {
       // ignore
     }
+
 
     if (!members.length) {
       try {
@@ -1641,6 +1641,7 @@ export default function ResumeTeamPage() {
           .from("profiles")
           .select("user_id,full_name,user_email,roles")
           .in("roles", ["Resume Head", "Resume Associate"]);
+
 
         if (!error && data) {
           members = (data as any[]).map((d) => ({
@@ -1655,110 +1656,131 @@ export default function ResumeTeamPage() {
       }
     }
 
+
     setResumeTeamMembers(members);
   };
 
-  const fetchData = async (
-    newPage = page,
-    newLimit = limit,
-    activeSearch = searchQuery,
-    overrideShowMyTasks?: boolean,
-    overrideAssigneeFilter?: string
-  ) => {
-    try {
-      setLoading(true);
 
-      const from = (newPage - 1) * newLimit;
-      const to = from + newLimit - 1;
+const fetchData = async (
+  newPage = page,
+  newLimit = limit,
+  activeSearch = searchQuery,
+  overrideShowMyTasks?: boolean,
+  overrideAssigneeFilter?: string
+) => {
+  try {
+    setLoading(true);
 
-      let query = supabase
-        .from("full_client_status_final")
-        .select("*", { count: "exact" });
 
-      // 🔍 Apply server-side search
-      if (activeSearch.trim() !== "") {
-        query = query.or(
-          `lead_id.ilike.%${activeSearch}%,lead_name.ilike.%${activeSearch}%,email.ilike.%${activeSearch}%,company_application_email.ilike.%${activeSearch}%`
-        );
-      }
+    const from = (newPage - 1) * newLimit;
+    const to = from + newLimit - 1;
 
-      // 🔧 Apply assignee filter (if not "__all__")
-      const currentAssigneeFilter = overrideAssigneeFilter !== undefined ? 
-        overrideAssigneeFilter : assigneeFilter;
-      
-      if (currentAssigneeFilter !== "__all__" && currentAssigneeFilter !== "__none__") {
-        query = query.eq("resume_assigned_email", currentAssigneeFilter);
-      }
-      
-      // If "__none__" is selected, show unassigned
-      if (currentAssigneeFilter === "__none__") {
-        query = query.is("resume_assigned_email", null);
-      }
 
-      // 👤 My Tasks filter
-      const myTasks = overrideShowMyTasks ?? showMyTasks;
-      if (myTasks && user?.email) {
-        query = query.eq("resume_assigned_email", user.email);
-      }
+    let query = supabase
+      .from("full_client_status_pending_jobboard")
+      .select("*", { count: "exact" });
 
-      query = query
-        .order("closed_at", { ascending: false })
-        .range(from, to);
 
-      const { data, error, count } = await query;
-
-      if (error) throw error;
-
-      setTotalRows(count ?? 0);
-
-      const formatted: SalesClosure[] = (data as any[]).map((r) => {
-        const onboardRaw = r.onboarded_date ?? null;
-        const portfolioPaid =
-          r.portfolio_sale_value && Number(r.portfolio_sale_value) > 0;
-
-        return {
-          id: String(r.sale_id),
-          lead_id: r.lead_id,
-          email: r.email,
-          company_application_email: r.company_application_email ?? null,
-          finance_status: r.finance_status ?? "Unpaid",
-          closed_at: r.closed_at ?? null,
-          onboarded_date_raw: onboardRaw,
-          onboarded_date_label: formatOnboardLabel(onboardRaw),
-          application_sale_value: r.application_sale_value ?? null,
-          resume_sale_value: r.resume_sale_value ?? null,
-          portfolio_sale_value: r.portfolio_sale_value ?? null,
-          job_board_value: r.job_board_value ?? null,
-          commitments: r.commitments ?? null,
-          data_sent_to_customer_dashboard: r.data_sent_to_customer_dashboard ?? null,
-          leads: {
-            name: r.lead_name ?? "-",
-            phone: r.phone_number ?? "-",
-          },
-          rp_status: r.resume_status ?? "not_started",
-          rp_pdf_path: r.resume_pdf ?? null,
-          assigned_to_email: r.resume_assigned_email ?? null,
-          assigned_to_name: r.resume_assigned_name ?? null,
-          pp_status: r.portfolio_status ?? null,
-          pp_assigned_email: r.portfolio_assigned_email ?? null,
-          pp_assigned_name: r.portfolio_assigned_name ?? null,
-          pp_link: r.portfolio_link ?? null,
-          portfolio_paid: portfolioPaid,
-        };
-      });
-
-      setRows(formatted);
-    } catch (e) {
-      console.error(e);
-      setRows([]);
-    } finally {
-      setLoading(false);
+    // 🔍 Apply server-side search
+    if (activeSearch.trim() !== "") {
+      query = query.or(
+        `lead_id.ilike.%${activeSearch}%,lead_name.ilike.%${activeSearch}%,email.ilike.%${activeSearch}%,company_application_email.ilike.%${activeSearch}%`
+      );
     }
-  };
+
+
+    const myTasks = overrideShowMyTasks ?? showMyTasks;
+
+
+   
+// 🔥 My Tasks filter
+if (myTasks && user?.email) {
+  query = query.eq("resume_assigned_email", user.email);
+}
+
+    // Apply assignee filter
+    const assigneeFilterToUse = overrideAssigneeFilter ?? assigneeFilter;
+    if (assigneeFilterToUse !== "__all__") {
+      if (assigneeFilterToUse === "__none__") {
+        // Show unassigned
+        query = query.is("resume_assigned_email", null);
+      } else {
+        // Show specific assignee
+        query = query.eq("resume_assigned_email", assigneeFilterToUse);
+      }
+    }
+
+
+    query = query
+      .order("closed_at", { ascending: false })
+      .range(from, to);
+
+
+    const { data, error, count } = await query;
+
+
+    if (error) throw error;
+
+
+    setTotalRows(count ?? 0);
+
+
+    const formatted: SalesClosure[] = (data as any[]).map((r) => {
+      const onboardRaw = r.onboarded_date ?? null;
+      const portfolioPaid =
+        r.portfolio_sale_value && Number(r.portfolio_sale_value) > 0;
+
+
+      return {
+        id: String(r.sale_id),
+        lead_id: r.lead_id,
+        email: r.email,
+        company_application_email: r.company_application_email ?? null,
+        finance_status: r.finance_status ?? "Unpaid",
+        closed_at: r.closed_at ?? null,
+        onboarded_date_raw: onboardRaw,
+        onboarded_date_label: formatOnboardLabel(onboardRaw),
+        application_sale_value: r.application_sale_value ?? null,
+        resume_sale_value: r.resume_sale_value ?? null,
+        portfolio_sale_value: r.portfolio_sale_value ?? null,
+        job_board_value: r.job_board_value ?? null,
+        commitments: r.commitments ?? null,
+        data_sent_to_customer_dashboard: r.data_sent_to_customer_dashboard ?? null,
+        leads: {
+          name: r.lead_name ?? "-",
+          phone: r.phone_number ?? "-",
+        },
+        rp_status: r.resume_status ?? "not_started",
+        rp_pdf_path: r.resume_pdf ?? null,
+        assigned_to_email: r.resume_assigned_email ?? null,
+        assigned_to_name: r.resume_assigned_name ?? null,
+        pp_status: r.portfolio_status ?? null,
+        pp_assigned_email: r.portfolio_assigned_email ?? null,
+        pp_assigned_name: r.portfolio_assigned_name ?? null,
+        pp_link: r.portfolio_link ?? null,
+        portfolio_paid: portfolioPaid,
+      };
+    });
+
+
+    setRows(formatted);
+  } catch (e) {
+    console.error(e);
+    setRows([]);
+  } finally {
+    setLoading(false);
+  }
+};
+
+
+
+
+
 
   /* =========================
      Resume status & assignee
      ========================= */
+
 
   const updateStatus = async (leadId: string, status: ResumeStatus) => {
     const { error } = await supabase
@@ -1766,6 +1788,7 @@ export default function ResumeTeamPage() {
       .upsert({ lead_id: leadId, status }, { onConflict: "lead_id" });
     if (error) throw error;
   };
+
 
   const updateAssignedTo = async (
     leadId: string,
@@ -1777,7 +1800,9 @@ export default function ResumeTeamPage() {
       .select("id")
       .eq("lead_id", leadId);
 
+
     if (findErr) throw findErr;
+
 
     if (existingRows && existingRows.length > 0) {
       const { error: updErr } = await supabase
@@ -1797,173 +1822,33 @@ export default function ResumeTeamPage() {
     }
   };
 
-// ✅ Send finalized data to pending_clients (for exported sync)
-const sendToPendingClients = async (leadId: string) => {
-  console.log("👉 Starting sendToPendingClients for:", leadId);
 
-  // 1️⃣ Fetch latest sales_closure record
-  const { data: sc, error: scErr } = await supabase
-    .from("sales_closure")
-    .select(`
-      onboarded_date,
-      subscription_cycle,
-      no_of_job_applications,
-      badge_value,
-      id,
-      application_sale_value,
-      resume_sale_value,
-      portfolio_sale_value,
-      linkedin_sale_value,
-      github_sale_value,
-      courses_sale_value,
-      custom_sale_value,
-      job_board_value
-    `)
-    .eq("lead_id", leadId)
-    .order("onboarded_date", { ascending: false })
-    .limit(1)
-    .single();
-  if (scErr || !sc) throw new Error("No sales_closure record found for this lead.");
+  const onChangeStatus = async (row: SalesClosure, newStatus: ResumeStatus) => {
+    try {
+      await updateStatus(row.lead_id, newStatus);
 
-  const startDate = sc.onboarded_date;
-  const endDate = startDate
-    ? new Date(
-        new Date(startDate).getTime() +
-          sc.subscription_cycle * 24 * 60 * 60 * 1000
-      )
-        .toISOString()
-        .split("T")[0]
-    : null;
-
-  // 2️⃣ Fetch from resume_progress
-  const { data: rp, error: rpErr } = await supabase
-    .from("resume_progress")
-    .select("pdf_path")
-    .eq("lead_id", leadId)
-    .maybeSingle();
-  if (rpErr) throw rpErr;
-  const resumePath = rp?.pdf_path || null;
-
-  // 3️⃣ Fetch earliest onboarding details
-  const { data: ob, error: obErr } = await supabase
-    .from("client_onborading_details")
-    .select("*")
-    .eq("lead_id", leadId)
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .maybeSingle();
-  if (obErr || !ob) throw new Error("No onboarding details found for this lead.");
-
-
-// 4️⃣ Build add_ons_info array based on conditions
-const allowedServices = [
-  { field: "application_sale_value", label: "applications" },
-  { field: "resume_sale_value", label: "resume" },
-  { field: "portfolio_sale_value", label: "portfolio" },
-  { field: "linkedin_sale_value", label: "linkedin" },
-  { field: "github_sale_value", label: "github" },
-  { field: "courses_sale_value", label: "courses" },
-  { field: "experience", label: "experience" },
-  { field: "badge_value", label: "badge" },
-  { field: "job_board_value", label: "job-links" }
-];
-
-const scAny = sc as any;
-const addOnsInfo = allowedServices
-  .filter((item) => {
-    // Read the value once and coerce to number where appropriate
-    const val = scAny?.[item.field];
-    return val !== null && val !== undefined && Number(val) > 0;
-  })
-  .map((item) => item.label);  // Directly return the label instead of stringifying
-
-// 5️⃣ Build payload
-const payload = {
-  full_name: ob.full_name,
-  personal_email: ob.personal_email,
-  whatsapp_number: ob.whatsapp_number ?? null,
-  callable_phone: ob.callable_phone ?? null,
-  company_email: ob.company_email?.trim() || null,
-  job_role_preferences: ob.job_role_preferences ?? null,
-  salary_range: ob.salary_range ?? null,
-  location_preferences: ob.location_preferences ?? null,
-  work_auth_details: ob.work_auth_details ?? null,
-  applywizz_id: leadId,
-  created_at: new Date().toISOString(),
-  visa_type: ob.visatypes ?? null,
-  sponsorship: ob.needs_sponsorship ?? null,
-  resume_url: resumePath,
-  resume_path: resumePath,
-  start_date: startDate,
-  end_date: endDate,
-  no_of_applications: sc.no_of_job_applications ?? null,
-  badge_value: sc.badge_value ?? null,
-
-  // Include add_ons_info
-  add_ons_info: addOnsInfo,
-
-  // Other fields
-  github_url: ob.github_url ?? null,
-  linked_in_url: ob.linkedin_url ?? null,
-
-  // Extra fields
-  is_over_18: ob.is_over_18,
-  eligible_to_work_in_us: ob.eligible_to_work_in_us,
-  authorized_without_visa: ob.authorized_without_visa,
-  require_future_sponsorship: ob.require_future_sponsorship,
-  can_perform_essential_functions: ob.can_perform_essential_functions,
-  worked_for_company_before: ob.worked_for_company_before,
-  discharged_for_policy_violation: ob.discharged_for_policy_violation,
-  referred_by_agency: ob.referred_by_agency,
-  highest_education: ob.highest_education,
-  university_name: ob.university_name,
-  cumulative_gpa: ob.cumulative_gpa,
-  desired_start_date: ob.desired_start_date,
-  willing_to_relocate: ob.willing_to_relocate,
-  can_work_3_days_in_office: ob.can_work_3_days_in_office,
-  role: ob.role,
-  experience: ob.experience,
-  work_preferences: ob.work_preferences,
-  alternate_job_roles: ob.alternate_job_roles,
-  exclude_companies: ob.exclude_companies || "NA",
-  convicted_of_felony: ob.convicted_of_felony,
-  felony_explanation: ob.felony_explanation,
-  pending_investigation: ob.pending_investigation,
-  willing_background_check: ob.willing_background_check,
-  willing_drug_screen: ob.willing_drug_screen,
-  failed_or_refused_drug_test: ob.failed_or_refused_drug_test,
-  uses_substances_affecting_duties: ob.uses_substances_affecting_duties,
-  substances_description: ob.substances_description,
-  can_provide_legal_docs: ob.can_provide_legal_docs,
-  gender: ob.gender,
-  is_hispanic_latino: ob.is_hispanic_latino,
-  race_ethnicity: ob.race_ethnicity,
-  veteran_status: ob.veteran_status,
-  disability_status: ob.disability_status,
-  has_relatives_in_company: ob.has_relatives_in_company,
-  relatives_details: ob.relatives_details,
-  state_of_residence: ob.state_of_residence,
-  zip_or_country: ob.zip_or_country,
-  main_subject: ob.main_subject ?? null,
-  graduation_year: ob.graduation_year ?? null,
-};
 
       if (newStatus === "completed" && !row.rp_pdf_path) {
         setUploadForLead(row.lead_id);
         setReplacingOldPath(null);
         fileRef.current?.click();
       } else {
-        // Refetch with current filters
-        await fetchData(page, limit, searchQuery, showMyTasks, assigneeFilter);
+        setRows((rs) =>
+          rs.map((r) =>
+            r.lead_id === row.lead_id ? { ...r, rp_status: newStatus } : r,
+          ),
+        );
       }
     } catch (e: any) {
       alert(e.message || "Failed to update status");
     }
   };
 
+
   /* =========================
      Resume upload & download
      ========================= */
+
 
   const uploadOrReplaceResume = async (
     leadId: string,
@@ -1972,6 +1857,7 @@ const payload = {
   ) => {
     ensurePdf(file);
 
+
     // find existing path from DB
     const pathRes = await supabase
       .from("resume_progress")
@@ -1979,7 +1865,9 @@ const payload = {
       .eq("lead_id", leadId)
       .maybeSingle();
 
+
     const existingPath = pathRes.data?.pdf_path as string | undefined;
+
 
     // delete old path (S3 or Supabase storage)
     if (existingPath) {
@@ -2002,21 +1890,25 @@ const payload = {
       }
     }
 
+
     // upload via API → S3
     const formData = new FormData();
     formData.append("file", file);
     formData.append("lead_id", leadId);
+
 
     const res = await fetch("/api/resumes/upload", {
       method: "POST",
       body: formData,
     });
 
+
     const data = await res.json();
     if (!res.ok) {
       console.error("Upload failed:", data);
       throw new Error(data.error || "Upload failed");
     }
+
 
     // update resume_progress with new path
     const db = await supabase
@@ -2035,8 +1927,10 @@ const payload = {
       throw new Error(db.error.message || "DB upsert failed");
     }
 
+
     return { key: data.key, publicUrl: data.publicUrl };
   };
+
 
   const downloadResume = async (path: string) => {
     try {
@@ -2069,16 +1963,23 @@ const payload = {
     }
   };
 
+  const handleOnboardClick = (leadId: string) => {
+  router.push(`/resumeTeam/onboarding/${leadId}`);
+}; 
+
   const onFilePicked = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
     const leadId = uploadForLead;
     const oldPath = replacingOldPath;
 
+
     e.target.value = "";
     setUploadForLead(null);
     setReplacingOldPath(null);
 
+
     if (!file || !leadId) return;
+
 
     try {
       await uploadOrReplaceResume(leadId, file, oldPath || undefined);
@@ -2090,17 +1991,23 @@ const payload = {
     }
   };
 
+
+
+
   /* =========================
      Sorting (optional)
      ========================= */
 
+
   type SortKey = "clientId" | "name" | "email" | "closedAt" | "onboarded";
   type SortDir = "asc" | "desc";
+
 
   const [sort, setSort] = useState<{ key: SortKey | null; dir: SortDir }>({
     key: "closedAt",
     dir: "desc",
   });
+
 
   const toggleSort = (key: SortKey) => {
     setSort((s) =>
@@ -2110,19 +2017,24 @@ const payload = {
     );
   };
 
+
   const parseClientIdNum = (id?: string | null) => {
     if (!id) return -Infinity;
     const m = id.match(/(\d+)$/);
     return m ? Number(m[1]) : -Infinity;
   };
 
+
   const dateToMs = (d?: string | null) =>
     d ? new Date(d).getTime() : -Infinity;
 
+
   const safeStr = (s?: string | null) => (s ?? "").toLowerCase();
+
 
   const cmp = (a: number | string, b: number | string) =>
     a < b ? -1 : a > b ? 1 : 0;
+
 
   const sortRowsBy = (arr: SalesClosure[]) => {
     if (!sort.key) return arr;
@@ -2130,6 +2042,7 @@ const payload = {
     copy.sort((A, B) => {
       let vA: number | string;
       let vB: number | string;
+
 
       switch (sort.key) {
         case "clientId":
@@ -2162,7 +2075,9 @@ const payload = {
     return copy;
   };
 
+
   const sortedRows = sortRowsBy(rows);
+
 
   const SortIcon = ({ active, dir }: { active: boolean; dir: SortDir }) =>
     active ? (
@@ -2175,9 +2090,11 @@ const payload = {
       <ArrowUpDown className="ml-1 h-4 w-4 opacity-60" />
     );
 
+
   /* =========================
      Render table (EXACT UI)
      ========================= */
+
 
   const renderTable = (data: SalesClosure[]) => (
     <div className="rounded-md border mt-4">
@@ -2185,6 +2102,8 @@ const payload = {
         <TableHeader>
           <TableRow>
             <TableHead>S.No</TableHead>
+
+
             <TableHead>
               <button
                 type="button"
@@ -2198,6 +2117,8 @@ const payload = {
                 />
               </button>
             </TableHead>
+
+
             <TableHead>
               <button
                 type="button"
@@ -2208,6 +2129,8 @@ const payload = {
                 <SortIcon active={sort.key === "name"} dir={sort.dir} />
               </button>
             </TableHead>
+
+
             <TableHead>
               <button
                 type="button"
@@ -2218,12 +2141,16 @@ const payload = {
                 <SortIcon active={sort.key === "email"} dir={sort.dir} />
               </button>
             </TableHead>
+
+
             <TableHead>Application email</TableHead>
             <TableHead>Phone</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Resume Status</TableHead>
             <TableHead>Assigned to</TableHead>
             <TableHead>Resume PDF</TableHead>
+
+
             <TableHead>
               <button
                 type="button"
@@ -2237,6 +2164,8 @@ const payload = {
                 />
               </button>
             </TableHead>
+
+
             <TableHead>
               <button
                 type="button"
@@ -2250,20 +2179,26 @@ const payload = {
                 />
               </button>
             </TableHead>
+
+
             <TableHead>Portfolio Status</TableHead>
             <TableHead>Portfolio Link</TableHead>
             <TableHead>Portfolio Assignee</TableHead>
             <TableHead>Client Requirements</TableHead>
             <TableHead>Application Status</TableHead>
             <TableHead>Onboard</TableHead>
+            {/* <TableHead>Forward to TT</TableHead> */}
           </TableRow>
         </TableHeader>
+
 
         <TableBody>
           {data.map((row, index) => (
             <TableRow key={row.id}>
               <TableCell className="text-center">{index + 1}</TableCell>
               <TableCell>{row.lead_id}</TableCell>
+
+
               <TableCell
                 className="font-medium max-w-[150px] break-words whitespace-normal cursor-pointer text-blue-600 hover:underline"
                 onClick={() =>
@@ -2272,12 +2207,15 @@ const payload = {
               >
                 {row.leads?.name || "-"}
               </TableCell>
+
+
               <TableCell>{row.email}</TableCell>
               <TableCell>
                 {row.company_application_email || "not given"}
               </TableCell>
               <TableCell>{row.leads?.phone || "-"}</TableCell>
               <TableCell>{row.finance_status}</TableCell>
+
 
               {/* Resume Status */}
               <TableCell className="min-w-[220px]">
@@ -2307,16 +2245,41 @@ const payload = {
                 </Select>
               </TableCell>
 
+
               {/* Assigned to */}
               <TableCell className="min-w-[260px]">
                 <Select
                   value={row.assigned_to_email ?? "__none__"}
                   onValueChange={async (value) => {
                     try {
-                      const chosen = value === "__none__" ? null : value;
-                      const member = resumeTeamMembers.find((u) => u.email === chosen) || null;
+                      const chosen =
+                        value === "__none__" ? null : value;
+                      const member =
+                        resumeTeamMembers.find(
+                          (u) => u.email === chosen,
+                        ) || null;
 
-                      await updateAssignedTo(row.lead_id, chosen, member?.name ?? null);
+
+                      await updateAssignedTo(
+                        row.lead_id,
+                        chosen,
+                        member?.name ?? null,
+                      );
+
+
+                      setRows((rs) =>
+                        rs.map((r) =>
+                          r.lead_id === row.lead_id
+                            ? {
+                                ...r,
+                                assigned_to_email: chosen,
+                                assigned_to_name:
+                                  member?.name ?? null,
+                              }
+                            : r,
+                        ),
+                      );
+                      // Refresh data after assignment
                       await fetchData(page, limit, searchQuery, showMyTasks, assigneeFilter);
                     } catch (e: any) {
                       console.error("Assign failed:", e);
@@ -2349,6 +2312,7 @@ const payload = {
                 </Select>
               </TableCell>
 
+
               {/* Resume PDF */}
               <TableCell className="space-x-2 min-w-[220px]">
                 {row.rp_pdf_path ? (
@@ -2367,7 +2331,9 @@ const payload = {
                       size="sm"
                       onClick={() => {
                         setUploadForLead(row.lead_id);
-                        setReplacingOldPath(row.rp_pdf_path ?? null);
+                        setReplacingOldPath(
+                          row.rp_pdf_path ?? null,
+                        );
                         fileRef.current?.click();
                       }}
                     >
@@ -2390,8 +2356,10 @@ const payload = {
                 )}
               </TableCell>
 
+
               {/* Closed At */}
               <TableCell>{formatDateLabel(row.closed_at)}</TableCell>
+
 
               {/* Onboarded Date */}
               <TableCell className="min-w-[160px]">
@@ -2406,6 +2374,7 @@ const payload = {
                 )}
               </TableCell>
 
+
               {/* Portfolio Status */}
               <TableCell className="min-w-[140px]">
                 {row.portfolio_paid ? (
@@ -2418,6 +2387,7 @@ const payload = {
                   </span>
                 )}
               </TableCell>
+
 
               {/* Portfolio Link */}
               <TableCell className="max-w-[220px] truncate">
@@ -2434,13 +2404,15 @@ const payload = {
                     </a>
                   ) : row.leads?.name ? (
                     <a
-                      href={`https://applywizz-${(row.leads?.name || "")
+                      href={`https://applywizz-${(row.leads?.name ||
+                        "")
                         .toLowerCase()
                         .replace(/[^a-z0-9]/g, "")}.vercel.app/`}
                       target="_blank"
                       rel="noreferrer"
                       className="text-blue-600 underline block truncate"
-                      title={`https://applywizz-${(row.leads?.name || "")
+                      title={`https://applywizz-${(row.leads?.name ||
+                        "")
                         .toLowerCase()
                         .replace(/[^a-z0-9]/g, "")}.vercel.app/`}
                     >
@@ -2456,6 +2428,7 @@ const payload = {
                 )}
               </TableCell>
 
+
               {/* Portfolio Assignee */}
               <TableCell>
                 {row.pp_assigned_name
@@ -2465,9 +2438,12 @@ const payload = {
                         : ""
                     }`
                   : row.pp_assigned_email || (
-                      <span className="text-gray-400 text-sm">—</span>
+                      <span className="text-gray-400 text-sm">
+                        —
+                      </span>
                     )}
               </TableCell>
+
 
               {/* Commitments */}
               <TableCell className="min-w-[140px] text-center">
@@ -2488,6 +2464,7 @@ const payload = {
                 )}
               </TableCell>
 
+
               {/* Application Status */}
               <TableCell className="min-w-[140px] text-center">
                 {Number(row.application_sale_value) > 0 ? (
@@ -2500,6 +2477,7 @@ const payload = {
                   </span>
                 )}
               </TableCell>
+
 
               {/* Onboard button */}
               <TableCell>
@@ -2522,8 +2500,12 @@ const payload = {
                   </Button>
                 )}
               </TableCell>
+
+
+          
             </TableRow>
           ))}
+
 
           {data.length === 0 && (
             <TableRow>
@@ -2539,49 +2521,54 @@ const payload = {
       </Table>
      
       <div className="flex items-center justify-center px-4 py-2 border-t bg-gray-50">
-        <div className="flex items-center gap-2">
-          <span className="text-sm">Page:</span>
-          <Select
-            value={String(page)}
-            onValueChange={async (val) => {
-              const newPage = Number(val);
-              setPage(newPage);
-              await fetchData(newPage, limit, searchQuery, showMyTasks, assigneeFilter);
-            }}
-          >
-            <SelectTrigger className="w-[100px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {Array.from(
-                { length: Math.ceil(totalRows / limit) },
-                (_, i) => i + 1
-              ).map((p) => (
-                <SelectItem key={p} value={String(p)}>
-                  {p}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        &nbsp;&nbsp;
-        <span className="text-sm text-gray-600">
-          Showing {(page - 1) * limit + 1}–
-          {Math.min(page * limit, totalRows)} of {totalRows}
-        </span>
-      </div>
+  <div className="flex items-center gap-2">
+    <span className="text-sm">Page:</span>
+    <Select
+      value={String(page)}
+      onValueChange={async (val) => {
+        const newPage = Number(val);
+        setPage(newPage);
+        await fetchData(newPage, limit, searchQuery, showMyTasks, assigneeFilter);
+      }}
+    >
+      <SelectTrigger className="w-[100px]">
+        <SelectValue />
+      </SelectTrigger>
+
+
+      <SelectContent>
+        {Array.from(
+          { length: Math.ceil(totalRows / limit) },
+          (_, i) => i + 1
+        ).map((p) => (
+          <SelectItem key={p} value={String(p)}>
+            {p}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  </div>
+  &nbsp;&nbsp;
+
+
+  <span className="text-sm text-gray-600">
+    Showing {(page - 1) * limit + 1}–
+    {Math.min(page * limit, totalRows)} of {totalRows}
+  </span>
+    </div>
     </div>
   );
+
 
   /* =========================
      JSX
      ========================= */
-  const handleOnboardClick = (leadId: string) => {
-    router.push(`/resumeTeam/onboarding/${leadId}`);
-  }; 
-  
+
+
   return (
-    <ProtectedRoute allowedRoles={["Super Admin", "Resume Head", "Resume Associate"]}>
+    // <ProtectedRoute
+    //   allowedRoles={["Super Admin", "Resume Head", "Resume Associate"]}
+    // >
       <DashboardLayout>
         <input
           ref={fileRef}
@@ -2591,22 +2578,22 @@ const payload = {
           onChange={onFilePicked}
         />
 
+
         <div className="space-y-6">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">
-              Resume Team
-            </h1>
-          </div>
-          
-          {/* Assignee filter */}
           <div className="flex items-center justify-start gap-4">
+            <h1 className="text-3xl font-bold text-gray-900">
+             Job Board Clients — Resume Team
+            </h1>
+
+
+            {/* Assignee filter */}
             <div className="flex items-center gap-3">
               <div className="text-sm font-medium">Assigned To:</div>
               <Select
                 value={assigneeFilter}
                 onValueChange={async (val) => {
                   setAssigneeFilter(val);
-                  setPage(1);
+                  setPage(1); // Reset to first page when filter changes
                   await fetchData(1, limit, searchQuery, showMyTasks, val);
                 }}
               >
@@ -2634,100 +2621,93 @@ const payload = {
                 </SelectContent>
               </Select>
             </div>
-            
             {/* Pagination Controls */}
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <span className="text-sm">Rows per page:</span>
-                <Select
-                  value={String(limit)}
-                  onValueChange={async (val) => {
-                    const newLimit = Number(val);
-                    setLimit(newLimit);
-                    setPage(1);
-                    await fetchData(1, newLimit, searchQuery, showMyTasks, assigneeFilter);
-                  }}
-                >
-                  <SelectTrigger className="w-[80px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="30">30 per page</SelectItem>
-                    <SelectItem value="50">50 per page</SelectItem>
-                    <SelectItem value="100">100 per page</SelectItem>
-                    <SelectItem value="200">200 per page</SelectItem>
-                    <SelectItem value="500">500 per page</SelectItem>
-                    <SelectItem value="1000">1000 per page</SelectItem>
-                    <SelectItem value="2000">2000 per page</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
-          
-          <div className="flex flex-auto">
-            <div className="flex items-center gap-3 w-full max-w-lg">
-              <Input
-                placeholder="Search by Lead ID, Name or Email"
-                value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
-                onKeyDown={async (e) => {
-                  if (e.key === "Enter") {
-                    setSearchQuery(searchText);
-                    setPage(1);
-                    await fetchData(1, limit, searchText, showMyTasks, assigneeFilter);
-                  }
-                }}
-              />
-              
-              <Button
-                variant={showMyTasks ? "default" : "outline"}
-                className={showMyTasks ? "bg-blue-600 text-white" : ""}
-                onClick={async () => {
-                  const newValue = !showMyTasks;
-                  setShowMyTasks(newValue);
-                  setPage(1);
-                  await fetchData(1, limit, searchQuery, newValue, assigneeFilter);
-                }}
-              >
-                {showMyTasks ? "Show All" : "My Tasks"}
-              </Button>
+<div className="flex items-center gap-4">
+ 
+ <div className="flex items-center gap-2">
+    <span className="text-sm">Rows per page:</span>
+    <Select
+      value={String(limit)}
+      onValueChange={async (val) => {
+        const newLimit = Number(val);
+        setLimit(newLimit);
+        setPage(1); // reset page
+        await fetchData(1, newLimit, searchQuery, showMyTasks, assigneeFilter);
+      }}
+    >
+      <SelectTrigger className="w-[80px]">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="30">30 per page</SelectItem>
+        <SelectItem value="50">50 per page</SelectItem>
+        <SelectItem value="100">100 per page</SelectItem>
+        <SelectItem value="200">200 per page</SelectItem>
+        <SelectItem value="500">500 per page</SelectItem>
+        <SelectItem value="1000">1000 per page</SelectItem>
+        <SelectItem value="2000">2000 per page</SelectItem>
 
-              <div className="flex flex-col sm:flex-row gap-2 items-center">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="icon">
-                      <MoreVertical className="h-5 w-5" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                      onClick={() => { 
-                        window.open(`/resumeTeam/notOnboardedClients`, "_blank")
-                      }}
-                    >
-                      Not onboarded clients
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={async () => { 
-                        window.open(`/resumeTeam/jobBoardClients`, "_blank") 
-                      }}
-                    >
-                      Job Board Clients
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => { 
-                        window.open(`/resumeTeam/applications`, "_blank") 
-                      }}
-                    >
-                      Only for Applications
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </div>
-            <span className="text-green-500 gap-3 mt-2 ml-4 font-semibold">Total Rows : {totalRows}</span>
+
+
+
+      </SelectContent>
+    </Select>
+  </div>
+
+
+</div>
+
+
           </div>
+          <div className="flex flex-auto">
+          <div className="flex items-center gap-3 w-full max-w-lg">
+  <Input
+    placeholder="Search by Lead ID, Name or Email"
+    value={searchText}
+    onChange={(e) => setSearchText(e.target.value)}
+    onKeyDown={async (e) => {
+      if (e.key === "Enter") {
+        setSearchQuery(searchText);
+        setPage(1);
+        await fetchData(1, limit, searchText, showMyTasks, assigneeFilter);
+      }
+    }}
+  />
+  <Button
+    onClick={async () => {
+      setSearchQuery(searchText);
+      setPage(1);
+      await fetchData(1, limit, searchText, showMyTasks, assigneeFilter);
+    }}
+  >
+    Search
+  </Button>
+
+
+ <Button
+  variant={showMyTasks ? "default" : "outline"}
+  className={showMyTasks ? "bg-blue-600 text-white" : ""}
+  onClick={async () => {
+    const newValue = !showMyTasks;
+    setShowMyTasks(newValue);
+    setPage(1);
+    await fetchData(1, limit, searchQuery, newValue, assigneeFilter);
+  }}
+>
+  {showMyTasks ? "Show All" : "My Tasks"}
+</Button>
+
+
+
+
+
+
+</div>
+    <span className="text-green-500 gap-3 mt-2 ml-4 font-semibold">Total Rows : {totalRows}</span>
+
+
+</div>
+
 
           {loading ? (
             <p className="p-6 text-gray-600">Loading...</p>
@@ -2735,6 +2715,7 @@ const payload = {
             renderTable(sortedRows)
           )}
         </div>
+
 
         {/* Requirements Dialog */}
         <Dialog open={reqDialogOpen} onOpenChange={setReqDialogOpen}>
@@ -2750,6 +2731,7 @@ const payload = {
                 Commitment details captured at sale closure.
               </DialogDescription>
             </DialogHeader>
+
 
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -2783,11 +2765,14 @@ const payload = {
                   </div>
                   <div className="font-medium">
                     {reqRow?.closed_at
-                      ? new Date(reqRow.closed_at).toLocaleDateString("en-GB")
+                      ? new Date(
+                          reqRow.closed_at,
+                        ).toLocaleDateString("en-GB")
                       : "—"}
                   </div>
                 </div>
               </div>
+
 
               <div>
                 <div className="text-xs text-muted-foreground mb-1">
@@ -2800,6 +2785,7 @@ const payload = {
                 </div>
               </div>
             </div>
+
 
             <DialogFooter className="gap-2">
               <Button
@@ -2820,7 +2806,8 @@ const payload = {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+
       </DashboardLayout>
-    </ProtectedRoute>
   );
 }
