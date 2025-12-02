@@ -4,8 +4,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { MoreVertical } from "lucide-react";
+
+
 import {
   Table,
   TableBody,
@@ -157,7 +157,7 @@ const ensurePdf = (file: File) => {
    ========================= */
 
 
-export default function ResumeTeamPage() {
+export default function NotOnboardedClientsPage() {
   const router = useRouter();
   const { user } = useAuth();
 
@@ -272,7 +272,7 @@ const fetchData = async (newPage = page, newLimit = limit, activeSearch = search
 
 
     let query = supabase
-      .from("full_client_status_final")
+      .from("full_client_status_pending_onboarding")
       .select("*", { count: "exact" });
 
 
@@ -570,7 +570,9 @@ if (myTasks && user?.email) {
   };
 
 
-
+const handleOnboardClick = (leadId: string) => {
+  router.push(`/resumeTeam/onboarding/${leadId}`);
+}; 
 
   /* =========================
      Sorting (optional)
@@ -1079,7 +1081,7 @@ if (myTasks && user?.email) {
               </TableCell>
 
 
-             
+              
             </TableRow>
           ))}
 
@@ -1140,13 +1142,12 @@ if (myTasks && user?.email) {
   /* =========================
      JSX
      ========================= */
-const handleOnboardClick = (leadId: string) => {
-  router.push(`/resumeTeam/onboarding/${leadId}`);
-}; 
-  
+
 
   return (
-    <ProtectedRoute allowedRoles={["Super Admin", "Resume Head", "Resume Associate"]}>
+    // <ProtectedRoute
+    //   allowedRoles={["Super Admin", "Resume Head", "Resume Associate"]}
+    // >
       <DashboardLayout>
         <input
           ref={fileRef}
@@ -1158,14 +1159,13 @@ const handleOnboardClick = (leadId: string) => {
 
 
         <div className="space-y-6">
-            <div>
+          <div className="flex items-center justify-start gap-4">
             <h1 className="text-3xl font-bold text-gray-900">
-             Resume Team
+             Not onboarded clients — Resume Team
             </h1>
-            </div>
-            {/* Assignee filter (simple version) */}
-                      <div className="flex items-center justify-start gap-4">
 
+
+            {/* Assignee filter (simple version) */}
             <div className="flex items-center gap-3">
               <div className="text-sm font-medium">Assigned To:</div>
               <Select
@@ -1251,7 +1251,7 @@ const handleOnboardClick = (leadId: string) => {
        }
      }}
    />
-   {/* <Button
+   <Button
      onClick={async () => {
        setSearchQuery(searchText);
        setPage(1);
@@ -1259,7 +1259,7 @@ const handleOnboardClick = (leadId: string) => {
      }}
    >
      Search
-   </Button> */}
+   </Button>
 
 
    <Button
@@ -1277,43 +1277,6 @@ const handleOnboardClick = (leadId: string) => {
 >
   {showMyTasks ? "Show All" : "My Tasks"}
 </Button>
-
- <div className="flex flex-col sm:flex-row gap-2 items-center">
- 
-  <DropdownMenu>
-  <DropdownMenuTrigger asChild>
-    <Button variant="outline" size="icon">
-      <MoreVertical className="h-5 w-5" />
-    </Button>
-  </DropdownMenuTrigger>
-  <DropdownMenuContent align="end">
-    {/* Not Onboarded Clients Dialog */}
-    <DropdownMenuItem
-      onClick={()=>{ window.open(`/resumeTeam/notOnboardedClients`, "_blank")
- 
-      }}
-    >
-      Not onboarded clients
-    </DropdownMenuItem>
- 
-    {/* Only for Resumes Dialog */}
-   
-   
-    <DropdownMenuItem
-      onClick={async () => { window.open(`/resumeTeam/jobBoardClients`, "_blank") }}
-    >
-      Job Board Clients
-    </DropdownMenuItem>
-    <DropdownMenuItem
-      onClick={()=>{ window.open(`/resumeTeam/applications`, "_blank") }}
-    >
-      Only for Applications
-    </DropdownMenuItem>
-  </DropdownMenuContent>
-</DropdownMenu>
- 
-</div>
- 
  
  </div>
      <span className="text-green-500 gap-3 mt-2 ml-4 font-semibold">Total Rows : {totalRows}</span>
@@ -1421,7 +1384,6 @@ const handleOnboardClick = (leadId: string) => {
 
 
       </DashboardLayout>
-      </ProtectedRoute>
   );
 }
 

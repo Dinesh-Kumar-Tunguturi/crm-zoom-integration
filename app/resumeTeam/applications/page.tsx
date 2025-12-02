@@ -1,11 +1,9 @@
 "use client";
 
-
 import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { MoreVertical } from "lucide-react";
+
 import {
   Table,
   TableBody,
@@ -34,29 +32,23 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
-
 import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
-
 
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { useAuth } from "@/components/providers/auth-provider";
 
-
 /* =========================
    Types & Labels
    ========================= */
 
-
 type FinanceStatus = "Paid" | "Unpaid" | "Paused" | "Closed" | "Got Placed";
-
 
 type ResumeStatus =
   | "not_started"
   | "pending"
   | "waiting_client_approval"
   | "completed";
-
 
 const STATUS_LABEL: Record<ResumeStatus, string> = {
   not_started: "Not started",
@@ -65,13 +57,11 @@ const STATUS_LABEL: Record<ResumeStatus, string> = {
   completed: "Completed",
 };
 
-
 type PortfolioStatus =
   | "not_started"
   | "pending"
   | "waiting_client_approval"
   | "success";
-
 
 type TeamMember = {
   id: string;
@@ -79,7 +69,6 @@ type TeamMember = {
   email: string | null;
   role: string | null;
 };
-
 
 interface SalesClosure {
   id: string;
@@ -98,10 +87,8 @@ interface SalesClosure {
   badge_value?: number | null;
   data_sent_to_customer_dashboard?: string | null;
 
-
   // joined lead data
   leads?: { name: string; phone: string };
-
 
   // resume_progress (from view)
   rp_status: ResumeStatus;
@@ -109,41 +96,32 @@ interface SalesClosure {
   assigned_to_email: string | null;
   assigned_to_name: string | null;
 
-
   // portfolio_progress
   pp_status: PortfolioStatus | null;
   pp_assigned_email: string | null;
   pp_assigned_name: string | null;
   pp_link: string | null;
 
-
   portfolio_paid: boolean;
 }
-
 
 /* =========================
    Small helpers
    ========================= */
 
-
 const formatDateLabel = (d: string | null) =>
   d ? new Date(d).toLocaleDateString("en-GB") : "-";
-
 
 const formatOnboardLabel = (d: string | null) =>
   d ? new Date(d).toLocaleDateString("en-GB") : "Not Started";
 
-
 const csvFromArray = (arr?: string[] | null) =>
   arr && arr.length ? arr.join(", ") : "";
-
 
 const csvToArray = (s: string) =>
   s.split(",").map((v) => v.trim()).filter(Boolean);
 
-
 const BUCKET = "resumes";
-
 
 const ensurePdf = (file: File) => {
   if (file.type !== "application/pdf")
@@ -151,52 +129,42 @@ const ensurePdf = (file: File) => {
   if (file.size > 20 * 1024 * 1024) throw new Error("Max file size is 20MB.");
 };
 
-
 /* =========================
    Main Page Component
    ========================= */
 
-
-export default function ResumeTeamPage() {
+export default function ApplicationsPage() {
   const router = useRouter();
   const { user } = useAuth();
-
 
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<SalesClosure[]>([]);
   const [resumeTeamMembers, setResumeTeamMembers] = useState<TeamMember[]>([]);
   const [assigneeFilter, setAssigneeFilter] = useState<string>("__all__");
 
-
   // file upload
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [uploadForLead, setUploadForLead] = useState<string | null>(null);
   const [replacingOldPath, setReplacingOldPath] = useState<string | null>(null);
 
-
   // Requirements dialog
   const [reqDialogOpen, setReqDialogOpen] = useState(false);
   const [reqRow, setReqRow] = useState<SalesClosure | null>(null);
 
-
-  const [showMyTasks, setShowMyTasks] = useState(false);
-
+ const [showMyTasks, setShowMyTasks] = useState(false);
 
   // Pagination
 const [page, setPage] = useState(1);
 const [limit, setLimit] = useState(30);
 const [totalRows, setTotalRows] = useState(0);
 
-
 // Search
 const [searchText, setSearchText] = useState("");
 const [searchQuery, setSearchQuery] = useState(""); // actual query on Enter
 
-
   /* =========================
      Role gate + initial load
      ========================= */
-
 
   useEffect(() => {
     if (user === null) return;
@@ -209,19 +177,15 @@ const [searchQuery, setSearchQuery] = useState(""); // actual query on Enter
   setLoading(false)
 );
 
-
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
-
 
   /* =========================
      Fetch helpers
      ========================= */
 
-
   const fetchTeamMembers = async () => {
     let members: TeamMember[] = [];
-
 
     try {
       const { data, error } = await supabase
@@ -229,12 +193,10 @@ const [searchQuery, setSearchQuery] = useState(""); // actual query on Enter
         .select("id,name,email,role")
         .in("role", ["Resume Head", "Resume Associate"]);
 
-
       if (!error && data) members = data as TeamMember[];
     } catch {
       // ignore
     }
-
 
     if (!members.length) {
       try {
@@ -242,7 +204,6 @@ const [searchQuery, setSearchQuery] = useState(""); // actual query on Enter
           .from("profiles")
           .select("user_id,full_name,user_email,roles")
           .in("roles", ["Resume Head", "Resume Associate"]);
-
 
         if (!error && data) {
           members = (data as any[]).map((d) => ({
@@ -257,24 +218,19 @@ const [searchQuery, setSearchQuery] = useState(""); // actual query on Enter
       }
     }
 
-
     setResumeTeamMembers(members);
   };
 
-
-const fetchData = async (newPage = page, newLimit = limit, activeSearch = searchQuery,   overrideShowMyTasks?: boolean) => {
+const fetchData = async (newPage = page, newLimit = limit, activeSearch = searchQuery, overrideShowMyTasks?: boolean) => {
   try {
     setLoading(true);
-
 
     const from = (newPage - 1) * newLimit;
     const to = from + newLimit - 1;
 
-
     let query = supabase
-      .from("full_client_status_final")
+      .from("full_client_status_view_app_exists")
       .select("*", { count: "exact" });
-
 
     // 🔍 Apply server-side search
     if (activeSearch.trim() !== "") {
@@ -283,9 +239,7 @@ const fetchData = async (newPage = page, newLimit = limit, activeSearch = search
       );
     }
 
-
-    const myTasks = overrideShowMyTasks ?? showMyTasks;
-
+ const myTasks = overrideShowMyTasks ?? showMyTasks;
 
 if (myTasks && user?.email) {
   query = query.eq("resume_assigned_email", user.email);
@@ -296,21 +250,16 @@ if (myTasks && user?.email) {
       .order("closed_at", { ascending: false })
       .range(from, to);
 
-
     const { data, error, count } = await query;
-
 
     if (error) throw error;
 
-
     setTotalRows(count ?? 0);
-
 
     const formatted: SalesClosure[] = (data as any[]).map((r) => {
       const onboardRaw = r.onboarded_date ?? null;
       const portfolioPaid =
         r.portfolio_sale_value && Number(r.portfolio_sale_value) > 0;
-
 
       return {
         id: String(r.sale_id),
@@ -343,7 +292,6 @@ if (myTasks && user?.email) {
       };
     });
 
-
     setRows(formatted);
   } catch (e) {
     console.error(e);
@@ -355,13 +303,9 @@ if (myTasks && user?.email) {
 
 
 
-
-
-
   /* =========================
      Resume status & assignee
      ========================= */
-
 
   const updateStatus = async (leadId: string, status: ResumeStatus) => {
     const { error } = await supabase
@@ -369,7 +313,6 @@ if (myTasks && user?.email) {
       .upsert({ lead_id: leadId, status }, { onConflict: "lead_id" });
     if (error) throw error;
   };
-
 
   const updateAssignedTo = async (
     leadId: string,
@@ -381,9 +324,7 @@ if (myTasks && user?.email) {
       .select("id")
       .eq("lead_id", leadId);
 
-
     if (findErr) throw findErr;
-
 
     if (existingRows && existingRows.length > 0) {
       const { error: updErr } = await supabase
@@ -403,11 +344,9 @@ if (myTasks && user?.email) {
     }
   };
 
-
   const onChangeStatus = async (row: SalesClosure, newStatus: ResumeStatus) => {
     try {
       await updateStatus(row.lead_id, newStatus);
-
 
       if (newStatus === "completed" && !row.rp_pdf_path) {
         setUploadForLead(row.lead_id);
@@ -425,11 +364,9 @@ if (myTasks && user?.email) {
     }
   };
 
-
   /* =========================
      Resume upload & download
      ========================= */
-
 
   const uploadOrReplaceResume = async (
     leadId: string,
@@ -438,7 +375,6 @@ if (myTasks && user?.email) {
   ) => {
     ensurePdf(file);
 
-
     // find existing path from DB
     const pathRes = await supabase
       .from("resume_progress")
@@ -446,9 +382,7 @@ if (myTasks && user?.email) {
       .eq("lead_id", leadId)
       .maybeSingle();
 
-
     const existingPath = pathRes.data?.pdf_path as string | undefined;
-
 
     // delete old path (S3 or Supabase storage)
     if (existingPath) {
@@ -471,25 +405,21 @@ if (myTasks && user?.email) {
       }
     }
 
-
     // upload via API → S3
     const formData = new FormData();
     formData.append("file", file);
     formData.append("lead_id", leadId);
-
 
     const res = await fetch("/api/resumes/upload", {
       method: "POST",
       body: formData,
     });
 
-
     const data = await res.json();
     if (!res.ok) {
       console.error("Upload failed:", data);
       throw new Error(data.error || "Upload failed");
     }
-
 
     // update resume_progress with new path
     const db = await supabase
@@ -508,10 +438,8 @@ if (myTasks && user?.email) {
       throw new Error(db.error.message || "DB upsert failed");
     }
 
-
     return { key: data.key, publicUrl: data.publicUrl };
   };
-
 
   const downloadResume = async (path: string) => {
     try {
@@ -544,20 +472,16 @@ if (myTasks && user?.email) {
     }
   };
 
-
   const onFilePicked = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
     const leadId = uploadForLead;
     const oldPath = replacingOldPath;
 
-
     e.target.value = "";
     setUploadForLead(null);
     setReplacingOldPath(null);
 
-
     if (!file || !leadId) return;
-
 
     try {
       await uploadOrReplaceResume(leadId, file, oldPath || undefined);
@@ -569,23 +493,20 @@ if (myTasks && user?.email) {
     }
   };
 
-
-
-
+const handleOnboardClick = (leadId: string) => {
+  router.push(`/resumeTeam/onboarding/${leadId}`);
+}; 
   /* =========================
      Sorting (optional)
      ========================= */
 
-
   type SortKey = "clientId" | "name" | "email" | "closedAt" | "onboarded";
   type SortDir = "asc" | "desc";
-
 
   const [sort, setSort] = useState<{ key: SortKey | null; dir: SortDir }>({
     key: "closedAt",
     dir: "desc",
   });
-
 
   const toggleSort = (key: SortKey) => {
     setSort((s) =>
@@ -595,24 +516,19 @@ if (myTasks && user?.email) {
     );
   };
 
-
   const parseClientIdNum = (id?: string | null) => {
     if (!id) return -Infinity;
     const m = id.match(/(\d+)$/);
     return m ? Number(m[1]) : -Infinity;
   };
 
-
   const dateToMs = (d?: string | null) =>
     d ? new Date(d).getTime() : -Infinity;
 
-
   const safeStr = (s?: string | null) => (s ?? "").toLowerCase();
-
 
   const cmp = (a: number | string, b: number | string) =>
     a < b ? -1 : a > b ? 1 : 0;
-
 
   const sortRowsBy = (arr: SalesClosure[]) => {
     if (!sort.key) return arr;
@@ -620,7 +536,6 @@ if (myTasks && user?.email) {
     copy.sort((A, B) => {
       let vA: number | string;
       let vB: number | string;
-
 
       switch (sort.key) {
         case "clientId":
@@ -653,9 +568,7 @@ if (myTasks && user?.email) {
     return copy;
   };
 
-
   const sortedRows = sortRowsBy(rows);
-
 
   const SortIcon = ({ active, dir }: { active: boolean; dir: SortDir }) =>
     active ? (
@@ -668,11 +581,9 @@ if (myTasks && user?.email) {
       <ArrowUpDown className="ml-1 h-4 w-4 opacity-60" />
     );
 
-
   /* =========================
      Render table (EXACT UI)
      ========================= */
-
 
   const renderTable = (data: SalesClosure[]) => (
     <div className="rounded-md border mt-4">
@@ -680,7 +591,6 @@ if (myTasks && user?.email) {
         <TableHeader>
           <TableRow>
             <TableHead>S.No</TableHead>
-
 
             <TableHead>
               <button
@@ -696,7 +606,6 @@ if (myTasks && user?.email) {
               </button>
             </TableHead>
 
-
             <TableHead>
               <button
                 type="button"
@@ -707,7 +616,6 @@ if (myTasks && user?.email) {
                 <SortIcon active={sort.key === "name"} dir={sort.dir} />
               </button>
             </TableHead>
-
 
             <TableHead>
               <button
@@ -720,14 +628,12 @@ if (myTasks && user?.email) {
               </button>
             </TableHead>
 
-
             <TableHead>Application email</TableHead>
             <TableHead>Phone</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Resume Status</TableHead>
             <TableHead>Assigned to</TableHead>
             <TableHead>Resume PDF</TableHead>
-
 
             <TableHead>
               <button
@@ -743,7 +649,6 @@ if (myTasks && user?.email) {
               </button>
             </TableHead>
 
-
             <TableHead>
               <button
                 type="button"
@@ -758,7 +663,6 @@ if (myTasks && user?.email) {
               </button>
             </TableHead>
 
-
             <TableHead>Portfolio Status</TableHead>
             <TableHead>Portfolio Link</TableHead>
             <TableHead>Portfolio Assignee</TableHead>
@@ -769,13 +673,11 @@ if (myTasks && user?.email) {
           </TableRow>
         </TableHeader>
 
-
         <TableBody>
           {data.map((row, index) => (
             <TableRow key={row.id}>
               <TableCell className="text-center">{index + 1}</TableCell>
               <TableCell>{row.lead_id}</TableCell>
-
 
               <TableCell
                 className="font-medium max-w-[150px] break-words whitespace-normal cursor-pointer text-blue-600 hover:underline"
@@ -786,14 +688,12 @@ if (myTasks && user?.email) {
                 {row.leads?.name || "-"}
               </TableCell>
 
-
               <TableCell>{row.email}</TableCell>
               <TableCell>
                 {row.company_application_email || "not given"}
               </TableCell>
               <TableCell>{row.leads?.phone || "-"}</TableCell>
               <TableCell>{row.finance_status}</TableCell>
-
 
               {/* Resume Status */}
               <TableCell className="min-w-[220px]">
@@ -823,7 +723,6 @@ if (myTasks && user?.email) {
                 </Select>
               </TableCell>
 
-
               {/* Assigned to */}
               <TableCell className="min-w-[260px]">
                 <Select
@@ -837,13 +736,11 @@ if (myTasks && user?.email) {
                           (u) => u.email === chosen,
                         ) || null;
 
-
                       await updateAssignedTo(
                         row.lead_id,
                         chosen,
                         member?.name ?? null,
                       );
-
 
                       setRows((rs) =>
                         rs.map((r) =>
@@ -889,7 +786,6 @@ if (myTasks && user?.email) {
                 </Select>
               </TableCell>
 
-
               {/* Resume PDF */}
               <TableCell className="space-x-2 min-w-[220px]">
                 {row.rp_pdf_path ? (
@@ -933,10 +829,8 @@ if (myTasks && user?.email) {
                 )}
               </TableCell>
 
-
               {/* Closed At */}
               <TableCell>{formatDateLabel(row.closed_at)}</TableCell>
-
 
               {/* Onboarded Date */}
               <TableCell className="min-w-[160px]">
@@ -951,7 +845,6 @@ if (myTasks && user?.email) {
                 )}
               </TableCell>
 
-
               {/* Portfolio Status */}
               <TableCell className="min-w-[140px]">
                 {row.portfolio_paid ? (
@@ -964,7 +857,6 @@ if (myTasks && user?.email) {
                   </span>
                 )}
               </TableCell>
-
 
               {/* Portfolio Link */}
               <TableCell className="max-w-[220px] truncate">
@@ -1005,7 +897,6 @@ if (myTasks && user?.email) {
                 )}
               </TableCell>
 
-
               {/* Portfolio Assignee */}
               <TableCell>
                 {row.pp_assigned_name
@@ -1020,7 +911,6 @@ if (myTasks && user?.email) {
                       </span>
                     )}
               </TableCell>
-
 
               {/* Commitments */}
               <TableCell className="min-w-[140px] text-center">
@@ -1041,7 +931,6 @@ if (myTasks && user?.email) {
                 )}
               </TableCell>
 
-
               {/* Application Status */}
               <TableCell className="min-w-[140px] text-center">
                 {Number(row.application_sale_value) > 0 ? (
@@ -1054,7 +943,6 @@ if (myTasks && user?.email) {
                   </span>
                 )}
               </TableCell>
-
 
               {/* Onboard button */}
               <TableCell>
@@ -1078,11 +966,9 @@ if (myTasks && user?.email) {
                 )}
               </TableCell>
 
-
              
             </TableRow>
           ))}
-
 
           {data.length === 0 && (
             <TableRow>
@@ -1096,7 +982,7 @@ if (myTasks && user?.email) {
           )}
         </TableBody>
       </Table>
-     
+      
       <div className="flex items-center justify-center px-4 py-2 border-t bg-gray-50">
   <div className="flex items-center gap-2">
     <span className="text-sm">Page:</span>
@@ -1112,7 +998,6 @@ if (myTasks && user?.email) {
         <SelectValue />
       </SelectTrigger>
 
-
       <SelectContent>
         {Array.from(
           { length: Math.ceil(totalRows / limit) },
@@ -1127,7 +1012,6 @@ if (myTasks && user?.email) {
   </div>
   &nbsp;&nbsp;
 
-
   <span className="text-sm text-gray-600">
     Showing {(page - 1) * limit + 1}–
     {Math.min(page * limit, totalRows)} of {totalRows}
@@ -1136,17 +1020,14 @@ if (myTasks && user?.email) {
     </div>
   );
 
-
   /* =========================
      JSX
      ========================= */
-const handleOnboardClick = (leadId: string) => {
-  router.push(`/resumeTeam/onboarding/${leadId}`);
-}; 
-  
 
   return (
-    <ProtectedRoute allowedRoles={["Super Admin", "Resume Head", "Resume Associate"]}>
+    // <ProtectedRoute
+    //   allowedRoles={["Super Admin", "Resume Head", "Resume Associate"]}
+    // >
       <DashboardLayout>
         <input
           ref={fileRef}
@@ -1156,16 +1037,13 @@ const handleOnboardClick = (leadId: string) => {
           onChange={onFilePicked}
         />
 
-
         <div className="space-y-6">
-            <div>
+          <div className="flex items-center justify-start gap-4">
             <h1 className="text-3xl font-bold text-gray-900">
-             Resume Team
+             Applications clients — Resume Team
             </h1>
-            </div>
-            {/* Assignee filter (simple version) */}
-                      <div className="flex items-center justify-start gap-4">
 
+            {/* Assignee filter (simple version) */}
             <div className="flex items-center gap-3">
               <div className="text-sm font-medium">Assigned To:</div>
               <Select
@@ -1201,40 +1079,38 @@ const handleOnboardClick = (leadId: string) => {
             </div>
             {/* Pagination Controls */}
 <div className="flex items-center gap-4">
- 
+  
   <div className="flex items-center gap-2">
-    <span className="text-sm">Rows per page:</span>
-    <Select
-      value={String(limit)}
-      onValueChange={async (val) => {
-        const newLimit = Number(val);
-        setLimit(newLimit);
-        setPage(1); // reset page
-        await fetchData(1, newLimit);
-      }}
-    >
-      <SelectTrigger className="w-[80px]">
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="30">30 per page</SelectItem>
-        <SelectItem value="50">50 per page</SelectItem>
-        <SelectItem value="100">100 per page</SelectItem>
-        <SelectItem value="200">200 per page</SelectItem>
-        <SelectItem value="500">500 per page</SelectItem>
-        <SelectItem value="1000">1000 per page</SelectItem>
-        <SelectItem value="2000">2000 per page</SelectItem>
-
-
-
-
-      </SelectContent>
-    </Select>
-  </div>
-
+     <span className="text-sm">Rows per page:</span>
+     <Select
+       value={String(limit)}
+       onValueChange={async (val) => {
+         const newLimit = Number(val);
+         setLimit(newLimit);
+         setPage(1); // reset page
+         await fetchData(1, newLimit);
+       }}
+     >
+       <SelectTrigger className="w-[80px]">
+         <SelectValue />
+       </SelectTrigger>
+       <SelectContent>
+         <SelectItem value="30">30 per page</SelectItem>
+         <SelectItem value="50">50 per page</SelectItem>
+         <SelectItem value="100">100 per page</SelectItem>
+         <SelectItem value="200">200 per page</SelectItem>
+         <SelectItem value="500">500 per page</SelectItem>
+         <SelectItem value="1000">1000 per page</SelectItem>
+         <SelectItem value="2000">2000 per page</SelectItem>
+ 
+ 
+ 
+ 
+       </SelectContent>
+     </Select>
+   </div>
 
 </div>
-
 
           </div>
            <div className="flex flex-auto">
@@ -1251,7 +1127,7 @@ const handleOnboardClick = (leadId: string) => {
        }
      }}
    />
-   {/* <Button
+   <Button
      onClick={async () => {
        setSearchQuery(searchText);
        setPage(1);
@@ -1259,17 +1135,15 @@ const handleOnboardClick = (leadId: string) => {
      }}
    >
      Search
-   </Button> */}
+   </Button>
 
-
-   <Button
+  <Button
   variant={showMyTasks ? "default" : "outline"}
-  className={showMyTasks ? "bg-blue-600 text-white" : ""}
+  className={showMyTasks ? "bg-blue-600 text-white" : "bg-green-500 text-white"}
   onClick={async () => {
     const newValue = !showMyTasks;
     setShowMyTasks(newValue);
     setPage(1);
-
 
     // 🚀 Pass newValue directly (the key fix)
     await fetchData(1, limit, searchQuery, newValue);
@@ -1278,48 +1152,12 @@ const handleOnboardClick = (leadId: string) => {
   {showMyTasks ? "Show All" : "My Tasks"}
 </Button>
 
- <div className="flex flex-col sm:flex-row gap-2 items-center">
- 
-  <DropdownMenu>
-  <DropdownMenuTrigger asChild>
-    <Button variant="outline" size="icon">
-      <MoreVertical className="h-5 w-5" />
-    </Button>
-  </DropdownMenuTrigger>
-  <DropdownMenuContent align="end">
-    {/* Not Onboarded Clients Dialog */}
-    <DropdownMenuItem
-      onClick={()=>{ window.open(`/resumeTeam/notOnboardedClients`, "_blank")
- 
-      }}
-    >
-      Not onboarded clients
-    </DropdownMenuItem>
- 
-    {/* Only for Resumes Dialog */}
-   
-   
-    <DropdownMenuItem
-      onClick={async () => { window.open(`/resumeTeam/jobBoardClients`, "_blank") }}
-    >
-      Job Board Clients
-    </DropdownMenuItem>
-    <DropdownMenuItem
-      onClick={()=>{ window.open(`/resumeTeam/applications`, "_blank") }}
-    >
-      Only for Applications
-    </DropdownMenuItem>
-  </DropdownMenuContent>
-</DropdownMenu>
- 
-</div>
- 
- 
- </div>
-     <span className="text-green-500 gap-3 mt-2 ml-4 font-semibold">Total Rows : {totalRows}</span>
- 
- </div>
 
+ 
+ </div>
+     <span className="text-red-500 gap-3 mt-2 ml-4 font-semibold">Total Rows : {totalRows}</span>
+ 
+ </div>
 
           {loading ? (
             <p className="p-6 text-gray-600">Loading...</p>
@@ -1327,7 +1165,6 @@ const handleOnboardClick = (leadId: string) => {
             renderTable(sortedRows)
           )}
         </div>
-
 
         {/* Requirements Dialog */}
         <Dialog open={reqDialogOpen} onOpenChange={setReqDialogOpen}>
@@ -1343,7 +1180,6 @@ const handleOnboardClick = (leadId: string) => {
                 Commitment details captured at sale closure.
               </DialogDescription>
             </DialogHeader>
-
 
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -1385,7 +1221,6 @@ const handleOnboardClick = (leadId: string) => {
                 </div>
               </div>
 
-
               <div>
                 <div className="text-xs text-muted-foreground mb-1">
                   Commitments
@@ -1397,7 +1232,6 @@ const handleOnboardClick = (leadId: string) => {
                 </div>
               </div>
             </div>
-
 
             <DialogFooter className="gap-2">
               <Button
@@ -1419,13 +1253,705 @@ const handleOnboardClick = (leadId: string) => {
           </DialogContent>
         </Dialog>
 
-
       </DashboardLayout>
-      </ProtectedRoute>
   );
 }
 
 
 
 
+
+
+
+// /* =========================
+//    SendButton (Forward to TT)
+//    ========================= */
+
+// const SendButton = ({
+//   row,
+//   handleSendToPendingClients,
+// }: {
+//   row: SalesClosure;
+//   handleSendToPendingClients: (leadId: string) => Promise<void>;
+// }) => {
+//   const [isSending, setIsSending] = useState(false);
+//   const [isSent, setIsSent] = useState(false);
+
+//   useEffect(() => {
+//     if (row.data_sent_to_customer_dashboard === "Sent") {
+//       setIsSent(true);
+//       setIsSending(false);
+//     }
+//   }, [row.data_sent_to_customer_dashboard]);
+
+//   const onClick = async () => {
+//     setIsSending(true);
+//     try {
+//       await handleSendToPendingClients(row.lead_id);
+//       setIsSent(true);
+//     } catch (e) {
+//       console.error(e);
+//       setIsSending(false);
+//       alert("Failed to send to TT");
+//     }
+//   };
+
+//   if (isSent || row.data_sent_to_customer_dashboard === "Sent") {
+//     return (
+//       <Button
+//         variant="outline"
+//         size="sm"
+//         className="bg-orange-600 text-white hover:bg-orange-400 hover:text-white cursor-not-allowed"
+//       >
+//         Sent
+//       </Button>
+//     );
+//   }
+
+//   return (
+//     <Button
+//       variant="outline"
+//       size="sm"
+//       disabled={isSending}
+//       onClick={onClick}
+//       className={`text-white ${
+//         isSending
+//           ? "bg-orange-500 hover:bg-orange-500 cursor-not-allowed"
+//           : "bg-purple-600 hover:bg-purple-700"
+//       }`}
+//     >
+//       {isSending ? "Sending..." : "TT"}
+//     </Button>
+//   );
+// };
+
+
+
+// /* =========================
+//    SendButton (Forward to TT)
+//    ========================= */
+
+// const SendButton = ({
+//   row,
+//   handleSendToPendingClients,
+// }: {
+//   row: SalesClosure;
+//   handleSendToPendingClients: (leadId: string) => Promise<void>;
+// }) => {
+//   const [isSending, setIsSending] = useState(false);
+//   const [isSent, setIsSent] = useState(false);
+
+//   useEffect(() => {
+//     if (row.data_sent_to_customer_dashboard === "Sent") {
+//       setIsSent(true);
+//       setIsSending(false);
+//     }
+//   }, [row.data_sent_to_customer_dashboard]);
+
+//   const onClick = async () => {
+//     setIsSending(true);
+//     try {
+//       await handleSendToPendingClients(row.lead_id);
+//       setIsSent(true);
+//     } catch (e) {
+//       console.error(e);
+//       setIsSending(false);
+//       alert("Failed to send to TT");
+//     }
+//   };
+
+//   if (isSent || row.data_sent_to_customer_dashboard === "Sent") {
+//     return (
+//       <Button
+//         variant="outline"
+//         size="sm"
+//         className="bg-orange-600 text-white hover:bg-orange-400 hover:text-white cursor-not-allowed"
+//       >
+//         Sent
+//       </Button>
+//     );
+//   }
+
+//   return (
+//     <Button
+//       variant="outline"
+//       size="sm"
+//       disabled={isSending}
+//       onClick={onClick}
+//       className={`text-white ${
+//         isSending
+//           ? "bg-orange-500 hover:bg-orange-500 cursor-not-allowed"
+//           : "bg-purple-600 hover:bg-purple-700"
+//       }`}
+//     >
+//       {isSending ? "Sending..." : "TT"}
+//     </Button>
+//   );
+// };
+
+  
+//   /* =========================
+//      Onboard helpers
+//      ========================= */
+
+//   const loadLatestOnboardingForLead = async (
+//     leadId: string,
+//     fallbackEmail?: string,
+//   ) => {
+//     setDialogLoading(true);
+//     setLatestOnboardRowId(null);
+
+//     const { data: row, error } = await supabase
+//       .from("client_onborading_details")
+//       .select(
+//         `
+//       id,
+//       full_name,
+//       personal_email,
+//       company_email,
+//       callable_phone,
+//       job_role_preferences,
+//       location_preferences,
+//       salary_range,
+//       work_auth_details,
+//       needs_sponsorship,
+//       full_address,
+//       linkedin_url,
+//       date_of_birth,
+//       created_at
+//     `,
+//       )
+//       .eq("lead_id", leadId)
+//       .order("created_at", { ascending: false })
+//       .limit(1)
+//       .maybeSingle();
+
+//     if (!error && row) {
+//       setLatestOnboardRowId(row.id);
+//       setObFullName(row.full_name ?? "");
+//       setObPersonalEmail(row.personal_email ?? fallbackEmail ?? "");
+//       setObCompanyEmail((row.company_email ?? "").trim());
+//       setObCallablePhone(row.callable_phone ?? "");
+//       setObJobRolesText(csvFromArray(row.job_role_preferences));
+//       setObLocationsText(csvFromArray(row.location_preferences));
+//       setObSalaryRange(row.salary_range ?? "");
+//       setObWorkAuth(row.work_auth_details ?? "");
+//       setObNeedsSponsorship(
+//         typeof row.needs_sponsorship === "boolean"
+//           ? row.needs_sponsorship
+//           : null,
+//       );
+//       setObFullAddress(row.full_address ?? "");
+//       setObLinkedInUrl(row.linkedin_url ?? "");
+//       setObDob(row.date_of_birth ?? "");
+//     } else {
+//       setLatestOnboardRowId(null);
+//       setObFullName("");
+//       setObPersonalEmail(fallbackEmail ?? "");
+//       setObCompanyEmail("");
+//       setObCallablePhone("");
+//       setObJobRolesText("");
+//       setObLocationsText("");
+//       setObSalaryRange("");
+//       setObWorkAuth("");
+//       setObNeedsSponsorship(null);
+//       setObFullAddress("");
+//       setObLinkedInUrl("");
+//       setObDob("");
+//     }
+
+//     setObDate("");
+//     setDialogLoading(false);
+//   };
+
+//   const handleOnboardClick = async (row: SalesClosure) => {
+//     setCurrentLeadId(row.lead_id);
+//     setCurrentSaleId(row.id);
+//     setShowOnboardDialog(true);
+//     // await loadLatestOnboardingForLead(row.lead_id, row.email);
+//   };
+
+//   const writePendingClientFromLead = async (leadId: string) => {
+//     // latest onboarding
+//     const { data: ob, error: obErr } = await supabase
+//       .from("client_onborading_details")
+//       .select(
+//         `
+//       full_name,
+//       whatsapp_number,
+//       personal_email,
+//       callable_phone,
+//       company_email,
+//       job_role_preferences,
+//       salary_range,
+//       github_url,
+//       linkedin_url,
+//       location_preferences,
+//       work_auth_details,
+//       created_at,
+//       lead_id,
+//       needs_sponsorship,
+//       visatypes
+//     `,
+//       )
+//       .eq("lead_id", leadId)
+//       .order("created_at", { ascending: false })
+//       .limit(1)
+//       .maybeSingle();
+
+//     if (obErr) throw obErr;
+//     if (!ob) throw new Error("No onboarding details found.");
+
+//     // latest sales
+//     const { data: scRow, error: scErr } = await supabase
+//       .from("sales_closure")
+//       .select(
+//         `
+//       badge_value,
+//       closed_at,
+//       email,
+//       no_of_job_applications,
+//       application_sale_value,
+//       resume_sale_value,
+//       portfolio_sale_value,
+//       linkedin_sale_value,
+//       github_sale_value,
+//       courses_sale_value,
+//       custom_sale_value,
+//       job_board_value
+//     `,
+//       )
+//       .eq("lead_id", leadId)
+//       .order("closed_at", { ascending: false })
+//       .limit(1)
+//       .maybeSingle();
+
+//     if (scErr) throw scErr;
+
+//     const addOnsInfo = [
+//       { type: "application_sale_value", value: scRow?.application_sale_value },
+//       { type: "resume_sale_value", value: scRow?.resume_sale_value },
+//       { type: "portfolio_sale_value", value: scRow?.portfolio_sale_value },
+//       { type: "linkedin_sale_value", value: scRow?.linkedin_sale_value },
+//       { type: "github_sale_value", value: scRow?.github_sale_value },
+//       { type: "courses_sale_value", value: scRow?.courses_sale_value },
+//       { type: "custom_sale_value", value: scRow?.custom_sale_value },
+//       { type: "job_board_value", value: scRow?.job_board_value },
+//     ]
+//       .filter((i) => i.value !== null && i.value !== undefined)
+//       .map((i) => JSON.stringify(i));
+
+//     const payload = {
+//       full_name: ob.full_name,
+//       personal_email: ob.personal_email,
+//       whatsapp_number: ob.whatsapp_number ?? null,
+//       callable_phone: ob.callable_phone ?? null,
+//       company_email: ob.company_email?.trim() || null,
+//       job_role_preferences: ob.job_role_preferences ?? null,
+//       salary_range: ob.salary_range ?? null,
+//       location_preferences: ob.location_preferences ?? null,
+//       work_auth_details: ob.work_auth_details ?? null,
+//       visa_type: ob.visatypes ?? null,
+//       sponsorship:
+//         typeof ob.needs_sponsorship === "boolean"
+//           ? ob.needs_sponsorship
+//           : null,
+//       applywizz_id: ob.lead_id ?? leadId,
+//       github_url: ob.github_url ?? null,
+//       linkedin_url: ob.linkedin_url ?? null,
+//       badge_value: scRow?.badge_value ?? null,
+//       no_of_applications: scRow?.no_of_job_applications ?? null,
+//       add_ons_info: addOnsInfo,
+//       created_at: ob.created_at ?? new Date().toISOString(),
+//     };
+
+//     const res = await fetch("/api/pending-clients/upsert", {
+//       method: "POST",
+//       headers: { "Content-Type": "application/json" },
+//       body: JSON.stringify(payload),
+//     });
+
+//     if (!res.ok) {
+//       const j = await res.json().catch(() => ({}));
+//       throw new Error(j.error || "Failed to upsert pending_client");
+//     }
+//   };
+
+//   const saveOnboardAndDetails = async () => {
+//     if (!currentLeadId || !currentSaleId) {
+//       alert("Missing context.");
+//       return;
+//     }
+//     if (!obDate) {
+//       alert("Please choose an Onboarded Date.");
+//       return;
+//     }
+
+//     setDialogLoading(true);
+//     try {
+//       const payload = {
+//         full_name: obFullName || null,
+//         company_email: obCompanyEmail?.trim() || null,
+//         personal_email: obPersonalEmail || null,
+//         callable_phone: obCallablePhone || null,
+//         job_role_preferences: csvToArray(obJobRolesText),
+//         location_preferences: csvToArray(obLocationsText),
+//         salary_range: obSalaryRange || null,
+//         work_auth_details: obWorkAuth || null,
+//         needs_sponsorship: obNeedsSponsorship,
+//         full_address: obFullAddress || null,
+//         linkedin_url: obLinkedInUrl || null,
+//         date_of_birth: obDob || null,
+//         lead_id: currentLeadId,
+//       };
+
+//       if (latestOnboardRowId) {
+//         const { error } = await supabase
+//           .from("client_onborading_details")
+//           .update(payload)
+//           .eq("id", latestOnboardRowId);
+//         if (error) throw error;
+//       } else {
+//         const { error } = await supabase
+//           .from("client_onborading_details")
+//           .insert(payload);
+//         if (error) throw error;
+//       }
+
+//       const { error: saleErr } = await supabase
+//         .from("sales_closure")
+//         .update({
+//           onboarded_date: obDate,
+//           company_application_email: obCompanyEmail || null,
+//         })
+//         .eq("id", currentSaleId);
+//       if (saleErr) throw saleErr;
+
+//       await writePendingClientFromLead(currentLeadId);
+
+//       await fetchData();
+
+//       setShowOnboardDialog(false);
+//       setCurrentLeadId(null);
+//       setCurrentSaleId(null);
+//       setLatestOnboardRowId(null);
+//       setObDate("");
+//     } catch (e: any) {
+//       console.error(e);
+//       alert(e?.message || "Failed to save onboarding details");
+//     } finally {
+//       setDialogLoading(false);
+//     }
+//   };
+
+//   /* =========================
+//      Forward to TT (pending_clients)
+//      ========================= */
+
+//   const sendToPendingClients = async (leadId: string) => {
+//     console.log("sendToPendingClients →", leadId);
+
+//     const { data: sc, error: scErr } = await supabase
+//       .from("sales_closure")
+//       .select(
+//         `
+//       onboarded_date,
+//       subscription_cycle,
+//       no_of_job_applications,
+//       badge_value,
+//       id,
+//       application_sale_value,
+//       resume_sale_value,
+//       portfolio_sale_value,
+//       linkedin_sale_value,
+//       github_sale_value,
+//       courses_sale_value,
+//       custom_sale_value,
+//       job_board_value
+//     `,
+//       )
+//       .eq("lead_id", leadId)
+//       .order("onboarded_date", { ascending: false })
+//       .limit(1)
+//       .single();
+
+//     if (scErr || !sc) throw new Error("No sales_closure record found.");
+
+    // const startDate = sc.onboarded_date;
+    // const endDate = startDate
+    //   ? new Date(
+    //       new Date(startDate).getTime() +
+    //         sc.subscription_cycle * 24 * 60 * 60 * 1000,
+    //     )
+    //       .toISOString()
+    //       .split("T")[0]
+    //   : null;
+
+    // const { data: rp, error: rpErr } = await supabase
+    //   .from("resume_progress")
+    //   .select("pdf_path")
+    //   .eq("lead_id", leadId)
+    //   .maybeSingle();
+    // if (rpErr) throw rpErr;
+    // const resumePath = rp?.pdf_path || null;
+
+    // const { data: ob, error: obErr } = await supabase
+    //   .from("client_onborading_details")
+    //   .select("*")
+    //   .eq("lead_id", leadId)
+    //   .order("created_at", { ascending: true })
+    //   .limit(1)
+    //   .maybeSingle();
+    // if (obErr || !ob) throw new Error("No onboarding details found.");
+
+    // const allowedServices = [
+    //   { field: "application_sale_value", label: "applications" },
+    //   { field: "resume_sale_value", label: "resume" },
+    //   { field: "portfolio_sale_value", label: "portfolio" },
+    //   { field: "linkedin_sale_value", label: "linkedin" },
+    //   { field: "github_sale_value", label: "github" },
+    //   { field: "courses_sale_value", label: "courses" },
+    //   { field: "experience", label: "experience" },
+    //   { field: "badge_value", label: "badge" },
+    //   { field: "job_board_value", label: "job-links" },
+    // ];
+
+    // const scAny: any = sc;
+    // const addOnsInfo = allowedServices
+    //   .filter((item) => {
+    //     const val = scAny?.[item.field];
+    //     return val !== null && val !== undefined && Number(val) > 0;
+    //   })
+    //   .map((item) => item.label);
+
+//     const payload = {
+//       full_name: ob.full_name,
+//       personal_email: ob.personal_email,
+//       whatsapp_number: ob.whatsapp_number ?? null,
+//       callable_phone: ob.callable_phone ?? null,
+//       company_email: ob.company_email?.trim() || null,
+//       job_role_preferences: ob.job_role_preferences ?? null,
+//       salary_range: ob.salary_range ?? null,
+//       location_preferences: ob.location_preferences ?? null,
+//       work_auth_details: ob.work_auth_details ?? null,
+//       applywizz_id: leadId,
+//       created_at: new Date().toISOString(),
+//       visa_type: ob.visatypes ?? null,
+//       sponsorship: ob.needs_sponsorship ?? null,
+//       resume_url: resumePath,
+//       resume_path: resumePath,
+//       start_date: startDate,
+//       end_date: endDate,
+//       no_of_applications: sc.no_of_job_applications ?? null,
+//       badge_value: sc.badge_value ?? null,
+//       add_ons_info: addOnsInfo,
+//       github_url: ob.github_url ?? null,
+//       linked_in_url: ob.linkedin_url ?? null,
+//     };
+
+//     const res = await fetch("/api/pending-clients/upsert", {
+//       method: "POST",
+//       headers: { "Content-Type": "application/json" },
+//       body: JSON.stringify(payload),
+//     });
+
+//     const result = await res.json();
+//     if (!res.ok) throw new Error(result?.error || "Upsert failed.");
+
+//     const { error: updateErr } = await supabase
+//       .from("sales_closure")
+//       .update({ data_sent_to_customer_dashboard: "Sent" })
+//       .eq("lead_id", leadId);
+//     if (updateErr) throw updateErr;
+
+//     await fetchData();
+//   };
+
+//   const handleSendToPendingClients = async (leadId: string) => {
+//     try {
+//       await sendToPendingClients(leadId);
+//       alert("Data sent to TT (pending_clients).");
+//     } catch (e: any) {
+//       console.error(e);
+//       alert(e?.message || "Failed to send data.");
+//     }
+//   };
+
+
+
+//         //  Onboard Dialog
+//         <Dialog open={showOnboardDialog} onOpenChange={setShowOnboardDialog}>
+//           <DialogContent className="max-w-3xl">
+//             <DialogHeader>
+//               <DialogTitle>
+//                 Onboard & Edit — {currentLeadId ?? ""}
+//               </DialogTitle>
+//               <DialogDescription>
+//                 Update the latest onboarding details and set the Onboarded
+//                 Date.
+//               </DialogDescription>
+//             </DialogHeader>
+
+//             {dialogLoading ? (
+//               <div className="p-8 text-sm text-muted-foreground">
+//                 Loading…
+//               </div>
+//             ) : (
+//               <div className="space-y-4">
+//                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+//                   <div className="space-y-1.5">
+//                     <Label>Full Name</Label>
+//                     <Input
+//                       value={obFullName}
+//                       onChange={(e) => setObFullName(e.target.value)}
+//                     />
+//                   </div>
+//                   <div className="space-y-1.5">
+//                     <Label>Company Email</Label>
+//                     <Input
+//                       value={obCompanyEmail}
+//                       onChange={(e) =>
+//                         setObCompanyEmail(e.target.value)
+//                       }
+//                     />
+//                   </div>
+//                 </div>
+
+//                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+//                   <div className="space-y-1.5">
+//                     <Label>Callable Phone</Label>
+//                     <Input
+//                       value={obCallablePhone}
+//                       onChange={(e) =>
+//                         setObCallablePhone(e.target.value)
+//                       }
+//                     />
+//                   </div>
+//                   <div className="space-y-1.5">
+//                     <Label>Onboarded Date</Label>
+//                     <Input
+//                       type="date"
+//                       value={obDate}
+//                       onChange={(e) => setObDate(e.target.value)}
+//                     />
+//                   </div>
+//                 </div>
+
+//                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+//                   <div className="space-y-1.5">
+//                     <Label>Job Role Preferences (comma separated)</Label>
+//                     <Textarea
+//                       rows={3}
+//                       value={obJobRolesText}
+//                       onChange={(e) =>
+//                         setObJobRolesText(e.target.value)
+//                       }
+//                     />
+//                   </div>
+//                   <div className="space-y-1.5">
+//                     <Label>Location Preferences (comma separated)</Label>
+//                     <Textarea
+//                       rows={3}
+//                       value={obLocationsText}
+//                       onChange={(e) =>
+//                         setObLocationsText(e.target.value)
+//                       }
+//                     />
+//                   </div>
+//                 </div>
+
+//                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+//                   <div className="space-y-1.5">
+//                     <Label>Salary Range</Label>
+//                     <Input
+//                       value={obSalaryRange}
+//                       onChange={(e) =>
+//                         setObSalaryRange(e.target.value)
+//                       }
+//                     />
+//                   </div>
+//                   <div className="space-y-1.5">
+//                     <Label>Work Auth Details</Label>
+//                     <Input
+//                       value={obWorkAuth}
+//                       onChange={(e) => setObWorkAuth(e.target.value)}
+//                     />
+//                   </div>
+//                 </div>
+
+//                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+//                   <div className="space-y-1.5">
+//                     <Label>Needs Sponsorship</Label>
+//                     <Select
+//                       value={
+//                         obNeedsSponsorship === null
+//                           ? "__unset__"
+//                           : obNeedsSponsorship
+//                           ? "yes"
+//                           : "no"
+//                       }
+//                       onValueChange={(v) => {
+//                         if (v === "__unset__") setObNeedsSponsorship(null);
+//                         else setObNeedsSponsorship(v === "yes");
+//                       }}
+//                     >
+//                       <SelectTrigger>
+//                         <SelectValue placeholder="Select…" />
+//                       </SelectTrigger>
+//                       <SelectContent>
+//                         <SelectItem value="__unset__">—</SelectItem>
+//                         <SelectItem value="yes">Yes</SelectItem>
+//                         <SelectItem value="no">No</SelectItem>
+//                       </SelectContent>
+//                     </Select>
+//                   </div>
+//                   <div className="space-y-1.5">
+//                     <Label>Date of Birth</Label>
+//                     <Input
+//                       type="date"
+//                       value={obDob}
+//                       onChange={(e) => setObDob(e.target.value)}
+//                     />
+//                   </div>
+//                 </div>
+
+//                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+//                   <div className="space-y-1.5">
+//                     <Label>Full Address</Label>
+//                     <Textarea
+//                       rows={3}
+//                       value={obFullAddress}
+//                       onChange={(e) =>
+//                         setObFullAddress(e.target.value)
+//                       }
+//                     />
+//                   </div>
+//                   <div className="space-y-1.5">
+//                     <Label>LinkedIn URL</Label>
+//                     <Input
+//                       type="url"
+//                       value={obLinkedInUrl}
+//                       onChange={(e) =>
+//                         setObLinkedInUrl(e.target.value)
+//                       }
+//                     />
+//                   </div>
+//                 </div>
+//               </div>
+//             )}
+
+//             <DialogFooter>
+//               <Button
+//                 variant="outline"
+//                 onClick={() => setShowOnboardDialog(false)}
+//                 disabled={dialogLoading}
+//               >
+//                 Cancel
+//               </Button>
+//               <Button onClick={saveOnboardAndDetails} disabled={dialogLoading}>
+//                 {dialogLoading ? "Saving…" : "Save & Onboard"}
+//               </Button>
+//             </DialogFooter>
+//           </DialogContent>
+//         </Dialog> 
 
