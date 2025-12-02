@@ -1947,21 +1947,21 @@ export default function ResumeTeamPage() {
      Sorting (optional)
      ========================= */
 
-  type SortKey = "clientId" | "name" | "email" | "closedAt" | "onboarded";
-  type SortDir = "asc" | "desc";
+type SortKey = "clientId" | "name" | "email" | "closedAt" | "onboarded";
+type SortDir = "asc" | "desc";
 
-  const [sort, setSort] = useState<{ key: SortKey | null; dir: SortDir }>({
+const [sort, setSort] = useState<{ key: SortKey | null; dir: SortDir }>({
     key: "closedAt",
     dir: "desc",
-  });
+});
 
-  const toggleSort = (key: SortKey) => {
+const toggleSort = (key: SortKey) => {
     setSort((s) =>
-      s.key === key
-        ? { key, dir: s.dir === "asc" ? "desc" : "asc" }
-        : { key, dir: "asc" },
+        s.key === key
+            ? { key, dir: s.dir === "asc" ? "desc" : "asc" }
+            : { key, dir: "asc" },
     );
-  };
+};
 
   const parseClientIdNum = (id?: string | null) => {
     if (!id) return -Infinity;
