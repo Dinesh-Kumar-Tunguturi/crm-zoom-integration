@@ -649,6 +649,18 @@ setTlActiveCounts(tlArray);
       return sortOrder === "asc" ? dateA - dateB : dateB - dateA;
     }
 
+       if (sortField === "subscription_cycle") {
+      const aPaid = a.finance_status === "Paid";
+      const bPaid = b.finance_status === "Paid";
+
+      if (aPaid && !bPaid) return -1;
+      if (!aPaid && bPaid) return 1;
+
+      const sub1 = a.subscription_cycle || 0;
+      const sub2 = b.subscription_cycle || 0;
+      return sortOrder === "asc" ? sub1 - sub2 : sub2 - sub1;
+    }
+
     if (sortField === "assigned_to") {
       const aTL = (a.associates_tl_email ?? "").toLowerCase();
       const bTL = (b.associates_tl_email ?? "").toLowerCase();
@@ -1444,8 +1456,31 @@ const totalTLCount = tlActiveCounts.reduce((sum, tl) => sum + tl.count, 0);
                         </span>
                       </div>
                     </TableHead>
-
-                    <TableHead>Subscription Cycle</TableHead>
+  <TableHead
+                      className="cursor-pointer items-center gap-1"
+                      onClick={() => handleSort("subscription_cycle")}
+                    >
+                      <div className="flex flex-center gap-1">
+                        Subscription Cycle
+                        <span
+                          className={`text-xs leading-none ${sortField === "subscription_cycle" && sortOrder === "desc"
+                            ? "text-blue-600"
+                            : "text-gray-400"
+                            }`}
+                        >
+                          ▲
+                        </span>
+                        <span
+                          className={`text-xs leading-none ${sortField === "subscription_cycle" && sortOrder === "asc"
+                            ? "text-blue-600"
+                            : "text-gray-400"
+                            }`}
+                        >
+                          ▼
+                        </span>
+                      </div>
+                    </TableHead>
+                    {/* <TableHead>Subscription Cycle</TableHead> */}
 <TableHead
   className="cursor-pointer items-center gap-1"
   onClick={() => handleSort("assigned_to")}
