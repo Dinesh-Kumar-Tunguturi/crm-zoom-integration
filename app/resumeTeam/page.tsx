@@ -2575,6 +2575,13 @@ const toggleSort = (key: SortKey) => {
                     >
                       Only for Applications
                     </DropdownMenuItem>
+                     <DropdownMenuItem
+                      onClick={() => { 
+                        window.open(`/resumeTeam/renewals`, "_blank")
+                      }}
+                    >
+                      Renewals
+                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
