@@ -1,15 +1,12 @@
 //app/technicalTeam/page.tsx
+
 "use client";
 import Link from "next/link";
-
-// import { useEffect, useState } from "react";
 import { useEffect, useState, useRef } from "react";
-
 import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
-
 import {
   Table,
   TableBody,
@@ -36,6 +33,14 @@ import {
   DialogFooter,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
@@ -46,6 +51,7 @@ import { useAuth } from "@/components/providers/auth-provider";
    ========================= */
 
 type FinanceStatus = "Paid" | "Unpaid" | "Paused" | "Closed" | "Got Placed";
+
 type RawCsv = {
   lead_id?: string;
   lead_name?: string;
@@ -74,7 +80,6 @@ type RawCsv = {
   commitments?: string;
 };
 
-
 type ResumeStatus =
   | "not_started"
   | "pending"
@@ -88,7 +93,6 @@ const STATUS_LABEL: Record<ResumeStatus, string> = {
   completed: "Completed",
 };
 
-/** NEW: Portfolio status is now separate in portfolio_progress */
 type PortfolioStatus =
   | "not_started"
   | "pending"
@@ -111,27 +115,19 @@ const PORTFOLIO_STATUS_OPTIONS: PortfolioStatus[] = [
 
 interface SalesClosure {
   id: string;
-  lead_id: string; // text in DB
+  lead_id: string;
   email: string;
   finance_status: FinanceStatus;
   closed_at: string | null;
   portfolio_sale_value?: number | null;
   github_sale_value?: number | null;
-
-  // legacy fields on sales_closure (we are NOT using these for portfolio assignee anymore)
   associates_email?: string | null;
   associates_name?: string | null;
   associates_tl_email?: string | null;
   associates_tl_name?: string | null;
-
-  // joined
   leads?: { name: string; phone: string };
-
-  // resume_progress (read-only for resume build)
   rp_status?: ResumeStatus;
   rp_pdf_path?: string | null;
-
-  // portfolio_progress (authoritative for portfolio)
   pp_status?: PortfolioStatus | null;
   pp_link?: string | null;
   pp_assigned_email?: string | null;
@@ -176,20 +172,24 @@ const GITHUB_COLUMNS = [
 
 export default function TechnicalTeamPage() {
   const [loading, setLoading] = useState(true);
-
   const [portfolioRows, setPortfolioRows] = useState<SalesClosure[]>([]);
   const [githubRows, setGithubRows] = useState<SalesClosure[]>([]);
+  const [filteredPortfolioRows, setFilteredPortfolioRows] = useState<SalesClosure[]>([]);
+  const [filteredGithubRows, setFilteredGithubRows] = useState<SalesClosure[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamUser[]>([]);
-
-  // Success dialog state (for entering portfolio link)
+  const [selectedAssignee, setSelectedAssignee] = useState<string>("all");
+  
+  // Pagination states
+  const [currentPortfolioPage, setCurrentPortfolioPage] = useState(1);
+  const [currentGithubPage, setCurrentGithubPage] = useState(1);
+  const [portfolioPageSize, setPortfolioPageSize] = useState<number | "all">(10);
+  const [githubPageSize, setGithubPageSize] = useState<number | "all">(10);
+  
   const [linkDraft, setLinkDraft] = useState<Record<string, string>>({});
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [linkTargetLeadId, setLinkTargetLeadId] = useState<string | null>(null);
   const [linkTargetRowId, setLinkTargetRowId] = useState<string | null>(null);
-
-  // =========================
-  // INSERT dialog state
-  // =========================
+  
   const [importInsertOpen, setImportInsertOpen] = useState(false);
   const [insertFile, setInsertFile] = useState<File | null>(null);
   const [parsingInsert, setParsingInsert] = useState(false);
@@ -199,10 +199,7 @@ export default function TechnicalTeamPage() {
   const [invalidRowsInsert, setInvalidRowsInsert] = useState<
     { index: number; errors: string[] }[]
   >([]);
-
-  // =========================
-  // UPDATE dialog state (by lead_id)
-  // =========================
+  
   const [importUpdateOpen, setImportUpdateOpen] = useState(false);
   const [updateFile, setUpdateFile] = useState<File | null>(null);
   const [parsingUpdate, setParsingUpdate] = useState(false);
@@ -211,36 +208,115 @@ export default function TechnicalTeamPage() {
   const [invalidRowsUpdate, setInvalidRowsUpdate] = useState<
     { index: number; errors: string[] }[]
   >([]);
-
-  // --- "My Tasks" dialog state (portfolio only) ---
-const [myTasksOpen, setMyTasksOpen] = useState(false);
-const [myTasksRows, setMyTasksRows] = useState<SalesClosure[]>([]);
-const [myTasksLoading, setMyTasksLoading] = useState(false);
-const [myTasksError, setMyTasksError] = useState<string | null>(null);
-
-
-  // update-by-lead_id bookkeeping
+  
+  const [myTasksOpen, setMyTasksOpen] = useState(false);
+  const [myTasksRows, setMyTasksRows] = useState<SalesClosure[]>([]);
+  const [myTasksLoading, setMyTasksLoading] = useState(false);
+  const [myTasksError, setMyTasksError] = useState<string | null>(null);
+  
   const [updatesToApply, setUpdatesToApply] = useState<
     { lead_id: string; patch: Record<string, any> }[]
   >([]);
-  const [latestIdByLead, setLatestIdByLead] = useState<Record<string, string>>(
-    {}
-  );
+  const [latestIdByLead, setLatestIdByLead] = useState<Record<string, string>>({});
   const [missingLeadIds, setMissingLeadIds] = useState<string[]>([]);
-
-  // Controlled Assignee value per portfolio row (keyed by sales_closure.id)
+  
   const [assigneeByRow, setAssigneeByRow] = useState<
     Record<string, string | undefined>
   >({});
 
   const { user } = useAuth();
   const router = useRouter();
+  const quickFileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Page size options
+  const pageSizeOptions = [
+    { value: 10, label: "10 per page" },
+    { value: 30, label: "30 per page" },
+    { value: 50, label: "50 per page" },
+    { value: 100, label: "100 per page" },
+    { value: 200, label: "200 per page" },
+    { value: 500, label: "500 per page" },
+    { value: 1000, label: "1000 per page" },
+    { value: 2000, label: "2000 per page" },
+    { value: "all", label: "All records" },
+  ];
+
+  /* =========================
+     Pagination Logic
+     ========================= */
+  
+  const getPaginatedRows = (rows: SalesClosure[], currentPage: number, pageSize: number | "all") => {
+    if (pageSize === "all") {
+      return rows;
+    }
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    return rows.slice(startIndex, endIndex);
+  };
+  
+  const getTotalPages = (rows: SalesClosure[], pageSize: number | "all") => {
+    if (pageSize === "all") {
+      return 1;
+    }
+    return Math.ceil(rows.length / pageSize);
+  };
+  
+  const handlePortfolioPageChange = (page: number) => {
+    setCurrentPortfolioPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+  
+  const handleGithubPageChange = (page: number) => {
+    setCurrentGithubPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handlePortfolioPageSizeChange = (value: string) => {
+    const newSize = value === "all" ? "all" : parseInt(value, 10);
+    setPortfolioPageSize(newSize);
+    setCurrentPortfolioPage(1); // Reset to first page when page size changes
+  };
+
+  const handleGithubPageSizeChange = (value: string) => {
+    const newSize = value === "all" ? "all" : parseInt(value, 10);
+    setGithubPageSize(newSize);
+    setCurrentGithubPage(1); // Reset to first page when page size changes
+  };
+
+  /* =========================
+     Assignee Filter Logic
+     ========================= */
+  
+  const handleAssigneeFilter = (email: string) => {
+    setSelectedAssignee(email);
+    
+    if (email === "all") {
+      setFilteredPortfolioRows(portfolioRows);
+      setFilteredGithubRows(githubRows);
+    } else {
+      // Filter portfolio rows
+      const filteredPortfolio = portfolioRows.filter(row => 
+        row.pp_assigned_email === email || 
+        (row.associates_email && row.associates_email.toLowerCase() === email.toLowerCase())
+      );
+      setFilteredPortfolioRows(filteredPortfolio);
+      
+      // Filter github rows (if you want to apply same filter)
+      const filteredGithub = githubRows.filter(row => 
+        row.associates_email && row.associates_email.toLowerCase() === email.toLowerCase()
+      );
+      setFilteredGithubRows(filteredGithub);
+    }
+    
+    // Reset to first page when filter changes
+    setCurrentPortfolioPage(1);
+    setCurrentGithubPage(1);
+  };
 
   /* =========================
      Helpers
      ========================= */
 
-  // --- helpers to only add non-empty values ---
   const addIfPresent = (obj: any, key: string, value: any) => {
     const v = value;
     if (v === undefined || v === null) return;
@@ -248,7 +324,6 @@ const [myTasksError, setMyTasksError] = useState<string | null>(null);
     obj[key] = v;
   };
 
-  // money like "1,00,000" or "₹20,000" → number | null
   const cleanMoney = (v: any): number | null => {
     if (v === null || v === undefined || v === "") return null;
     const s = String(v).replace(/[,\s₹]/g, "");
@@ -256,125 +331,111 @@ const [myTasksError, setMyTasksError] = useState<string | null>(null);
     return Number.isFinite(n) ? n : null;
   };
 
-  // 15/30/60/90 only
-  // const cleanIntCycle = (v: any): number | null => {
-  //   if (v === null || v === undefined || v === "") return null;
-  //   const n = parseInt(String(v).replace(/\D/g, ""), 10);
-  //   return [15, 30, 60, 90].includes(n) ? n : null;
-  // };
+  const money = (v: any): number | null => {
+    if (v === null || v === undefined) return null;
+    const s = String(v).replace(/[,\s₹$]/g, "").trim();
+    if (s === "" || s === "-") return null;
+    const n = parseFloat(s);
+    return Number.isFinite(n) ? n : null;
+  };
 
-  const money = (v:any): number | null => {
-  if (v === null || v === undefined) return null;
-  const s = String(v).replace(/[,\s₹$]/g,"").trim();
-  if (s === "" || s === "-") return null;
-  const n = parseFloat(s);
-  return Number.isFinite(n) ? n : null;
-};
+  const cleanIntCycle = (v: any): number | null => {
+    if (v === null || v === undefined) return null;
+    const n = parseInt(String(v).replace(/\D/g, ""), 10);
+    return [15, 30, 60, 90].includes(n) ? n : null;
+  };
 
-const cleanIntCycle = (v:any): number | null => {
-  if (v === null || v === undefined) return null;
-  const n = parseInt(String(v).replace(/\D/g,""),10);
-  return [15,30,60,90].includes(n) ? n : null;
-};
-
-const toSaleRecord = (r: RawCsv) => ({
-  lead_id: (r.lead_id ?? "").trim(),                              // REQUIRED
-  sale_value: money(r.total_amount) ?? 0,                         // REQUIRED
-  subscription_cycle: cleanIntCycle(r.subscription_cycle) ?? 30,  // REQUIRED (validated)
-  payment_mode: mapPaymentMode(r.source),
-  closed_at: parseDateTime(r.closed_at),
-  email: normEmpty(r.persoanl_mail_id) || normEmpty(r.company_application_mail) || "",
-  finance_status: "Paid",
-  lead_name: (r.lead_name ?? "").trim() || null,
-  onboarded_date: parseDateOnly(r.onboarded_date),
-
-  application_sale_value: money(r.application_sale_value),
-  resume_sale_value: money(r.resume_value),
-  portfolio_sale_value: money(r.portfolio_value),
-  linkedin_sale_value: money(r.linkedin_value),
-  github_sale_value: money(r.github_value),
-  courses_sale_value: money(r.courses_value),
-  custom_sale_value: money(r.addons_value),
-  custom_label: normEmpty(r.custom_add_on_name) || null,
-
-  company_application_email: normEmpty(r.company_application_mail) || null,
-
-  associates_tl_email: normEmpty(r.associate_tl_email) || "",
-  associates_tl_name: normEmpty(r.associate_tl_name) || "",
-  associates_email: normEmpty(r.associate_email) || "",
-  associates_name: normEmpty(r.associate_name) || "",
-  account_assigned_email: normEmpty(r.sale_done_by) || "",
-
-  commitments: normEmpty(r.commitments) || null,
-});
-
-
-const validateSalesOnly = (rows: RawCsv[]) => {
-  const valids: RawCsv[] = [];
-  const invalids: { index: number; errors: string[] }[] = [];
-
-  rows.forEach((r, i) => {
-    const errors: string[] = [];
-    if (!r.lead_id || !r.lead_id.toString().trim())
-      errors.push("lead_id missing");
-    if (money(r.total_amount) === null)
-      errors.push("total_amount missing/invalid");
-    if (cleanIntCycle(r.subscription_cycle) === null)
-      errors.push("subscription_cycle invalid (must be 15/30/60/90)");
-    if (!normEmpty(r.persoanl_mail_id) && !normEmpty(r.company_application_mail))
-      errors.push("email missing (persoanl_mail_id / company_application_mail)");
-
-    if (errors.length) invalids.push({ index: i + 1, errors });
-    else valids.push(r);
+  const toSaleRecord = (r: RawCsv) => ({
+    lead_id: (r.lead_id ?? "").trim(),
+    sale_value: money(r.total_amount) ?? 0,
+    subscription_cycle: cleanIntCycle(r.subscription_cycle) ?? 30,
+    payment_mode: mapPaymentMode(r.source),
+    closed_at: parseDateTime(r.closed_at),
+    email: normEmpty(r.persoanl_mail_id) || normEmpty(r.company_application_mail) || "",
+    finance_status: "Paid",
+    lead_name: (r.lead_name ?? "").trim() || null,
+    onboarded_date: parseDateOnly(r.onboarded_date),
+    application_sale_value: money(r.application_sale_value),
+    resume_sale_value: money(r.resume_value),
+    portfolio_sale_value: money(r.portfolio_value),
+    linkedin_sale_value: money(r.linkedin_value),
+    github_sale_value: money(r.github_value),
+    courses_sale_value: money(r.courses_value),
+    custom_sale_value: money(r.addons_value),
+    custom_label: normEmpty(r.custom_add_on_name) || null,
+    company_application_email: normEmpty(r.company_application_mail) || null,
+    associates_tl_email: normEmpty(r.associate_tl_email) || "",
+    associates_tl_name: normEmpty(r.associate_tl_name) || "",
+    associates_email: normEmpty(r.associate_email) || "",
+    associates_name: normEmpty(r.associate_name) || "",
+    account_assigned_email: normEmpty(r.sale_done_by) || "",
+    commitments: normEmpty(r.commitments) || null,
   });
 
-  return { valids, invalids };
-};
+  const validateSalesOnly = (rows: RawCsv[]) => {
+    const valids: RawCsv[] = [];
+    const invalids: { index: number; errors: string[] }[] = [];
 
+    rows.forEach((r, i) => {
+      const errors: string[] = [];
+      if (!r.lead_id || !r.lead_id.toString().trim())
+        errors.push("lead_id missing");
+      if (money(r.total_amount) === null)
+        errors.push("total_amount missing/invalid");
+      if (cleanIntCycle(r.subscription_cycle) === null)
+        errors.push("subscription_cycle invalid (must be 15/30/60/90)");
+      if (!normEmpty(r.persoanl_mail_id) && !normEmpty(r.company_application_mail))
+        errors.push("email missing (persoanl_mail_id / company_application_mail)");
+
+      if (errors.length) invalids.push({ index: i + 1, errors });
+      else valids.push(r);
+    });
+
+    return { valids, invalids };
+  };
 
   const parseDateTime = (v: any): string | null => {
-  if (v === null || v === undefined || v === "") return null;
-  if (typeof v === "number") {
-    const d = XLSX.SSF.parse_date_code(v);
-    if (d) return new Date(Date.UTC(d.y, d.m - 1, d.d)).toISOString();
-  }
-  const s = String(v).trim();
-  const m = s.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2}|\d{4})$/);
-  if (m) {
-    const d = +m[1], mo = +m[2], yy = +m[3];
-    const yyyy = yy < 100 ? 2000 + yy : yy;
-    const dt = new Date(yyyy, mo - 1, d);
+    if (v === null || v === undefined || v === "") return null;
+    if (typeof v === "number") {
+      const d = XLSX.SSF.parse_date_code(v);
+      if (d) return new Date(Date.UTC(d.y, d.m - 1, d.d)).toISOString();
+    }
+    const s = String(v).trim();
+    const m = s.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2}|\d{4})$/);
+    if (m) {
+      const d = +m[1], mo = +m[2], yy = +m[3];
+      const yyyy = yy < 100 ? 2000 + yy : yy;
+      const dt = new Date(yyyy, mo - 1, d);
+      return isNaN(dt.getTime()) ? null : dt.toISOString();
+    }
+    const dt = new Date(s);
     return isNaN(dt.getTime()) ? null : dt.toISOString();
-  }
-  const dt = new Date(s);
-  return isNaN(dt.getTime()) ? null : dt.toISOString();
-};
-const parseDateOnly = (v:any) => {
-  const iso = parseDateTime(v);
-  return iso ? iso.slice(0,10) : null;
-};
+  };
 
-  // Normalize a header: strip BOM/space, lower-case, non-alnum -> _
+  const parseDateOnly = (v: any) => {
+    const iso = parseDateTime(v);
+    return iso ? iso.slice(0, 10) : null;
+  };
+
   const normHeader = (h: string) =>
     String(h || "")
-      .replace(/\uFEFF/g, "") // remove BOM
+      .replace(/\uFEFF/g, "")
       .trim()
       .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "_") // spaces, dashes -> _
-      .replace(/^_|_$/g, ""); // trim leading/trailing _
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_|_$/g, "");
 
   const parseCsvString = (csv: string) =>
     new Promise<any[]>((resolve, reject) => {
       Papa.parse(csv, {
         header: true,
         skipEmptyLines: true,
-        transformHeader: normHeader, // normalize headers
+        transformHeader: normHeader,
         complete: (res) => resolve(res.data as any[]),
         error: (err: any) => reject(err),
       });
     });
 
-  // return first present, non-empty value among keys (keys are expected to be normalized)
   const pick = (row: any, ...keys: string[]) => {
     for (const k of keys) {
       if (row[k] !== undefined && row[k] !== null) {
@@ -385,32 +446,24 @@ const parseDateOnly = (v:any) => {
     return undefined;
   };
 
+  const mapPaymentMode = (src: any): "UPI" | "Bank Transfer" | "PayPal" | "Stripe" | "Credit/Debit Card" | "Other" | "Razorpay" => {
+    const s = String(src ?? "").trim().toLowerCase();
+    if (["razor pay", "razorpay", "razor pay "].includes(s)) return "Razorpay";
+    if (["phonepe", "phone pe", "phone pay"].includes(s)) return "UPI";
+    if (s === "paypal") return "PayPal";
+    if (s === "stripe") return "Stripe";
+    if (s === "credit/debit card" || s === "card") return "Credit/Debit Card";
+    if (s === "bank transfer" || s === "wire") return "Bank Transfer";
+    return "Other";
+  };
 
-  const mapPaymentMode = (src: any): "UPI"|"Bank Transfer"|"PayPal"|"Stripe"|"Credit/Debit Card"|"Other"|"Razorpay" => {
-  const s = String(src ?? "").trim().toLowerCase();
-  if (["razor pay","razorpay","razor pay "].includes(s)) return "Razorpay";
-  if (["phonepe","phone pe","phone pay"].includes(s)) return "UPI";
-  if (s === "paypal") return "PayPal";
-  if (s === "stripe") return "Stripe";
-  if (s === "credit/debit card" || s === "card") return "Credit/Debit Card";
-  if (s === "bank transfer" || s === "wire") return "Bank Transfer";
-  // e.g. zelle, inr, cash, unknown → Other
-  return "Other";
-};
+  const normEmpty = (x: any) => {
+    const s = (x ?? "").toString().trim();
+    return (s === "" || s === "-") ? "" : s;
+  };
 
-// ---- normalize possibly empty strings like "-" ----
-const normEmpty = (x:any) => {
-  const s = (x ?? "").toString().trim();
-  return (s === "" || s === "-") ? "" : s;
-};
-
-  // -------------------------
-  // UPDATE: Map ONE CSV row -> partial patch
-  // -------------------------
   const rowToPatch = (r: any) => {
     const patch: any = {};
-
-    // strings
     addIfPresent(patch, "lead_name", pick(r, "lead_name"));
     addIfPresent(
       patch,
@@ -434,18 +487,15 @@ const normEmpty = (x:any) => {
       pick(r, "custom_add_on_name", "custom_add_on_name_")
     );
 
-    // dates
     const closedAt = parseDateTime(pick(r, "closed_at") ?? null);
     if (closedAt) patch.closed_at = closedAt;
 
     const onboard = parseDateOnly(pick(r, "onboarded_date") ?? null);
     if (onboard) patch.onboarded_date = onboard;
 
-    // ints
     const cycle = cleanIntCycle(pick(r, "subscription_cycle") ?? null);
     if (cycle !== null) patch.subscription_cycle = cycle;
 
-    // money fields
     const saleValue = cleanMoney(pick(r, "total_amount"));
     if (saleValue !== null) patch.sale_value = saleValue;
 
@@ -470,7 +520,6 @@ const normEmpty = (x:any) => {
     const addonsVal = cleanMoney(pick(r, "addons_value"));
     if (addonsVal !== null) patch.custom_sale_value = addonsVal;
 
-    // associates
     addIfPresent(patch, "associates_tl_email", pick(r, "associate_tl_email"));
     addIfPresent(patch, "associates_tl_name", pick(r, "associate_tl_name"));
     addIfPresent(patch, "associates_email", pick(r, "associate_email"));
@@ -484,7 +533,6 @@ const normEmpty = (x:any) => {
     const invalids: { index: number; errors: string[] }[] = [];
 
     rows.forEach((r, i) => {
-      // after transformHeader, the key is normalized to 'lead_id'
       const rawLead = r.lead_id ?? r.leadid ?? r.lead_i_d;
       const lead_id = rawLead ? String(rawLead).trim() : "";
 
@@ -508,7 +556,6 @@ const normEmpty = (x:any) => {
     return { items, invalids };
   };
 
-  // Prefetch LATEST row-id (by closed_at) per lead_id
   const prefetchLatestIds = async (leadIds: string[]) => {
     const unique = Array.from(new Set(leadIds.filter(Boolean)));
     if (!unique.length) {
@@ -553,11 +600,7 @@ const normEmpty = (x:any) => {
     setMissingLeadIds(unique.filter((lid) => !idMap[lid]));
   };
 
-  // -------------------------
-  // INSERT: build object for insert + validation
-  // -------------------------
   const rowToInsert = (r: any) => {
-    // allow for spelling/case variants found in headings
     const lead_id =
       (r.lead_id ?? r["Lead_id"] ?? r["lead id"] ?? r["Lead ID"])
         ?.toString()
@@ -583,22 +626,16 @@ const normEmpty = (x:any) => {
       .trim();
 
     const record: any = {
-      // required
       lead_id,
       sale_value,
       subscription_cycle,
       payment_mode: "UPI",
       email,
-
-      // optional / mapped
       closed_at: parseDateTime(r.closed_at ?? r.Closed_at),
       finance_status: "Paid",
-
       lead_name: r.lead_name ?? r.Lead_name ?? null,
-
       company_application_email:
         r.company_application_mail ?? r.Company_application_mail ?? null,
-
       application_sale_value: cleanMoney(
         r.application_sale_value ?? r.Application_sale_value
       ),
@@ -607,21 +644,17 @@ const normEmpty = (x:any) => {
       linkedin_sale_value: cleanMoney(r.linkedin_value ?? r.LinkedIn_value),
       github_sale_value: cleanMoney(r.github_value ?? r.GitHub_value),
       courses_sale_value: cleanMoney(r.courses_value ?? r.Courses_value),
-
       custom_label:
         r.custom_add_on_name ??
         r["Custom Add-on_name"] ??
         r["Custom Add-on Name"] ??
         null,
       custom_sale_value: cleanMoney(r.addons_value ?? r.Addons_value),
-
       onboarded_date: parseDateOnly(r.onboarded_date ?? r.Onboarded_date),
-
       associates_tl_email: r.associate_tl_email ?? "",
       associates_tl_name: r.associate_tl_name ?? "",
       associates_email: r.associate_email ?? "",
       associates_name: r.associate_name ?? "",
-
       commitments: r.commitments ?? null,
     };
 
@@ -651,215 +684,191 @@ const normEmpty = (x:any) => {
   };
 
   /* =========================
-     File → rows handlers
+     File Handlers
      ========================= */
 
-     // =========================
-// QUICK IMPORT (choose file → parse → insert → alerts only)
-// =========================
-const quickFileInputRef = useRef<HTMLInputElement | null>(null);
+  const quickParseAndInsert = async (file: File) => {
+    try {
+      const ext = file.name.split(".").pop()?.toLowerCase();
+      let rows: any[] = [];
+      if (ext === "xlsx" || ext === "xls") {
+        const buf = await file.arrayBuffer();
+        const wb = XLSX.read(buf, { type: "array" });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const csv = XLSX.utils.sheet_to_csv(ws, { blankrows: false });
+        rows = await parseCsvString(csv);
+      } else {
+        const text = await file.text();
+        rows = await parseCsvString(text);
+      }
 
-const quickParseAndInsert = async (file: File) => {
-  try {
-    // 1) Parse
-    const ext = file.name.split(".").pop()?.toLowerCase();
-    let rows: any[] = [];
-    if (ext === "xlsx" || ext === "xls") {
-      const buf = await file.arrayBuffer();
-      const wb = XLSX.read(buf, { type: "array" });
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const csv = XLSX.utils.sheet_to_csv(ws, { blankrows: false });
-      rows = await parseCsvString(csv);
-    } else {
-      const text = await file.text();
-      rows = await parseCsvString(text);
+      const { valids, invalids } = validateAndBuild(rows);
+      alert(
+        `Parsed ${rows.length} rows.\n` +
+        `Valid: ${valids.length}\n` +
+        `Skipped (errors): ${invalids.length}`
+      );
+
+      if (!valids.length) {
+        alert("No valid rows to insert. Aborting.");
+        return;
+      }
+
+      let inserted = 0;
+      const CHUNK = 500;
+      for (let i = 0; i < valids.length; i += CHUNK) {
+        const chunk = valids.slice(i, i + CHUNK);
+        const { error } = await supabase.from("sales_closure").insert(chunk);
+        if (error) throw error;
+        inserted += chunk.length;
+      }
+
+      await fetchData();
+      alert(`Imported ${inserted} records successfully.`);
+    } catch (e: any) {
+      alert(e?.message || "Quick import failed");
+    } finally {
+      if (quickFileInputRef.current) quickFileInputRef.current.value = "";
     }
+  };
 
-    // 2) Validate & build records
-    const { valids, invalids } = validateAndBuild(rows);
-    alert(
-      `Parsed ${rows.length} rows.\n` +
-      `Valid: ${valids.length}\n` +
-      `Skipped (errors): ${invalids.length}`
-    );
+  const fetchMyTasks = async () => {
+    try {
+      setMyTasksLoading(true);
+      setMyTasksError(null);
 
-    if (!valids.length) {
-      alert("No valid rows to insert. Aborting.");
-      return;
-    }
+      const assigneeEmail = (user?.email || "").trim().toLowerCase();
+      const assigneeName = (user?.name || "").trim();
+      const leadIds = new Set<string>();
 
-    // 3) Insert in chunks
-    let inserted = 0;
-    const CHUNK = 500;
-    for (let i = 0; i < valids.length; i += CHUNK) {
-      const chunk = valids.slice(i, i + CHUNK);
-      const { error } = await supabase.from("sales_closure").insert(chunk);
-      if (error) throw error;
-      inserted += chunk.length;
-    }
+      if (assigneeEmail) {
+        const { data: byEmail, error: e1 } = await supabase
+          .from("portfolio_progress")
+          .select("lead_id")
+          .eq("assigned_email", assigneeEmail);
+        if (e1) throw e1;
+        (byEmail ?? []).forEach(r => r.lead_id && leadIds.add(r.lead_id));
+      }
 
-    // 4) Refresh page data + report
-    await fetchData();
-    alert(`Imported ${inserted} records successfully.`);
-  } catch (e: any) {
-    alert(e?.message || "Quick import failed");
-  } finally {
-    // reset the file input so selecting the same file again will trigger onChange
-    if (quickFileInputRef.current) quickFileInputRef.current.value = "";
-  }
-};
+      if (assigneeName) {
+        const { data: byName, error: e2 } = await supabase
+          .from("portfolio_progress")
+          .select("lead_id")
+          .ilike("assigned_name", `%${assigneeName}%`);
+        if (e2) throw e2;
+        (byName ?? []).forEach(r => r.lead_id && leadIds.add(r.lead_id));
+      }
 
+      const allowLeadIds = Array.from(leadIds);
+      if (!allowLeadIds.length) {
+        setMyTasksRows([]);
+        setMyTasksOpen(true);
+        return;
+      }
 
-const fetchMyTasks = async () => {
-  try {
-    setMyTasksLoading(true);
-    setMyTasksError(null);
+      const { data: sales, error: salesErr } = await supabase
+        .from("sales_closure")
+        .select("id, lead_id, email, finance_status, closed_at, portfolio_sale_value, github_sale_value, associates_email, associates_name, associates_tl_email, associates_tl_name")
+        .in("lead_id", allowLeadIds)
+        .not("portfolio_sale_value", "is", null)
+        .neq("portfolio_sale_value", 0);
+      if (salesErr) throw salesErr;
 
-    const assigneeEmail = (user?.email || "").trim().toLowerCase();
-    const assigneeName  = (user?.name  || "").trim();
-    const leadIds = new Set<string>();
+      const latest = (() => {
+        const map = new Map<string, any>();
+        for (const r of sales ?? []) {
+          const ex = map.get(r.lead_id);
+          const ed = ex?.closed_at ?? "";
+          const cd = r?.closed_at ?? "";
+          if (!ex || new Date(cd) > new Date(ed)) map.set(r.lead_id, r);
+        }
+        return Array.from(map.values());
+      })();
 
-    // Collect lead_ids by email
-    if (assigneeEmail) {
-      const { data: byEmail, error: e1 } = await supabase
-        .from("portfolio_progress")
-        .select("lead_id")
-        .eq("assigned_email", assigneeEmail);
-      if (e1) throw e1;
-      (byEmail ?? []).forEach(r => r.lead_id && leadIds.add(r.lead_id));
-    }
+      const leadIdList = latest.map(r => r.lead_id);
 
-    // Collect lead_ids by name (case-insensitive contains)
-    if (assigneeName) {
-      const { data: byName, error: e2 } = await supabase
-        .from("portfolio_progress")
-        .select("lead_id")
-        .ilike("assigned_name", `%${assigneeName}%`);
-      if (e2) throw e2;
-      (byName ?? []).forEach(r => r.lead_id && leadIds.add(r.lead_id));
-    }
+      const [{ data: leadsData }, { data: resumeProg }, { data: portfolioProg }] = await Promise.all([
+        supabase.from("leads").select("business_id, name, phone").in("business_id", leadIdList),
+        supabase.from("resume_progress").select("lead_id, status, pdf_path").in("lead_id", leadIdList),
+        supabase.from("portfolio_progress").select("lead_id, status, link, assigned_email, assigned_name").in("lead_id", leadIdList),
+      ]);
 
-    const allowLeadIds = Array.from(leadIds);
-    if (!allowLeadIds.length) {
+      const leadMap = new Map((leadsData ?? []).map(l => [l.business_id, { name: l.name, phone: l.phone }]));
+      const resumeMap = new Map((resumeProg ?? []).map(p => [p.lead_id, { status: p.status as ResumeStatus, pdf_path: p.pdf_path ?? null }]));
+      const portfolioMap = new Map((portfolioProg ?? []).map(p => [
+        p.lead_id,
+        {
+          status: (p.status ?? "not_started") as PortfolioStatus,
+          link: p.link ?? null,
+          assigned_email: p.assigned_email ?? null,
+          assigned_name: p.assigned_name ?? null,
+        },
+      ]));
+
+      const merged: SalesClosure[] = latest.map((r) => ({
+        ...r,
+        leads: leadMap.get(r.lead_id) || { name: "-", phone: "-" },
+        rp_status: resumeMap.get(r.lead_id)?.status ?? "not_started",
+        rp_pdf_path: resumeMap.get(r.lead_id)?.pdf_path ?? null,
+        pp_status: portfolioMap.get(r.lead_id)?.status ?? "not_started",
+        pp_link: portfolioMap.get(r.lead_id)?.link ?? null,
+        pp_assigned_email: portfolioMap.get(r.lead_id)?.assigned_email ?? null,
+        pp_assigned_name: portfolioMap.get(r.lead_id)?.assigned_name ?? null,
+      }));
+
+      setMyTasksRows(merged);
+      setMyTasksOpen(true);
+    } catch (e: any) {
+      console.error(e);
+      setMyTasksError(e?.message || "Failed to load your tasks");
       setMyTasksRows([]);
       setMyTasksOpen(true);
-      return;
+    } finally {
+      setMyTasksLoading(false);
     }
+  };
 
-    // sales_closure (portfolio only)
-    const { data: sales, error: salesErr } = await supabase
-      .from("sales_closure")
-      .select("id, lead_id, email, finance_status, closed_at, portfolio_sale_value, github_sale_value, associates_email, associates_name, associates_tl_email, associates_tl_name")
-      .in("lead_id", allowLeadIds)
-      .not("portfolio_sale_value", "is", null)
-      .neq("portfolio_sale_value", 0);
-    if (salesErr) throw salesErr;
+  const handleQuickFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (f) await quickParseAndInsert(f);
+  };
 
-    // latest per lead (by closed_at)
-    const latest = (() => {
-      const map = new Map<string, any>();
-      for (const r of sales ?? []) {
-        const ex = map.get(r.lead_id);
-        const ed = ex?.closed_at ?? "";
-        const cd = r?.closed_at ?? "";
-        if (!ex || new Date(cd) > new Date(ed)) map.set(r.lead_id, r);
+  const triggerQuickImport = () => {
+    quickFileInputRef.current?.click();
+  };
+
+  const handleParseSelectedFileInsert = async (file: File) => {
+    setParsingInsert(true);
+    setRawRowsInsert([]);
+    setValidRowsToInsert([]);
+    setInvalidRowsInsert([]);
+
+    try {
+      const ext = file.name.split(".").pop()?.toLowerCase();
+      let rows: any[] = [];
+
+      if (ext === "xlsx" || ext === "xls") {
+        const buf = await file.arrayBuffer();
+        const wb = XLSX.read(buf, { type: "array" });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const csv = XLSX.utils.sheet_to_csv(ws, { blankrows: false });
+        rows = await parseCsvString(csv);
+      } else {
+        const text = await file.text();
+        rows = await parseCsvString(text);
       }
-      return Array.from(map.values());
-    })();
 
-    const leadIdList = latest.map(r => r.lead_id);
-
-    // joins
-    const [{ data: leadsData }, { data: resumeProg }, { data: portfolioProg }] = await Promise.all([
-      supabase.from("leads").select("business_id, name, phone").in("business_id", leadIdList),
-      supabase.from("resume_progress").select("lead_id, status, pdf_path").in("lead_id", leadIdList),
-      supabase.from("portfolio_progress").select("lead_id, status, link, assigned_email, assigned_name").in("lead_id", leadIdList),
-    ]);
-
-    const leadMap = new Map((leadsData ?? []).map(l => [l.business_id, { name: l.name, phone: l.phone }]));
-    const resumeMap = new Map((resumeProg ?? []).map(p => [p.lead_id, { status: p.status as ResumeStatus, pdf_path: p.pdf_path ?? null }]));
-    const portfolioMap = new Map((portfolioProg ?? []).map(p => [
-      p.lead_id,
-      {
-        status: (p.status ?? "not_started") as PortfolioStatus,
-        link: p.link ?? null,
-        assigned_email: p.assigned_email ?? null,
-        assigned_name: p.assigned_name ?? null,
-      },
-    ]));
-
-    const merged: SalesClosure[] = latest.map((r) => ({
-      ...r,
-      leads: leadMap.get(r.lead_id) || { name: "-", phone: "-" },
-      rp_status: resumeMap.get(r.lead_id)?.status ?? "not_started",
-      rp_pdf_path: resumeMap.get(r.lead_id)?.pdf_path ?? null,
-      pp_status: portfolioMap.get(r.lead_id)?.status ?? "not_started",
-      pp_link: portfolioMap.get(r.lead_id)?.link ?? null,
-      pp_assigned_email: portfolioMap.get(r.lead_id)?.assigned_email ?? null,
-      pp_assigned_name: portfolioMap.get(r.lead_id)?.assigned_name ?? null,
-    }));
-
-    setMyTasksRows(merged);
-    setMyTasksOpen(true);
-  } catch (e: any) {
-    console.error(e);
-    setMyTasksError(e?.message || "Failed to load your tasks");
-    setMyTasksRows([]);
-    setMyTasksOpen(true);
-  } finally {
-    setMyTasksLoading(false);
-  }
-};
-
-
-const handleQuickFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-  const f = e.target.files?.[0];
-  if (f) await quickParseAndInsert(f);
-};
-
-const triggerQuickImport = () => {
-  quickFileInputRef.current?.click();
-};
-
-
-  // INSERT: parse selected file
- const handleParseSelectedFileInsert = async (file: File) => {
-  setParsingInsert(true);
-  setRawRowsInsert([]);
-  setValidRowsToInsert([]);
-  setInvalidRowsInsert([]);
-
-  try {
-    const ext = file.name.split(".").pop()?.toLowerCase();
-    let rows: any[] = [];
-
-    if (ext === "xlsx" || ext === "xls") {
-      const buf = await file.arrayBuffer();
-      const wb = XLSX.read(buf, { type: "array" });
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const csv = XLSX.utils.sheet_to_csv(ws, { blankrows: false });
-      rows = await parseCsvString(csv);
-    } else {
-      const text = await file.text();
-      rows = await parseCsvString(text);
+      setRawRowsInsert(rows);
+      const { valids, invalids } = validateSalesOnly(rows as RawCsv[]);
+      setValidRowsToInsert(valids);
+      setInvalidRowsInsert(invalids);
+    } catch (e: any) {
+      alert(e?.message || "Failed to parse the selected file");
+    } finally {
+      setParsingInsert(false);
     }
+  };
 
-    setRawRowsInsert(rows);
-   // inside handleParseSelectedFileInsert(...)
-const { valids, invalids } = validateSalesOnly(rows as RawCsv[]);
-setValidRowsToInsert(valids);
-setInvalidRowsInsert(invalids);
-
-    // No alerts here; counts are shown inside the dialog UI above.
-  } catch (e: any) {
-    alert(e?.message || "Failed to parse the selected file"); // keep error alert
-  } finally {
-    setParsingInsert(false);
-  }
-};
-
-
-  // UPDATE: parse selected file
   const handleParseSelectedFileUpdate = async (file: File) => {
     setParsingUpdate(true);
     setRawRowsUpdate([]);
@@ -884,11 +893,9 @@ setInvalidRowsInsert(invalids);
       }
 
       setRawRowsUpdate(rows);
-
       const { items, invalids } = buildUpdatesFromRows(rows);
       setUpdatesToApply(items);
       setInvalidRowsUpdate(invalids);
-
       await prefetchLatestIds(items.map((i) => i.lead_id));
     } catch (e: any) {
       alert(e?.message || "Failed to parse the selected file");
@@ -898,63 +905,54 @@ setInvalidRowsInsert(invalids);
   };
 
   /* =========================
-     Submit handlers
+     Submit Handlers
      ========================= */
 
-
-const handleImportSubmit = async () => {
-  if (!validRowsToInsert.length) {
-    alert("No valid rows to insert.");
-    return;
-  }
-  setImportingInsert(true);
-
-  let closuresInserted = 0;
-  let failed = 0;
-
-  try {
-    // Build all sale records first
-    const saleRecords = (validRowsToInsert as RawCsv[]).map(r => toSaleRecord(r));
-
-    // Insert in chunks (faster & atomic by chunk)
-    const CHUNK = 500;
-    for (let i = 0; i < saleRecords.length; i += CHUNK) {
-      const chunk = saleRecords.slice(i, i + CHUNK);
-      const { error } = await supabase.from("sales_closure").insert(chunk);
-      if (error) {
-        // if a chunk fails, fall back to row-by-row to count
-        for (const row of chunk) {
-          const { error: e } = await supabase.from("sales_closure").insert(row);
-          if (e) failed++; else closuresInserted++;
-        }
-      } else {
-        closuresInserted += chunk.length;
-      }
+  const handleImportSubmit = async () => {
+    if (!validRowsToInsert.length) {
+      alert("No valid rows to insert.");
+      return;
     }
+    setImportingInsert(true);
 
-    await fetchData();
+    let closuresInserted = 0;
+    let failed = 0;
 
-    alert(
-      `Import finished.\n` +
-      `Sales closures inserted: ${closuresInserted}\n` +
-      `Skipped/failed rows: ${failed}`
-    );
+    try {
+      const saleRecords = (validRowsToInsert as RawCsv[]).map(r => toSaleRecord(r));
+      const CHUNK = 500;
+      for (let i = 0; i < saleRecords.length; i += CHUNK) {
+        const chunk = saleRecords.slice(i, i + CHUNK);
+        const { error } = await supabase.from("sales_closure").insert(chunk);
+        if (error) {
+          for (const row of chunk) {
+            const { error: e } = await supabase.from("sales_closure").insert(row);
+            if (e) failed++; else closuresInserted++;
+          }
+        } else {
+          closuresInserted += chunk.length;
+        }
+      }
 
-    // reset dialog state
-    setImportInsertOpen(false);
-    setInsertFile(null);
-    setRawRowsInsert([]);
-    setValidRowsToInsert([]);
-    setInvalidRowsInsert([]);
-  } catch (e: any) {
-    alert(e?.message || "Import failed");
-  } finally {
-    setImportingInsert(false);
-  }
-};
+      await fetchData();
+      alert(
+        `Import finished.\n` +
+        `Sales closures inserted: ${closuresInserted}\n` +
+        `Skipped/failed rows: ${failed}`
+      );
 
+      setImportInsertOpen(false);
+      setInsertFile(null);
+      setRawRowsInsert([]);
+      setValidRowsToInsert([]);
+      setInvalidRowsInsert([]);
+    } catch (e: any) {
+      alert(e?.message || "Import failed");
+    } finally {
+      setImportingInsert(false);
+    }
+  };
 
-  // UPDATE latest row per lead_id
   const handleUpdateSubmitByLeadId = async () => {
     if (!updatesToApply.length) {
       alert("No valid rows to update.");
@@ -968,7 +966,7 @@ const handleImportSubmit = async () => {
     try {
       for (const item of updatesToApply) {
         const rowId = latestIdByLead[item.lead_id];
-        if (!rowId) continue; // unmatched – reported separately
+        if (!rowId) continue;
 
         const { error } = await supabase
           .from("sales_closure")
@@ -984,12 +982,10 @@ const handleImportSubmit = async () => {
       }
 
       await fetchData();
-
       alert(
         `Update complete.\nUpdated: ${updated}\nUnmatched lead_ids (no row in DB): ${missingLeadIds.length}\nFailed: ${failed}`
       );
 
-      // reset dialog state
       setImportUpdateOpen(false);
       setUpdateFile(null);
       setRawRowsUpdate([]);
@@ -1021,7 +1017,6 @@ const handleImportSubmit = async () => {
         new Date(b.closed_at || "").getTime() -
         new Date(a.closed_at || "").getTime()
     );
-    // eslint-disable-next-line
   };
 
   const toNiceMoney = (v?: number | null) =>
@@ -1032,7 +1027,6 @@ const handleImportSubmit = async () => {
   const fetchData = async () => {
     if (!user) return;
 
-    // portfolio rows from sales_closure (non-null and non-zero)
     const qPortfolio = supabase
       .from("sales_closure")
       .select(
@@ -1041,7 +1035,6 @@ const handleImportSubmit = async () => {
       .not("portfolio_sale_value", "is", null)
       .neq("portfolio_sale_value", 0);
 
-    // github rows
     const qGithub = supabase
       .from("sales_closure")
       .select(
@@ -1063,7 +1056,6 @@ const handleImportSubmit = async () => {
       new Set([...pLatest, ...gLatest].map((r) => r.lead_id))
     );
 
-    // leads basics
     const { data: leadsData, error: leadsErr } = await supabase
       .from("leads")
       .select("business_id, name, phone")
@@ -1079,7 +1071,6 @@ const handleImportSubmit = async () => {
       ])
     );
 
-    // resume_progress (resume build only)
     const { data: resumeProg, error: resumeErr } = await supabase
       .from("resume_progress")
       .select("lead_id, status, pdf_path")
@@ -1095,7 +1086,6 @@ const handleImportSubmit = async () => {
       ])
     );
 
-    // NEW: portfolio_progress (authoritative portfolio data)
     const { data: portfolioProg, error: portErr } = await supabase
       .from("portfolio_progress")
       .select("lead_id, status, link, assigned_email, assigned_name")
@@ -1116,23 +1106,17 @@ const handleImportSubmit = async () => {
       ])
     );
 
-    // Merge for portfolio tab
     const mergedPortfolio: SalesClosure[] = pLatest.map((r) => ({
       ...r,
       leads: leadMap.get(r.lead_id) || { name: "-", phone: "-" },
-
-      // resume (read-only)
       rp_status: resumeMap.get(r.lead_id)?.status ?? "not_started",
       rp_pdf_path: resumeMap.get(r.lead_id)?.pdf_path ?? null,
-
-      // portfolio (from portfolio_progress)
       pp_status: portfolioMap.get(r.lead_id)?.status ?? "not_started",
       pp_link: portfolioMap.get(r.lead_id)?.link ?? null,
       pp_assigned_email: portfolioMap.get(r.lead_id)?.assigned_email ?? null,
       pp_assigned_name: portfolioMap.get(r.lead_id)?.assigned_name ?? null,
     }));
 
-    // Merge for github tab (no portfolio/resume extras)
     const mergedGithub: SalesClosure[] = gLatest.map((r) => ({
       ...r,
       leads: leadMap.get(r.lead_id) || { name: "-", phone: "-" },
@@ -1140,6 +1124,8 @@ const handleImportSubmit = async () => {
 
     setPortfolioRows(mergedPortfolio);
     setGithubRows(mergedGithub);
+    setFilteredPortfolioRows(mergedPortfolio);
+    setFilteredGithubRows(mergedGithub);
   };
 
   const fetchTeam = async () => {
@@ -1163,123 +1149,129 @@ const handleImportSubmit = async () => {
      Actions
      ========================= */
 
-  // Direct download from Supabase → auto-saves to Downloads
-  const downloadResume = async (path: string) => {
-    try {
-      const segments = (path || "").split("/");
-      const leadId = segments[0] || "unknown";
-      const fileName = `Resume-${leadId}.pdf`;
+   const BUCKET = "resumes"; 
 
-      const { data, error } = await supabase.storage
-        .from("resumes")
-        .createSignedUrl(path, 60 * 60); // 1 hour
-
-      if (error) throw error;
-      if (!data?.signedUrl) throw new Error("No signed URL");
-
-      const res = await fetch(data.signedUrl);
-      if (!res.ok) throw new Error(`Download failed (${res.status})`);
-      const blob = await res.blob();
-      const objectUrl = URL.createObjectURL(blob);
-
-      const a = document.createElement("a");
-      a.href = objectUrl;
-      a.download = fileName;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(objectUrl);
-    } catch (e: any) {
-      alert(e?.message || "Could not download PDF");
+ 
+ const downloadResume = async (path: string) => {
+   try {
+     if(path.startsWith("CRM")){
+     const base = "https://applywizz-prod.s3.us-east-2.amazonaws.com";
+      // Combine base + path to form full URL
+     const fileUrl = `${base}/${path}`;
+ 
+    window.open(fileUrl, '_blank');
+     }
+     else{
+       const segments = (path || "").split("/");
+       const fileName = segments[segments.length - 1] || "resume.pdf";
+ 
+       const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, 60 * 60);
+       if (error) throw error;
+       if (!data?.signedUrl) throw new Error("No signed URL");
+ 
+       const res = await fetch(data.signedUrl);
+       if (!res.ok) throw new Error(`Download failed (${res.status})`);
+       const blob = await res.blob();
+       const objectUrl = URL.createObjectURL(blob);
+ 
+       const a = document.createElement("a");
+       a.href = objectUrl;
+       a.download = fileName; 
+       document.body.appendChild(a);
+       a.click();
+       a.remove();
+       URL.revokeObjectURL(objectUrl);
+     }
+   } catch (e: any) {
+     alert(e?.message || "Could not download PDF");
+   }
+   
+ };
+ 
+  const handlePortfolioStatusChange = async (sale: SalesClosure, next: PortfolioStatus) => {
+    if (next === "success") {
+      setLinkTargetLeadId(sale.lead_id);
+      setLinkTargetRowId(sale.id);
+      setLinkDraft((d) => ({ ...d, [sale.lead_id]: sale.pp_link ?? "" }));
+      setLinkDialogOpen(true);
+      return;
     }
+
+    const { error } = await supabase
+      .from("portfolio_progress")
+      .upsert(
+        { lead_id: sale.lead_id, status: next, updated_by: user?.email ?? null },
+        { onConflict: "lead_id" }
+      );
+    if (error) return alert(error.message);
+
+    setPortfolioRows(prev => prev.map(r => r.id === sale.id ? { ...r, pp_status: next, pp_link: null } : r));
+    setFilteredPortfolioRows(prev => prev.map(r => r.id === sale.id ? { ...r, pp_status: next, pp_link: null } : r));
+    setMyTasksRows(prev => prev.map(r => r.id === sale.id ? { ...r, pp_status: next, pp_link: null } : r));
   };
 
-
-
-  const handlePortfolioStatusChange = async (sale: SalesClosure, next: PortfolioStatus) => {
-  if (next === "success") {
-    setLinkTargetLeadId(sale.lead_id);
-    setLinkTargetRowId(sale.id);
-    setLinkDraft((d) => ({ ...d, [sale.lead_id]: sale.pp_link ?? "" }));
-    setLinkDialogOpen(true);
-    return;
-  }
-
-  const { error } = await supabase
-    .from("portfolio_progress")
-    .upsert(
-      { lead_id: sale.lead_id, status: next, updated_by: user?.email ?? null },
-      { onConflict: "lead_id" }
-    );
-  if (error) return alert(error.message);
-
-  setPortfolioRows(prev => prev.map(r => r.id === sale.id ? { ...r, pp_status: next, pp_link: null } : r));
-  // keep MyTasks dialog in sync
-  setMyTasksRows(prev => prev.map(r => r.id === sale.id ? { ...r, pp_status: next, pp_link: null } : r));
-};
-
-
-
   const handleSavePortfolioSuccess = async () => {
-  const link = linkTargetLeadId ? (linkDraft[linkTargetLeadId] ?? "").trim() : "";
-  if (!link || !linkTargetLeadId || !linkTargetRowId) return alert("Please paste a link.");
-  if (!/^https?:\/\//i.test(link)) return alert("Enter a valid http(s) URL.");
+    const link = linkTargetLeadId ? (linkDraft[linkTargetLeadId] ?? "").trim() : "";
+    if (!link || !linkTargetLeadId || !linkTargetRowId) return alert("Please paste a link.");
+    if (!/^https?:\/\//i.test(link)) return alert("Enter a valid http(s) URL.");
 
-  const { error } = await supabase
-    .from("portfolio_progress")
-    .upsert(
-      { lead_id: linkTargetLeadId, status: "success", link, updated_by: user?.email ?? null },
-      { onConflict: "lead_id" }
-    );
-  if (error) return alert(error.message);
+    const { error } = await supabase
+      .from("portfolio_progress")
+      .upsert(
+        { lead_id: linkTargetLeadId, status: "success", link, updated_by: user?.email ?? null },
+        { onConflict: "lead_id" }
+      );
+    if (error) return alert(error.message);
 
-  setPortfolioRows(prev => prev.map(r => r.id === linkTargetRowId ? { ...r, pp_status: "success", pp_link: link } : r));
-  setMyTasksRows(prev => prev.map(r => r.id === linkTargetRowId ? { ...r, pp_status: "success", pp_link: link } : r));
+    setPortfolioRows(prev => prev.map(r => r.id === linkTargetRowId ? { ...r, pp_status: "success", pp_link: link } : r));
+    setFilteredPortfolioRows(prev => prev.map(r => r.id === linkTargetRowId ? { ...r, pp_status: "success", pp_link: link } : r));
+    setMyTasksRows(prev => prev.map(r => r.id === linkTargetRowId ? { ...r, pp_status: "success", pp_link: link } : r));
 
-  setLinkDialogOpen(false);
-  setLinkDraft({});
-  setLinkTargetLeadId(null);
-  setLinkTargetRowId(null);
-};
-
-
+    setLinkDialogOpen(false);
+    setLinkDraft({});
+    setLinkTargetLeadId(null);
+    setLinkTargetRowId(null);
+  };
 
   const handleAssignPortfolio = async (sale: SalesClosure, memberEmail: string) => {
-  setAssigneeByRow((p) => ({ ...p, [sale.id]: memberEmail }));
-  const member = teamMembers.find((m) => m.user_email === memberEmail);
-  if (!member) return;
+    setAssigneeByRow((p) => ({ ...p, [sale.id]: memberEmail }));
+    const member = teamMembers.find((m) => m.user_email === memberEmail);
+    if (!member) return;
 
-  const { error } = await supabase
-    .from("portfolio_progress")
-    .upsert(
-      { lead_id: sale.lead_id, assigned_email: member.user_email, assigned_name: member.full_name, updated_by: user?.email ?? null },
-      { onConflict: "lead_id" }
+    const { error } = await supabase
+      .from("portfolio_progress")
+      .upsert(
+        { lead_id: sale.lead_id, assigned_email: member.user_email, assigned_name: member.full_name, updated_by: user?.email ?? null },
+        { onConflict: "lead_id" }
+      );
+
+    if (error) {
+      alert(error.message || "Failed to assign portfolio owner");
+      setAssigneeByRow((p) => ({ ...p, [sale.id]: sale.pp_assigned_email ?? undefined }));
+      return;
+    }
+
+    setPortfolioRows(prev =>
+      prev.map(r =>
+        r.id === sale.id ? { ...r, pp_assigned_email: member.user_email, pp_assigned_name: member.full_name } : r
+      )
     );
-
-  if (error) {
-    alert(error.message || "Failed to assign portfolio owner");
-    setAssigneeByRow((p) => ({ ...p, [sale.id]: sale.pp_assigned_email ?? undefined }));
-    return;
-  }
-
-  setPortfolioRows(prev =>
-    prev.map(r =>
-      r.id === sale.id ? { ...r, pp_assigned_email: member.user_email, pp_assigned_name: member.full_name } : r
-    )
-  );
-  setMyTasksRows(prev =>
-    prev.map(r =>
-      r.id === sale.id ? { ...r, pp_assigned_email: member.user_email, pp_assigned_name: member.full_name } : r
-    )
-  );
-};
-
+    setFilteredPortfolioRows(prev =>
+      prev.map(r =>
+        r.id === sale.id ? { ...r, pp_assigned_email: member.user_email, pp_assigned_name: member.full_name } : r
+      )
+    );
+    setMyTasksRows(prev =>
+      prev.map(r =>
+        r.id === sale.id ? { ...r, pp_assigned_email: member.user_email, pp_assigned_name: member.full_name } : r
+      )
+    );
+  };
 
   /* =========================
      Effects
      ========================= */
 
-  // Role gate
   useEffect(() => {
     if (user === null) return;
     const allowed = [
@@ -1294,7 +1286,6 @@ const handleImportSubmit = async () => {
     setLoading(false);
   }, [user, router]);
 
-  // Initial data load
   useEffect(() => {
     if (user) {
       fetchData();
@@ -1302,7 +1293,6 @@ const handleImportSubmit = async () => {
     }
   }, [user]);
 
-  // Seed/stick controlled Assignee values from portfolio_progress
   useEffect(() => {
     setAssigneeByRow((prev) => {
       const next = { ...prev };
@@ -1318,231 +1308,389 @@ const handleImportSubmit = async () => {
      Renderers
      ========================= */
 
-  const renderPortfolioTable = (rows: SalesClosure[]) => (
-    <div className="rounded-md border mt-4">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            {PORTFOLIO_COLUMNS.map((c) => (
-              <TableHead key={c}>{c}</TableHead>
-            ))}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {rows.map((sale, index) => (
-            <TableRow key={sale.id}>
-              <TableCell>{index + 1}</TableCell>
-              <TableCell>{sale.lead_id}</TableCell>
+  const renderPortfolioTable = (rows: SalesClosure[]) => {
+    const paginatedRows = getPaginatedRows(rows, currentPortfolioPage, portfolioPageSize);
+    const totalPages = getTotalPages(rows, portfolioPageSize);
 
-              <TableCell
-                className="font-medium max-w-[150px] break-words whitespace-normal cursor-pointer text-blue-600 hover:underline"
-                onClick={() => window.open(`/leads/${sale.lead_id}`, "_blank")}
-              >
-                {sale.leads?.name || "-"}
-              </TableCell>
-
-              <TableCell>{sale.email}</TableCell>
-              <TableCell>{sale.leads?.phone || "-"}</TableCell>
-              <TableCell>{sale.finance_status}</TableCell>
-
-              {/* Resume Status (read-only) */}
-              <TableCell>
-                {STATUS_LABEL[(sale.rp_status ?? "not_started") as ResumeStatus]}
-              </TableCell>
-
-              {/* Resume PDF */}
-              <TableCell>
-                {sale.rp_pdf_path ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => downloadResume(sale.rp_pdf_path!)}
-                  >
-                    Download Resume
-                  </Button>
-                ) : (
-                  <span className="text-gray-400 text-sm">—</span>
-                )}
-              </TableCell>
-
-              {/* Portfolio Status (from portfolio_progress) */}
-              <TableCell className="space-y-2">
-                {sale.pp_status === "success" && sale.pp_link ? (
-                  <a
-                    href={sale.pp_link}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-blue-600 underline break-all"
-                    title="Open portfolio link"
-                  >
-                    {sale.pp_link}
-                  </a>
-                ) : (
-                  <Select
-                    onValueChange={(v) =>
-                      handlePortfolioStatusChange(sale, v as PortfolioStatus)
-                    }
-                    value={(sale.pp_status ?? "not_started") as PortfolioStatus}
-                  >
-                    <SelectTrigger className="w-[260px]">
-                      <SelectValue placeholder="Set portfolio status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {PORTFOLIO_STATUS_OPTIONS.map((s) => (
-                        <SelectItem key={s} value={s}>
-                          {PORTFOLIO_STATUS_LABEL[s]}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              </TableCell>
-             
-
-               <TableCell className="max-w-[220px] truncate">
-                {sale.leads?.name && (
-                  <a
-                    href={`https://applywizz-${sale.leads?.name
-                      .toLowerCase()
-                      .replace(/[^a-z0-9]/g, "")}.vercel.app/`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-blue-600 underline block truncate"
-                    title={`https://applywizz-${sale.leads?.name
-                      .toLowerCase()
-                      .replace(/[^a-z0-9]/g, "")}.vercel.app/`}
-                  >
-                    https://applywizz-
-                    {sale.leads?.name
-                      .toLowerCase()
-                      .replace(/[^a-z0-9]/g, "")}
-                    .vercel.app/
-                  </a>
-                )}
-              </TableCell>
-
-              {/* Assignee */}
-              <TableCell>
-                {(() => {
-                  const current =
-                    assigneeByRow[sale.id] ?? sale.pp_assigned_email ?? "";
-                  const inList = !!teamMembers.find(
-                    (m) => m.user_email === current
-                  );
-
-                  return (
-                    <Select
-                      value={current || undefined}
-                      onValueChange={(email) =>
-                        handleAssignPortfolio(sale, email)
-                      }
-                      disabled={user?.role == "Technical Associate"}
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <span className="text-sm text-muted-foreground">
+              Total: {rows.length} records
+            </span>
+            <span className="text-sm text-muted-foreground">
+              Showing {paginatedRows.length} of {rows.length} records
+            </span>
+            {portfolioPageSize !== "all" && (
+              <span className="text-sm text-muted-foreground">
+                Page {currentPortfolioPage} of {totalPages}
+              </span>
+            )}
+          </div>
+          
+        
+        </div>
+        
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                {PORTFOLIO_COLUMNS.map((c) => (
+                  <TableHead key={c}>{c}</TableHead>
+                ))}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {paginatedRows.map((sale, index) => {
+                const actualIndex = portfolioPageSize === "all" 
+                  ? index + 1 
+                  : (currentPortfolioPage - 1) * (portfolioPageSize as number) + index + 1;
+                return (
+                  <TableRow key={sale.id}>
+                    <TableCell>{actualIndex}</TableCell>
+                    <TableCell>{sale.lead_id}</TableCell>
+                    <TableCell
+                      className="font-medium max-w-[150px] break-words whitespace-normal cursor-pointer text-blue-600 hover:underline"
+                      onClick={() => window.open(`/leads/${sale.lead_id}`, "_blank")}
                     >
-                      <SelectTrigger className="w-[240px] !opacity-100 bg-muted/20 text-foreground">
-                        <SelectValue placeholder="Assign to..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {!inList && current && (
-                          <SelectItem value={current} className="hidden">
-                            {sale.pp_assigned_name || current}
-                          </SelectItem>
-                        )}
+                      {sale.leads?.name || "-"}
+                    </TableCell>
+                    <TableCell>{sale.email}</TableCell>
+                    <TableCell>{sale.leads?.phone || "-"}</TableCell>
+                    <TableCell>{sale.finance_status}</TableCell>
+                    <TableCell>
+                      {STATUS_LABEL[(sale.rp_status ?? "not_started") as ResumeStatus]}
+                    </TableCell>
+                    <TableCell>
+                      {sale.rp_pdf_path ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => downloadResume(sale.rp_pdf_path!)}
+                        >
+                          Download Resume
+                        </Button>
+                      ) : (
+                        <span className="text-gray-400 text-sm">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="space-y-2">
+                      {sale.pp_status === "success" && sale.pp_link ? (
+                        <a
+                          href={sale.pp_link}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-blue-600 underline break-all"
+                          title="Open portfolio link"
+                        >
+                          {sale.pp_link}
+                        </a>
+                      ) : (
+                        <Select
+                          onValueChange={(v) =>
+                            handlePortfolioStatusChange(sale, v as PortfolioStatus)
+                          }
+                          value={(sale.pp_status ?? "not_started") as PortfolioStatus}
+                        >
+                          <SelectTrigger className="w-[260px]">
+                            <SelectValue placeholder="Set portfolio status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {PORTFOLIO_STATUS_OPTIONS.map((s) => (
+                              <SelectItem key={s} value={s}>
+                                {PORTFOLIO_STATUS_LABEL[s]}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </TableCell>
+                    <TableCell className="max-w-[220px] truncate">
+                      {sale.leads?.name && (
+                        <a
+                          href={`https://applywizz-${sale.leads?.name
+                            .toLowerCase()
+                            .replace(/[^a-z0-9]/g, "")}.vercel.app/`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-blue-600 underline block truncate"
+                          title={`https://applywizz-${sale.leads?.name
+                            .toLowerCase()
+                            .replace(/[^a-z0-9]/g, "")}.vercel.app/`}
+                        >
+                          https://applywizz-
+                          {sale.leads?.name
+                            .toLowerCase()
+                            .replace(/[^a-z0-9]/g, "")}
+                          .vercel.app/
+                        </a>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {(() => {
+                        const current =
+                          assigneeByRow[sale.id] ?? sale.pp_assigned_email ?? "";
+                        const inList = !!teamMembers.find(
+                          (m) => m.user_email === current
+                        );
 
-                        <div className="px-2 py-1 text-xs text-muted-foreground">
-                          Technical Heads
-                        </div>
-                        {teamMembers
-                          .filter((m) => m.roles === "Technical Head")
-                          .map((m) => (
-                            <SelectItem key={m.user_email} value={m.user_email}>
-                              {m.full_name} • Head
-                            </SelectItem>
-                          ))}
+                        return (
+                          <Select
+                            value={current || undefined}
+                            onValueChange={(email) =>
+                              handleAssignPortfolio(sale, email)
+                            }
+                            disabled={user?.role == "Technical Associate"}
+                          >
+                            <SelectTrigger className="w-[240px] !opacity-100 bg-muted/20 text-foreground">
+                              <SelectValue placeholder="Assign to..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {!inList && current && (
+                                <SelectItem value={current} className="hidden">
+                                  {sale.pp_assigned_name || current}
+                                </SelectItem>
+                              )}
 
-                        <div className="px-2 py-1 text-xs text-muted-foreground">
-                          Technical Associates
-                        </div>
-                        {teamMembers
-                          .filter((m) => m.roles === "Technical Associate")
-                          .map((m) => (
-                            <SelectItem key={m.user_email} value={m.user_email}>
-                              {m.full_name} • Associate
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
+                              <div className="px-2 py-1 text-xs text-muted-foreground">
+                                Technical Heads
+                              </div>
+                              {teamMembers
+                                .filter((m) => m.roles === "Technical Head")
+                                .map((m) => (
+                                  <SelectItem key={m.user_email} value={m.user_email}>
+                                    {m.full_name} • Head
+                                  </SelectItem>
+                                ))}
+
+                              <div className="px-2 py-1 text-xs text-muted-foreground">
+                                Technical Associates
+                              </div>
+                              {teamMembers
+                                .filter((m) => m.roles === "Technical Associate")
+                                .map((m) => (
+                                  <SelectItem key={m.user_email} value={m.user_email}>
+                                    {m.full_name} • Associate
+                                  </SelectItem>
+                                ))}
+                            </SelectContent>
+                          </Select>
+                        );
+                      })()}
+                    </TableCell>
+                    <TableCell>
+                      {sale.closed_at
+                        ? new Date(sale.closed_at).toLocaleDateString("en-GB")
+                        : "-"}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+              {paginatedRows.length === 0 && (
+                <TableRow>
+                  <TableCell
+                    colSpan={PORTFOLIO_COLUMNS.length}
+                    className="text-center text-sm text-muted-foreground py-10"
+                  >
+                    No records found.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+        
+        {portfolioPageSize !== "all" && totalPages > 1 && (
+          <div className="flex justify-center mt-4">
+            <Pagination>
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    onClick={() => handlePortfolioPageChange(Math.max(1, currentPortfolioPage - 1))}
+                    className={currentPortfolioPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  />
+                </PaginationItem>
+                
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNum;
+                  if (totalPages <= 5) {
+                    pageNum = i + 1;
+                  } else if (currentPortfolioPage <= 3) {
+                    pageNum = i + 1;
+                  } else if (currentPortfolioPage >= totalPages - 2) {
+                    pageNum = totalPages - 4 + i;
+                  } else {
+                    pageNum = currentPortfolioPage - 2 + i;
+                  }
+                  
+                  return (
+                    <PaginationItem key={pageNum}>
+                      <PaginationLink
+                        onClick={() => handlePortfolioPageChange(pageNum)}
+                        isActive={currentPortfolioPage === pageNum}
+                        className="cursor-pointer"
+                      >
+                        {pageNum}
+                      </PaginationLink>
+                    </PaginationItem>
                   );
-                })()}
-              </TableCell>
+                })}
+                
+                <PaginationItem>
+                  <PaginationNext
+                    onClick={() => handlePortfolioPageChange(Math.min(totalPages, currentPortfolioPage + 1))}
+                    className={currentPortfolioPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          </div>
+        )}
+      </div>
+    );
+  };
 
-              <TableCell>
-                {sale.closed_at
-                  ? new Date(sale.closed_at).toLocaleDateString("en-GB")
-                  : "-"}
-              </TableCell>
-            </TableRow>
-          ))}
-          {rows.length === 0 && (
-            <TableRow>
-              <TableCell
-                colSpan={PORTFOLIO_COLUMNS.length}
-                className="text-center text-sm text-muted-foreground py-10"
-              >
-                No records found.
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
-    </div>
-  );
-// yeah its working again
-  const renderGithubTable = (rows: SalesClosure[]) => (
-    <div className="rounded-md border mt-4">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            {GITHUB_COLUMNS.map((c) => (
-              <TableHead key={c}>{c}</TableHead>
-            ))}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {rows.map((sale, index) => (
-            <TableRow key={sale.id}>
-              <TableCell>{index + 1}</TableCell>
-              <TableCell>{sale.lead_id}</TableCell>
-              <TableCell
-                className="font-medium max-w-[150px] break-words whitespace-normal cursor-pointer text-blue-600 hover:underline"
-                onClick={() => window.open(`/leads/${sale.lead_id}`, "_blank")}
-              >
-                {sale.leads?.name || "-"}
-              </TableCell>
-              <TableCell>{sale.email}</TableCell>
-              <TableCell>{sale.leads?.phone || "-"}</TableCell>
-              <TableCell>{sale.finance_status}</TableCell>
-              <TableCell>{toNiceMoney(sale.github_sale_value)}</TableCell>
-              <TableCell>
-                {sale.closed_at
-                  ? new Date(sale.closed_at).toLocaleDateString("en-GB")
-                  : "-"}
-              </TableCell>
-            </TableRow>
-          ))}
-          {rows.length === 0 && (
-            <TableRow>
-              <TableCell
-                colSpan={GITHUB_COLUMNS.length}
-                className="text-center text-sm text-muted-foreground py-10"
-              >
-                No GitHub sales found.
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
-    </div>
-  );
+  const renderGithubTable = (rows: SalesClosure[]) => {
+    const paginatedRows = getPaginatedRows(rows, currentGithubPage, githubPageSize);
+    const totalPages = getTotalPages(rows, githubPageSize);
+
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <span className="text-sm text-muted-foreground">
+              Total: {rows.length} records
+            </span>
+            <span className="text-sm text-muted-foreground">
+              Showing {paginatedRows.length} of {rows.length} records
+            </span>
+            {githubPageSize !== "all" && (
+              <span className="text-sm text-muted-foreground">
+                Page {currentGithubPage} of {totalPages}
+              </span>
+            )}
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Show:</span>
+            <Select
+              value={githubPageSize.toString()}
+              onValueChange={handleGithubPageSizeChange}
+            >
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder="Page size" />
+              </SelectTrigger>
+              <SelectContent>
+                {pageSizeOptions.map((option) => (
+                  <SelectItem key={option.value.toString()} value={option.value.toString()}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                {GITHUB_COLUMNS.map((c) => (
+                  <TableHead key={c}>{c}</TableHead>
+                ))}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {paginatedRows.map((sale, index) => {
+                const actualIndex = githubPageSize === "all" 
+                  ? index + 1 
+                  : (currentGithubPage - 1) * (githubPageSize as number) + index + 1;
+                return (
+                  <TableRow key={sale.id}>
+                    <TableCell>{actualIndex}</TableCell>
+                    <TableCell>{sale.lead_id}</TableCell>
+                    <TableCell
+                      className="font-medium max-w-[150px] break-words whitespace-normal cursor-pointer text-blue-600 hover:underline"
+                      onClick={() => window.open(`/leads/${sale.lead_id}`, "_blank")}
+                    >
+                      {sale.leads?.name || "-"}
+                    </TableCell>
+                    <TableCell>{sale.email}</TableCell>
+                    <TableCell>{sale.leads?.phone || "-"}</TableCell>
+                    <TableCell>{sale.finance_status}</TableCell>
+                    <TableCell>{toNiceMoney(sale.github_sale_value)}</TableCell>
+                    <TableCell>
+                      {sale.closed_at
+                        ? new Date(sale.closed_at).toLocaleDateString("en-GB")
+                        : "-"}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+              {paginatedRows.length === 0 && (
+                <TableRow>
+                  <TableCell
+                    colSpan={GITHUB_COLUMNS.length}
+                    className="text-center text-sm text-muted-foreground py-10"
+                  >
+                    No GitHub sales found.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+        
+        {githubPageSize !== "all" && totalPages > 1 && (
+          <div className="flex justify-center mt-4">
+            <Pagination>
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    onClick={() => handleGithubPageChange(Math.max(1, currentGithubPage - 1))}
+                    className={currentGithubPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  />
+                </PaginationItem>
+                
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNum;
+                  if (totalPages <= 5) {
+                    pageNum = i + 1;
+                  } else if (currentGithubPage <= 3) {
+                    pageNum = i + 1;
+                  } else if (currentGithubPage >= totalPages - 2) {
+                    pageNum = totalPages - 4 + i;
+                  } else {
+                    pageNum = currentGithubPage - 2 + i;
+                  }
+                  
+                  return (
+                    <PaginationItem key={pageNum}>
+                      <PaginationLink
+                        onClick={() => handleGithubPageChange(pageNum)}
+                        isActive={currentGithubPage === pageNum}
+                        className="cursor-pointer"
+                      >
+                        {pageNum}
+                      </PaginationLink>
+                    </PaginationItem>
+                  );
+                })}
+                
+                <PaginationItem>
+                  <PaginationNext
+                    onClick={() => handleGithubPageChange(Math.min(totalPages, currentGithubPage + 1))}
+                    className={currentGithubPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   /* =========================
      Render
@@ -1556,103 +1704,132 @@ const handleImportSubmit = async () => {
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <h1 className="text-3xl font-bold text-gray-900">Technical Page</h1>
-          
 
-
-<div className="flex items-center gap-2">
-      <Button variant="outline" onClick={fetchMyTasks}>My Tasks</Button>
-
-  {/* INSERT dialog lives next to the trigger */}
-  <Dialog open={importInsertOpen} onOpenChange={setImportInsertOpen}>
-    <DialogTrigger asChild>
-      <Button>Add sale done CSV</Button>
-    </DialogTrigger>
-
-    <DialogContent className="sm:max-w-[700px] max-h-[85vh] overflow-y-auto z-[1000]">
-      <DialogHeader>
-        <DialogTitle>Import Sales (CSV / XLSX)</DialogTitle>
-      </DialogHeader>
-
-      <div className="space-y-4">
-        <div className="space-y-2">
-          <label className="text-sm text-muted-foreground">Select file</label>
-          <Input
-            type="file"
-            accept=".csv,.xlsx,.xls"
-            onChange={(e) => {
-              const f = e.target.files?.[0] || null;
-              setInsertFile(f);
-              if (f) handleParseSelectedFileInsert(f); // parses + fills counts (no alerts)
-            }}
-          />
-          <p className="text-xs text-muted-foreground">
-            Excel files are converted to CSV in-browser, then parsed.
-          </p>
-        </div>
-
-        {parsingInsert && <p className="text-sm">Parsing…</p>}
-
-        {rawRowsInsert.length > 0 && !parsingInsert && (
-          <div className="space-y-1 text-sm">
-            <div>
-              Total rows in file: <b>{rawRowsInsert.length}</b>
-            </div>
-            <div className="text-green-700">
-              Valid rows to insert: <b>{validRowsToInsert.length}</b>
-            </div>
-            <div className="text-amber-700">
-              Skipped (errors): <b>{invalidRowsInsert.length}</b>
-            </div>
-
-            {invalidRowsInsert.length > 0 && (
-              <details className="mt-2">
-                <summary className="cursor-pointer">See invalid row details</summary>
-                <ul className="list-disc pl-6 mt-2">
-                  {invalidRowsInsert.slice(0, 20).map((row, idx) => (
-                    <li key={idx}>Row {row.index}: {row.errors.join(", ")}</li>
-                  ))}
-                  {invalidRowsInsert.length > 20 && (
-                    <li>…and {invalidRowsInsert.length - 20} more</li>
-                  )}
-                </ul>
-              </details>
-            )}
-
-           
-
-           <p className="text-xs text-muted-foreground mt-2">
-  This will insert into <b>public.sales_closure</b> only.
-  Required columns: <code>lead_id</code>, <code>total_amount</code>,
-  <code>subscription_cycle</code> (15/30/60/90), and either
-  <code> persoanl_mail_id</code> or <code> company_application_mail</code>.
-</p>
-
-
+            <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Show:</span>
+            <Select
+              value={portfolioPageSize.toString()}
+              onValueChange={handlePortfolioPageSizeChange}
+            >
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder="Page size" />
+              </SelectTrigger>
+              <SelectContent>
+                {pageSizeOptions.map((option) => (
+                  <SelectItem key={option.value.toString()} value={option.value.toString()}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-        )}
-      </div>
+              <Button variant="outline" onClick={fetchMyTasks}>My Tasks</Button>
+              
+              {/* Assignee Filter Dropdown */}
+              <Select
+                value={selectedAssignee}
+                onValueChange={handleAssigneeFilter}
+              >
+                <SelectTrigger className="w-[220px]">
+                  <SelectValue placeholder="Filter by assignee" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Assignees</SelectItem>
+                  <div className="px-2 py-1 text-xs text-muted-foreground">
+                    Technical Heads
+                  </div>
+                  {teamMembers
+                    .filter((m) => m.roles === "Technical Head")
+                    .map((m) => (
+                      <SelectItem key={m.user_email} value={m.user_email}>
+                        {m.full_name} • Head
+                      </SelectItem>
+                    ))}
+                  
+                  <div className="px-2 py-1 text-xs text-muted-foreground">
+                    Technical Associates
+                  </div>
+                  {teamMembers
+                    .filter((m) => m.roles === "Technical Associate")
+                    .map((m) => (
+                      <SelectItem key={m.user_email} value={m.user_email}>
+                        {m.full_name} • Associate
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
 
-      <DialogFooter className="mt-4">
-        <Button variant="outline" onClick={() => setImportInsertOpen(false)}>
-          Cancel
-        </Button>
-        <Button
-          onClick={handleImportSubmit}
-          disabled={importingInsert || parsingInsert || validRowsToInsert.length === 0}
-        >
-          {importingInsert ? "Importing…" : `Submit (${validRowsToInsert.length})`}
-        </Button>
-      </DialogFooter>
-    </DialogContent>
-  </Dialog>
+              <Dialog open={importInsertOpen} onOpenChange={setImportInsertOpen}>
+                <DialogTrigger asChild>
+                  <Button>Add sale done CSV</Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[700px] max-h-[85vh] overflow-y-auto z-[1000]">
+                  <DialogHeader>
+                    <DialogTitle>Import Sales (CSV / XLSX)</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <label className="text-sm text-muted-foreground">Select file</label>
+                      <Input
+                        type="file"
+                        accept=".csv,.xlsx,.xls"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0] || null;
+                          setInsertFile(f);
+                          if (f) handleParseSelectedFileInsert(f);
+                        }}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Excel files are converted to CSV in-browser, then parsed.
+                      </p>
+                    </div>
+                    {parsingInsert && <p className="text-sm">Parsing…</p>}
+                    {rawRowsInsert.length > 0 && !parsingInsert && (
+                      <div className="space-y-1 text-sm">
+                        <div>Total rows in file: <b>{rawRowsInsert.length}</b></div>
+                        <div className="text-green-700">Valid rows to insert: <b>{validRowsToInsert.length}</b></div>
+                        <div className="text-amber-700">Skipped (errors): <b>{invalidRowsInsert.length}</b></div>
+                        {invalidRowsInsert.length > 0 && (
+                          <details className="mt-2">
+                            <summary className="cursor-pointer">See invalid row details</summary>
+                            <ul className="list-disc pl-6 mt-2">
+                              {invalidRowsInsert.slice(0, 20).map((row, idx) => (
+                                <li key={idx}>Row {row.index}: {row.errors.join(", ")}</li>
+                              ))}
+                              {invalidRowsInsert.length > 20 && (
+                                <li>…and {invalidRowsInsert.length - 20} more</li>
+                              )}
+                            </ul>
+                          </details>
+                        )}
+                        <p className="text-xs text-muted-foreground mt-2">
+                          This will insert into <b>public.sales_closure</b> only.
+                          Required columns: <code>lead_id</code>, <code>total_amount</code>,
+                          <code>subscription_cycle</code> (15/30/60/90), and either
+                          <code> persoanl_mail_id</code> or <code> company_application_mail</code>.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                  <DialogFooter className="mt-4">
+                    <Button variant="outline" onClick={() => setImportInsertOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={handleImportSubmit}
+                      disabled={importingInsert || parsingInsert || validRowsToInsert.length === 0}
+                    >
+                      {importingInsert ? "Importing…" : `Submit (${validRowsToInsert.length})`}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
 
-  {/* Update stays as a separate dialog like you had */}
-  <Button onClick={() => setImportUpdateOpen(true)}>
-    Update by CSV
-  </Button>
-</div>
-
-
+              <Button onClick={() => setImportUpdateOpen(true)}>
+                Update by CSV
+              </Button>
+            </div>
           </div>
 
           {loading ? (
@@ -1665,57 +1842,44 @@ const handleImportSubmit = async () => {
               </TabsList>
 
               <TabsContent value="portfolio">
-                {renderPortfolioTable(portfolioRows)}
+                {renderPortfolioTable(filteredPortfolioRows)}
               </TabsContent>
               <TabsContent value="github">
-                {renderGithubTable(githubRows)}
+                {renderGithubTable(filteredGithubRows)}
               </TabsContent>
             </Tabs>
           )}
         </div>
 
+        <Dialog open={myTasksOpen} onOpenChange={setMyTasksOpen}>
+          <DialogContent className="max-w-7xl overflow-scroll">
+            <DialogHeader>
+              <DialogTitle>My Tasks</DialogTitle>
+            </DialogHeader>
+            {myTasksLoading ? (
+              <div className="p-6 text-sm text-muted-foreground">Loading…</div>
+            ) : myTasksError ? (
+              <div className="p-6 text-sm text-red-600">{myTasksError}</div>
+            ) : (
+              renderPortfolioTable(myTasksRows)
+            )}
+            <DialogFooter className="gap-2">
+              <Button variant="outline" onClick={fetchMyTasks}>Refresh</Button>
+              <Button onClick={() => setMyTasksOpen(false)}>Close</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
-<Dialog open={myTasksOpen} onOpenChange={setMyTasksOpen}>
-  <DialogContent className="max-h-[80vh] max-w-[90vw] overflow-y-scroll overflow-x-scroll">
-    <DialogHeader>
-      <DialogTitle className="flex justify-between px-6">My Tasks       <Button variant="outline" onClick={fetchMyTasks}>Refresh</Button>
-</DialogTitle>
-      
-    </DialogHeader>
-
-    {myTasksLoading ? (
-      <div className="p-6 text-sm text-muted-foreground">Loading…</div>
-    ) : myTasksError ? (
-      <div className="p-6 text-sm text-red-600">{myTasksError}</div>
-    ) : (
-      // reuse the same portfolio table renderer with full actions
-      renderPortfolioTable(myTasksRows)
-    )}
-
-    <DialogFooter className="gap-2">
-      {/* <Button variant="outline" onClick={fetchMyTasks}>Refresh</Button> */}
-      <Button onClick={() => setMyTasksOpen(false)}>Close</Button>
-    </DialogFooter>
-  </DialogContent>
-</Dialog>
-
-
-        {/* Success dialog */}
         <Dialog open={linkDialogOpen} onOpenChange={setLinkDialogOpen}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Mark as Success</DialogTitle>
             </DialogHeader>
-
             <div className="space-y-2">
-              <label className="text-sm text-muted-foreground">
-                Success link
-              </label>
+              <label className="text-sm text-muted-foreground">Success link</label>
               <Input
                 placeholder="https://…"
-                value={
-                  linkTargetLeadId ? linkDraft[linkTargetLeadId] ?? "" : ""
-                }
+                value={linkTargetLeadId ? linkDraft[linkTargetLeadId] ?? "" : ""}
                 onChange={(e) =>
                   setLinkDraft((prev) => ({
                     ...prev,
@@ -1730,7 +1894,6 @@ const handleImportSubmit = async () => {
                 <code>portfolio_progress</code>.
               </p>
             </div>
-
             <DialogFooter className="mt-4">
               <Button variant="outline" onClick={() => setLinkDialogOpen(false)}>
                 Cancel
@@ -1740,113 +1903,14 @@ const handleImportSubmit = async () => {
           </DialogContent>
         </Dialog>
 
-        {/* INSERT dialog */}
-        <Dialog open={importInsertOpen} onOpenChange={setImportInsertOpen}>
-          <DialogContent className="sm:max-w-[600px]">
-            <DialogHeader>
-              <DialogTitle>Import Sales (CSV / XLSX)</DialogTitle>
-            </DialogHeader>
-
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-sm text-muted-foreground">
-                  Select file
-                </label>
-                <Input
-                  type="file"
-                  accept=".csv,.xlsx,.xls"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0] || null;
-                    setInsertFile(f);
-                    if (f) handleParseSelectedFileInsert(f);
-                  }}
-                />
-                <p className="text-xs text-muted-foreground">
-                  We’ll parse with PapaParse. Excel files are first converted to
-                  CSV (in-browser) and then parsed.
-                </p>
-              </div>
-
-              {parsingInsert && <p className="text-sm">Parsing…</p>}
-
-              {rawRowsInsert.length > 0 && !parsingInsert && (
-                <div className="space-y-1 text-sm">
-                  <div>
-                    Total rows in file: <b>{rawRowsInsert.length}</b>
-                  </div>
-                  <div className="text-green-700">
-                    Valid rows to insert: <b>{validRowsToInsert.length}</b>
-                  </div>
-                  <div className="text-amber-700">
-                    Skipped (errors): <b>{invalidRowsInsert.length}</b>
-                  </div>
-
-                  {invalidRowsInsert.length > 0 && (
-                    <details className="mt-2">
-                      <summary className="cursor-pointer">
-                        See invalid row details
-                      </summary>
-                      <ul className="list-disc pl-6 mt-2">
-                        {invalidRowsInsert.slice(0, 20).map((row, idx) => (
-                          <li key={idx}>
-                            Row {row.index}: {row.errors.join(", ")}
-                          </li>
-                        ))}
-                        {invalidRowsInsert.length > 20 && (
-                          <li>
-                            …and {invalidRowsInsert.length - 20} more
-                          </li>
-                        )}
-                      </ul>
-                    </details>
-                  )}
-
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Note: <code>payment_mode</code> is set to <b>UPI</b> for
-                    all records. Required fields:
-                    <code> lead_id</code>, <code>Total_amount</code>,{" "}
-                    <code>subscription_cycle (15/30/60/90)</code>,{" "}
-                    <code>email</code>.
-                  </p>
-                </div>
-              )}
-            </div>
-
-            <DialogFooter className="mt-4">
-              <Button
-                variant="outline"
-                onClick={() => setImportInsertOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleImportSubmit}
-                disabled={
-                  importingInsert ||
-                  parsingInsert ||
-                  validRowsToInsert.length === 0
-                }
-              >
-                {importingInsert
-                  ? "Importing…"
-                  : `Submit (${validRowsToInsert.length})`}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* UPDATE dialog */}
         <Dialog open={importUpdateOpen} onOpenChange={setImportUpdateOpen}>
           <DialogContent className="sm:max-w-[600px]">
             <DialogHeader>
               <DialogTitle>Update Sales (by lead_id) — CSV / XLSX</DialogTitle>
             </DialogHeader>
-
             <div className="space-y-4">
               <div className="space-y-2">
-                <label className="text-sm text-muted-foreground">
-                  Select file
-                </label>
+                <label className="text-sm text-muted-foreground">Select file</label>
                 <Input
                   type="file"
                   accept=".csv,.xlsx,.xls"
@@ -1858,38 +1922,21 @@ const handleImportSubmit = async () => {
                 />
                 <p className="text-xs text-muted-foreground">
                   Excel files are converted to CSV in-browser, then parsed with
-                  PapaParse. Only the columns present in your file will be
-                  updated. Everything else stays unchanged.
+                  PapaParse. Only the columns present in your file will be updated.
                 </p>
               </div>
-
               {parsingUpdate && <p className="text-sm">Parsing…</p>}
-
               {rawRowsUpdate.length > 0 && !parsingUpdate && (
                 <div className="space-y-2 text-sm">
-                  <div>
-                    Total rows in file: <b>{rawRowsUpdate.length}</b>
-                  </div>
-                  <div className="text-green-700">
-                    Valid update rows: <b>{updatesToApply.length}</b>
-                  </div>
-                  <div className="text-amber-700">
-                    Skipped (errors): <b>{invalidRowsUpdate.length}</b>
-                  </div>
-
+                  <div>Total rows in file: <b>{rawRowsUpdate.length}</b></div>
+                  <div className="text-green-700">Valid update rows: <b>{updatesToApply.length}</b></div>
+                  <div className="text-amber-700">Skipped (errors): <b>{invalidRowsUpdate.length}</b></div>
                   <div className="pt-2">
-                    <div>
-                      lead_ids matched in DB (latest row will be updated):{" "}
-                      <b>{Object.keys(latestIdByLead).length}</b>
-                    </div>
-                    <div className="text-amber-700">
-                      lead_ids not found in DB: <b>{missingLeadIds.length}</b>
-                    </div>
+                    <div>lead_ids matched in DB: <b>{Object.keys(latestIdByLead).length}</b></div>
+                    <div className="text-amber-700">lead_ids not found in DB: <b>{missingLeadIds.length}</b></div>
                     {missingLeadIds.length > 0 && (
                       <details className="mt-1">
-                        <summary className="cursor-pointer">
-                          See missing lead_ids
-                        </summary>
+                        <summary className="cursor-pointer">See missing lead_ids</summary>
                         <div className="mt-1 break-words">
                           {missingLeadIds.slice(0, 50).join(", ")}
                           {missingLeadIds.length > 50 && " …"}
@@ -1897,54 +1944,35 @@ const handleImportSubmit = async () => {
                       </details>
                     )}
                   </div>
-
                   {invalidRowsUpdate.length > 0 && (
                     <details className="mt-2">
-                      <summary className="cursor-pointer">
-                        See invalid row details
-                      </summary>
+                      <summary className="cursor-pointer">See invalid row details</summary>
                       <ul className="list-disc pl-6 mt-2">
                         {invalidRowsUpdate.slice(0, 20).map((row, idx) => (
-                          <li key={idx}>
-                            Row {row.index}: {row.errors.join(", ")}
-                          </li>
+                          <li key={idx}>Row {row.index}: {row.errors.join(", ")}</li>
                         ))}
                         {invalidRowsUpdate.length > 20 && (
-                          <li>
-                            …and {invalidRowsUpdate.length - 20} more
-                          </li>
+                          <li>…and {invalidRowsUpdate.length - 20} more</li>
                         )}
                       </ul>
                     </details>
                   )}
-
                   <p className="text-xs text-muted-foreground mt-2">
                     We update the <b>latest</b> <code>sales_closure</code> row
                     for each <code>lead_id</code> (by <code>closed_at</code>).
-                    No other columns are touched.
                   </p>
                 </div>
               )}
             </div>
-
             <DialogFooter className="mt-4">
-              <Button
-                variant="outline"
-                onClick={() => setImportUpdateOpen(false)}
-              >
+              <Button variant="outline" onClick={() => setImportUpdateOpen(false)}>
                 Cancel
               </Button>
               <Button
                 onClick={handleUpdateSubmitByLeadId}
-                disabled={
-                  importingUpdate ||
-                  parsingUpdate ||
-                  updatesToApply.length === 0
-                }
+                disabled={importingUpdate || parsingUpdate || updatesToApply.length === 0}
               >
-                {importingUpdate
-                  ? "Updating…"
-                  : `Update (${updatesToApply.length})`}
+                {importingUpdate ? "Updating…" : `Update (${updatesToApply.length})`}
               </Button>
             </DialogFooter>
           </DialogContent>
