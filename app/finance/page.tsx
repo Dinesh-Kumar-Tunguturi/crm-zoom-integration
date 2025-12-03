@@ -1048,6 +1048,14 @@ const totalTLCount = tlActiveCounts.reduce((sum, tl) => sum + tl.count, 0);
             {/* <Button onClick={() => setShowRevenueDialog(true)}>Revenue</Button> */}
             <div className="flex gap-2">
 
+  <Button
+    variant="outline"
+    className="bg-green-100 text-green-700 hover:bg-green-200"
+    onClick={() => window.open("/finance/addons", "_blank")}
+  >
+    Addons Details
+  </Button>
+
                <Button
     variant="outline"
     className="bg-red-100 text-red-700 hover:bg-red-200"
