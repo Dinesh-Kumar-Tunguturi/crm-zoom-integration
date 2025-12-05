@@ -1,5 +1,5 @@
 // import { NextRequest, NextResponse } from "next/server";
-// import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+// import { S3Client, DeleteObjectCommand } from "@aws-sdk/client-s3";
 
 // const s3 = new S3Client({
 //   region: process.env.AWS_REGION!,
@@ -10,49 +10,26 @@
 // });
 
 // export async function POST(req: NextRequest) {
-//   console.log("[UPLOAD] Incoming request...");
-
-//   const formData = await req.formData();
-//   const file = formData.get("file") as File | null;
-
-//   if (!file) {
-//     console.warn("[UPLOAD] No file received");
-//     return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
-//   }
-
-//   const arrayBuffer =
-//   typeof (file as any).arrayBuffer === "function"
-//     ? await (file as any).arrayBuffer()
-//     : Buffer.isBuffer(file)
-//     ? file
-//     : Buffer.from(await (file as any).text(), "binary");
-
-//   const buffer = Buffer.from(arrayBuffer);
-
-//   const key = `CRM/${Date.now()}-${file.name}`;
-//   const uploadParams = {
-//     Bucket: process.env.AWS_S3_BUCKET!,
-//     Key: key,
-//     Body: buffer,
-//     ContentType: file.type,
-//   };
-
-//   console.log(`[UPLOAD] Uploading to S3: ${key} (${file.size} bytes)`);
-
 //   try {
-//     await s3.send(new PutObjectCommand(uploadParams));
+//     const { key } = await req.json(); // e.g. "CRM/1761207062617-test.pdf"
 
-//     const publicUrl = `https://${process.env.AWS_S3_BUCKET!}.s3.${process.env.AWS_REGION!}.amazonaws.com/${key}`;
+//     if (!key) {
+//       return NextResponse.json({ error: "Missing key/path" }, { status: 400 });
+//     }
 
-//     console.log(`[UPLOAD] Success: ${key}`);
-//     return NextResponse.json({
-//       message: "Uploaded successfully!",
-//       key,
-//       publicUrl
-//     });
-    
+//     console.log(`[DELETE] Attempting to delete: ${key}`);
+
+//     await s3.send(
+//       new DeleteObjectCommand({
+//         Bucket: process.env.AWS_S3_BUCKET!,
+//         Key: key,
+//       })
+//     );
+
+//     console.log(`[DELETE] Success: ${key}`);
+//     return NextResponse.json({ message: "File deleted successfully!", key });
 //   } catch (err: any) {
-//     console.error("[UPLOAD] Failed:", err);
+//     console.error("[DELETE] Failed:", err);
 //     return NextResponse.json({ error: err.message }, { status: 500 });
 //   }
 // }
@@ -62,6 +39,8 @@
 
 
 
+
+// app/api/resumes/delete/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { S3Client, DeleteObjectCommand } from "@aws-sdk/client-s3";
 
@@ -74,24 +53,32 @@ const s3 = new S3Client({
 });
 
 export async function POST(req: NextRequest) {
+  console.log("[DELETE] Incoming delete request...");
+
   try {
-    const { key } = await req.json(); // e.g. "CRM/1761207062617-test.pdf"
+    const body = await req.json();
+    const { key } = body;
 
     if (!key) {
-      return NextResponse.json({ error: "Missing key/path" }, { status: 400 });
+      console.warn("[DELETE] No key provided");
+      return NextResponse.json({ error: "No key provided" }, { status: 400 });
     }
 
-    console.log(`[DELETE] Attempting to delete: ${key}`);
+    console.log(`[DELETE] Deleting from S3: ${key}`);
 
-    await s3.send(
-      new DeleteObjectCommand({
-        Bucket: process.env.AWS_S3_BUCKET!,
-        Key: key,
-      })
-    );
+    const deleteParams = {
+      Bucket: process.env.AWS_S3_BUCKET!,
+      Key: key,
+    };
+
+    await s3.send(new DeleteObjectCommand(deleteParams));
 
     console.log(`[DELETE] Success: ${key}`);
-    return NextResponse.json({ message: "File deleted successfully!", key });
+    return NextResponse.json({
+      message: "Deleted successfully!",
+      key,
+    });
+    
   } catch (err: any) {
     console.error("[DELETE] Failed:", err);
     return NextResponse.json({ error: err.message }, { status: 500 });
