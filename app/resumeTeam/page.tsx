@@ -1,5 +1,5 @@
-// "use client";
 
+// "use client";
 
 // import React, { useEffect, useRef, useState } from "react";
 // import { useRouter } from "next/navigation";
@@ -33,30 +33,22 @@
 // import { Input } from "@/components/ui/input";
 // import { Label } from "@/components/ui/label";
 // import { Textarea } from "@/components/ui/textarea";
-
-
 // import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
-
-
 // import ProtectedRoute from "@/components/auth/ProtectedRoute";
 // import { DashboardLayout } from "@/components/layout/dashboard-layout";
 // import { useAuth } from "@/components/providers/auth-provider";
-
 
 // /* =========================
 //    Types & Labels
 //    ========================= */
 
-
 // type FinanceStatus = "Paid" | "Unpaid" | "Paused" | "Closed" | "Got Placed";
-
 
 // type ResumeStatus =
 //   | "not_started"
 //   | "pending"
 //   | "waiting_client_approval"
 //   | "completed";
-
 
 // const STATUS_LABEL: Record<ResumeStatus, string> = {
 //   not_started: "Not started",
@@ -65,13 +57,11 @@
 //   completed: "Completed",
 // };
 
-
 // type PortfolioStatus =
 //   | "not_started"
 //   | "pending"
 //   | "waiting_client_approval"
 //   | "success";
-
 
 // type TeamMember = {
 //   id: string;
@@ -79,7 +69,6 @@
 //   email: string | null;
 //   role: string | null;
 // };
-
 
 // interface SalesClosure {
 //   id: string;
@@ -98,10 +87,8 @@
 //   badge_value?: number | null;
 //   data_sent_to_customer_dashboard?: string | null;
 
-
 //   // joined lead data
 //   leads?: { name: string; phone: string };
-
 
 //   // resume_progress (from view)
 //   rp_status: ResumeStatus;
@@ -109,41 +96,32 @@
 //   assigned_to_email: string | null;
 //   assigned_to_name: string | null;
 
-
 //   // portfolio_progress
 //   pp_status: PortfolioStatus | null;
 //   pp_assigned_email: string | null;
 //   pp_assigned_name: string | null;
 //   pp_link: string | null;
 
-
 //   portfolio_paid: boolean;
 // }
-
 
 // /* =========================
 //    Small helpers
 //    ========================= */
 
-
 // const formatDateLabel = (d: string | null) =>
 //   d ? new Date(d).toLocaleDateString("en-GB") : "-";
-
 
 // const formatOnboardLabel = (d: string | null) =>
 //   d ? new Date(d).toLocaleDateString("en-GB") : "Not Started";
 
-
 // const csvFromArray = (arr?: string[] | null) =>
 //   arr && arr.length ? arr.join(", ") : "";
-
 
 // const csvToArray = (s: string) =>
 //   s.split(",").map((v) => v.trim()).filter(Boolean);
 
-
 // const BUCKET = "resumes";
-
 
 // const ensurePdf = (file: File) => {
 //   if (file.type !== "application/pdf")
@@ -151,52 +129,42 @@
 //   if (file.size > 20 * 1024 * 1024) throw new Error("Max file size is 20MB.");
 // };
 
-
 // /* =========================
 //    Main Page Component
 //    ========================= */
 
-
 // export default function ResumeTeamPage() {
 //   const router = useRouter();
 //   const { user } = useAuth();
-
 
 //   const [loading, setLoading] = useState(true);
 //   const [rows, setRows] = useState<SalesClosure[]>([]);
 //   const [resumeTeamMembers, setResumeTeamMembers] = useState<TeamMember[]>([]);
 //   const [assigneeFilter, setAssigneeFilter] = useState<string>("__all__");
 
-
 //   // file upload
 //   const fileRef = useRef<HTMLInputElement | null>(null);
 //   const [uploadForLead, setUploadForLead] = useState<string | null>(null);
 //   const [replacingOldPath, setReplacingOldPath] = useState<string | null>(null);
 
-
 //   // Requirements dialog
 //   const [reqDialogOpen, setReqDialogOpen] = useState(false);
 //   const [reqRow, setReqRow] = useState<SalesClosure | null>(null);
 
-
 //   const [showMyTasks, setShowMyTasks] = useState(false);
 
-
 //   // Pagination
-// const [page, setPage] = useState(1);
-// const [limit, setLimit] = useState(30);
-// const [totalRows, setTotalRows] = useState(0);
+//   const [page, setPage] = useState(1);
+//   const [limit, setLimit] = useState(30);
+//   const [totalRows, setTotalRows] = useState(0);
 
-
-// // Search
-// const [searchText, setSearchText] = useState("");
-// const [searchQuery, setSearchQuery] = useState(""); // actual query on Enter
-
+//   // Search
+//   const [searchText, setSearchText] = useState("");
+//   const [searchQuery, setSearchQuery] = useState(""); // actual query on Enter
 
 //   /* =========================
 //      Role gate + initial load
 //      ========================= */
-
 
 //   useEffect(() => {
 //     if (user === null) return;
@@ -205,23 +173,18 @@
 //       router.push("/unauthorized");
 //       return;
 //     }
-//    Promise.all([fetchTeamMembers(), fetchData(1, limit)]).finally(() =>
-//   setLoading(false)
-// );
-
-
+//     Promise.all([fetchTeamMembers(), fetchData(1, limit)]).finally(() =>
+//       setLoading(false)
+//     );
 //     // eslint-disable-next-line react-hooks/exhaustive-deps
 //   }, [user]);
-
 
 //   /* =========================
 //      Fetch helpers
 //      ========================= */
 
-
 //   const fetchTeamMembers = async () => {
 //     let members: TeamMember[] = [];
-
 
 //     try {
 //       const { data, error } = await supabase
@@ -229,12 +192,10 @@
 //         .select("id,name,email,role")
 //         .in("role", ["Resume Head", "Resume Associate"]);
 
-
 //       if (!error && data) members = data as TeamMember[];
 //     } catch {
 //       // ignore
 //     }
-
 
 //     if (!members.length) {
 //       try {
@@ -242,7 +203,6 @@
 //           .from("profiles")
 //           .select("user_id,full_name,user_email,roles")
 //           .in("roles", ["Resume Head", "Resume Associate"]);
-
 
 //         if (!error && data) {
 //           members = (data as any[]).map((d) => ({
@@ -257,111 +217,110 @@
 //       }
 //     }
 
-
 //     setResumeTeamMembers(members);
 //   };
 
+//   const fetchData = async (
+//     newPage = page,
+//     newLimit = limit,
+//     activeSearch = searchQuery,
+//     overrideShowMyTasks?: boolean,
+//     overrideAssigneeFilter?: string
+//   ) => {
+//     try {
+//       setLoading(true);
 
-// const fetchData = async (newPage = page, newLimit = limit, activeSearch = searchQuery,   overrideShowMyTasks?: boolean) => {
-//   try {
-//     setLoading(true);
+//       const from = (newPage - 1) * newLimit;
+//       const to = from + newLimit - 1;
 
+//       let query = supabase
+//         .from("full_client_status_final")
+//         .select("*", { count: "exact" });
 
-//     const from = (newPage - 1) * newLimit;
-//     const to = from + newLimit - 1;
+//       // 🔍 Apply server-side search
+//       if (activeSearch.trim() !== "") {
+//         query = query.or(
+//           `lead_id.ilike.%${activeSearch}%,lead_name.ilike.%${activeSearch}%,email.ilike.%${activeSearch}%,company_application_email.ilike.%${activeSearch}%`
+//         );
+//       }
 
+//       // 🔧 Apply assignee filter (if not "__all__")
+//       const currentAssigneeFilter = overrideAssigneeFilter !== undefined ? 
+//         overrideAssigneeFilter : assigneeFilter;
+      
+//       if (currentAssigneeFilter !== "__all__" && currentAssigneeFilter !== "__none__") {
+//         query = query.eq("resume_assigned_email", currentAssigneeFilter);
+//       }
+      
+//       // If "__none__" is selected, show unassigned
+//       if (currentAssigneeFilter === "__none__") {
+//         query = query.is("resume_assigned_email", null);
+//       }
 
-//     let query = supabase
-//       .from("full_client_status_final")
-//       .select("*", { count: "exact" });
+//       // 👤 My Tasks filter
+//       const myTasks = overrideShowMyTasks ?? showMyTasks;
+//       if (myTasks && user?.email) {
+//         query = query.eq("resume_assigned_email", user.email);
+//       }
 
+//       query = query
+//         .order("closed_at", { ascending: false })
+//         .range(from, to);
 
-//     // 🔍 Apply server-side search
-//     if (activeSearch.trim() !== "") {
-//       query = query.or(
-//         `lead_id.ilike.%${activeSearch}%,lead_name.ilike.%${activeSearch}%,email.ilike.%${activeSearch}%,company_application_email.ilike.%${activeSearch}%`
-//       );
+//       const { data, error, count } = await query;
+
+//       if (error) throw error;
+
+//       setTotalRows(count ?? 0);
+
+//       const formatted: SalesClosure[] = (data as any[]).map((r) => {
+//         const onboardRaw = r.onboarded_date ?? null;
+//         const portfolioPaid =
+//           r.portfolio_sale_value && Number(r.portfolio_sale_value) > 0;
+
+//         return {
+//           id: String(r.sale_id),
+//           lead_id: r.lead_id,
+//           email: r.email,
+//           company_application_email: r.company_application_email ?? null,
+//           finance_status: r.finance_status ?? "Unpaid",
+//           closed_at: r.closed_at ?? null,
+//           onboarded_date_raw: onboardRaw,
+//           onboarded_date_label: formatOnboardLabel(onboardRaw),
+//           application_sale_value: r.application_sale_value ?? null,
+//           resume_sale_value: r.resume_sale_value ?? null,
+//           portfolio_sale_value: r.portfolio_sale_value ?? null,
+//           job_board_value: r.job_board_value ?? null,
+//           commitments: r.commitments ?? null,
+//           data_sent_to_customer_dashboard: r.data_sent_to_customer_dashboard ?? null,
+//           leads: {
+//             name: r.lead_name ?? "-",
+//             phone: r.phone_number ?? "-",
+//           },
+//           rp_status: r.resume_status ?? "not_started",
+//           rp_pdf_path: r.resume_pdf ?? null,
+//           assigned_to_email: r.resume_assigned_email ?? null,
+//           assigned_to_name: r.resume_assigned_name ?? null,
+//           pp_status: r.portfolio_status ?? null,
+//           pp_assigned_email: r.portfolio_assigned_email ?? null,
+//           pp_assigned_name: r.portfolio_assigned_name ?? null,
+//           pp_link: r.portfolio_link ?? null,
+//           portfolio_paid: portfolioPaid,
+//         };
+//       });
+
+//       setRows(formatted);
+//     } catch (e) {
+//       console.error(e);
+//       setRows([]);
+//     } finally {
+//       setLoading(false);
 //     }
-
-
-//     const myTasks = overrideShowMyTasks ?? showMyTasks;
-
-
-// if (myTasks && user?.email) {
-//   query = query.eq("resume_assigned_email", user.email);
-// }
-
-
-//     query = query
-//       .order("closed_at", { ascending: false })
-//       .range(from, to);
-
-
-//     const { data, error, count } = await query;
-
-
-//     if (error) throw error;
-
-
-//     setTotalRows(count ?? 0);
-
-
-//     const formatted: SalesClosure[] = (data as any[]).map((r) => {
-//       const onboardRaw = r.onboarded_date ?? null;
-//       const portfolioPaid =
-//         r.portfolio_sale_value && Number(r.portfolio_sale_value) > 0;
-
-
-//       return {
-//         id: String(r.sale_id),
-//         lead_id: r.lead_id,
-//         email: r.email,
-//         company_application_email: r.company_application_email ?? null,
-//         finance_status: r.finance_status ?? "Unpaid",
-//         closed_at: r.closed_at ?? null,
-//         onboarded_date_raw: onboardRaw,
-//         onboarded_date_label: formatOnboardLabel(onboardRaw),
-//         application_sale_value: r.application_sale_value ?? null,
-//         resume_sale_value: r.resume_sale_value ?? null,
-//         portfolio_sale_value: r.portfolio_sale_value ?? null,
-//         job_board_value: r.job_board_value ?? null,
-//         commitments: r.commitments ?? null,
-//         data_sent_to_customer_dashboard: r.data_sent_to_customer_dashboard ?? null,
-//         leads: {
-//           name: r.lead_name ?? "-",
-//           phone: r.phone_number ?? "-",
-//         },
-//         rp_status: r.resume_status ?? "not_started",
-//         rp_pdf_path: r.resume_pdf ?? null,
-//         assigned_to_email: r.resume_assigned_email ?? null,
-//         assigned_to_name: r.resume_assigned_name ?? null,
-//         pp_status: r.portfolio_status ?? null,
-//         pp_assigned_email: r.portfolio_assigned_email ?? null,
-//         pp_assigned_name: r.portfolio_assigned_name ?? null,
-//         pp_link: r.portfolio_link ?? null,
-//         portfolio_paid: portfolioPaid,
-//       };
-//     });
-
-
-//     setRows(formatted);
-//   } catch (e) {
-//     console.error(e);
-//     setRows([]);
-//   } finally {
-//     setLoading(false);
-//   }
-// };
-
-
-
-
-
+//   };
 
 //   /* =========================
 //      Resume status & assignee
 //      ========================= */
-
 
 //   const updateStatus = async (leadId: string, status: ResumeStatus) => {
 //     const { error } = await supabase
@@ -369,7 +328,6 @@
 //       .upsert({ lead_id: leadId, status }, { onConflict: "lead_id" });
 //     if (error) throw error;
 //   };
-
 
 //   const updateAssignedTo = async (
 //     leadId: string,
@@ -381,9 +339,7 @@
 //       .select("id")
 //       .eq("lead_id", leadId);
 
-
 //     if (findErr) throw findErr;
-
 
 //     if (existingRows && existingRows.length > 0) {
 //       const { error: updErr } = await supabase
@@ -403,33 +359,26 @@
 //     }
 //   };
 
-
 //   const onChangeStatus = async (row: SalesClosure, newStatus: ResumeStatus) => {
 //     try {
 //       await updateStatus(row.lead_id, newStatus);
-
 
 //       if (newStatus === "completed" && !row.rp_pdf_path) {
 //         setUploadForLead(row.lead_id);
 //         setReplacingOldPath(null);
 //         fileRef.current?.click();
 //       } else {
-//         setRows((rs) =>
-//           rs.map((r) =>
-//             r.lead_id === row.lead_id ? { ...r, rp_status: newStatus } : r,
-//           ),
-//         );
+//         // Refetch with current filters
+//         await fetchData(page, limit, searchQuery, showMyTasks, assigneeFilter);
 //       }
 //     } catch (e: any) {
 //       alert(e.message || "Failed to update status");
 //     }
 //   };
 
-
 //   /* =========================
 //      Resume upload & download
 //      ========================= */
-
 
 //   const uploadOrReplaceResume = async (
 //     leadId: string,
@@ -438,7 +387,6 @@
 //   ) => {
 //     ensurePdf(file);
 
-
 //     // find existing path from DB
 //     const pathRes = await supabase
 //       .from("resume_progress")
@@ -446,9 +394,7 @@
 //       .eq("lead_id", leadId)
 //       .maybeSingle();
 
-
 //     const existingPath = pathRes.data?.pdf_path as string | undefined;
-
 
 //     // delete old path (S3 or Supabase storage)
 //     if (existingPath) {
@@ -471,25 +417,21 @@
 //       }
 //     }
 
-
 //     // upload via API → S3
 //     const formData = new FormData();
 //     formData.append("file", file);
 //     formData.append("lead_id", leadId);
-
 
 //     const res = await fetch("/api/resumes/upload", {
 //       method: "POST",
 //       body: formData,
 //     });
 
-
 //     const data = await res.json();
 //     if (!res.ok) {
 //       console.error("Upload failed:", data);
 //       throw new Error(data.error || "Upload failed");
 //     }
-
 
 //     // update resume_progress with new path
 //     const db = await supabase
@@ -508,10 +450,8 @@
 //       throw new Error(db.error.message || "DB upsert failed");
 //     }
 
-
 //     return { key: data.key, publicUrl: data.publicUrl };
 //   };
-
 
 //   const downloadResume = async (path: string) => {
 //     try {
@@ -544,57 +484,46 @@
 //     }
 //   };
 
-
 //   const onFilePicked = async (e: React.ChangeEvent<HTMLInputElement>) => {
 //     const file = e.target.files?.[0] || null;
 //     const leadId = uploadForLead;
 //     const oldPath = replacingOldPath;
 
-
 //     e.target.value = "";
 //     setUploadForLead(null);
 //     setReplacingOldPath(null);
 
-
 //     if (!file || !leadId) return;
-
 
 //     try {
 //       await uploadOrReplaceResume(leadId, file, oldPath || undefined);
-//     //   await fetchData();
+//       await fetchData(page, limit, searchQuery, showMyTasks, assigneeFilter);
 //       alert("PDF uploaded.");
 //     } catch (err: any) {
 //       alert(err.message || "Upload failed");
-//     //   await fetchData();
+//       await fetchData(page, limit, searchQuery, showMyTasks, assigneeFilter);
 //     }
 //   };
-
-
-
 
 //   /* =========================
 //      Sorting (optional)
 //      ========================= */
 
+// type SortKey = "clientId" | "name" | "email" | "closedAt" | "onboarded";
+// type SortDir = "asc" | "desc";
 
-//   type SortKey = "clientId" | "name" | "email" | "closedAt" | "onboarded";
-//   type SortDir = "asc" | "desc";
-
-
-//   const [sort, setSort] = useState<{ key: SortKey | null; dir: SortDir }>({
+// const [sort, setSort] = useState<{ key: SortKey | null; dir: SortDir }>({
 //     key: "closedAt",
 //     dir: "desc",
-//   });
+// });
 
-
-//   const toggleSort = (key: SortKey) => {
+// const toggleSort = (key: SortKey) => {
 //     setSort((s) =>
-//       s.key === key
-//         ? { key, dir: s.dir === "asc" ? "desc" : "asc" }
-//         : { key, dir: "asc" },
+//         s.key === key
+//             ? { key, dir: s.dir === "asc" ? "desc" : "asc" }
+//             : { key, dir: "asc" },
 //     );
-//   };
-
+// };
 
 //   const parseClientIdNum = (id?: string | null) => {
 //     if (!id) return -Infinity;
@@ -602,17 +531,13 @@
 //     return m ? Number(m[1]) : -Infinity;
 //   };
 
-
 //   const dateToMs = (d?: string | null) =>
 //     d ? new Date(d).getTime() : -Infinity;
 
-
 //   const safeStr = (s?: string | null) => (s ?? "").toLowerCase();
-
 
 //   const cmp = (a: number | string, b: number | string) =>
 //     a < b ? -1 : a > b ? 1 : 0;
-
 
 //   const sortRowsBy = (arr: SalesClosure[]) => {
 //     if (!sort.key) return arr;
@@ -620,7 +545,6 @@
 //     copy.sort((A, B) => {
 //       let vA: number | string;
 //       let vB: number | string;
-
 
 //       switch (sort.key) {
 //         case "clientId":
@@ -653,9 +577,7 @@
 //     return copy;
 //   };
 
-
 //   const sortedRows = sortRowsBy(rows);
-
 
 //   const SortIcon = ({ active, dir }: { active: boolean; dir: SortDir }) =>
 //     active ? (
@@ -668,11 +590,9 @@
 //       <ArrowUpDown className="ml-1 h-4 w-4 opacity-60" />
 //     );
 
-
 //   /* =========================
 //      Render table (EXACT UI)
 //      ========================= */
-
 
 //   const renderTable = (data: SalesClosure[]) => (
 //     <div className="rounded-md border mt-4">
@@ -680,8 +600,6 @@
 //         <TableHeader>
 //           <TableRow>
 //             <TableHead>S.No</TableHead>
-
-
 //             <TableHead>
 //               <button
 //                 type="button"
@@ -695,8 +613,6 @@
 //                 />
 //               </button>
 //             </TableHead>
-
-
 //             <TableHead>
 //               <button
 //                 type="button"
@@ -707,8 +623,6 @@
 //                 <SortIcon active={sort.key === "name"} dir={sort.dir} />
 //               </button>
 //             </TableHead>
-
-
 //             <TableHead>
 //               <button
 //                 type="button"
@@ -719,16 +633,12 @@
 //                 <SortIcon active={sort.key === "email"} dir={sort.dir} />
 //               </button>
 //             </TableHead>
-
-
 //             <TableHead>Application email</TableHead>
 //             <TableHead>Phone</TableHead>
 //             <TableHead>Status</TableHead>
 //             <TableHead>Resume Status</TableHead>
 //             <TableHead>Assigned to</TableHead>
 //             <TableHead>Resume PDF</TableHead>
-
-
 //             <TableHead>
 //               <button
 //                 type="button"
@@ -742,8 +652,6 @@
 //                 />
 //               </button>
 //             </TableHead>
-
-
 //             <TableHead>
 //               <button
 //                 type="button"
@@ -757,26 +665,20 @@
 //                 />
 //               </button>
 //             </TableHead>
-
-
 //             <TableHead>Portfolio Status</TableHead>
 //             <TableHead>Portfolio Link</TableHead>
 //             <TableHead>Portfolio Assignee</TableHead>
 //             <TableHead>Client Requirements</TableHead>
 //             <TableHead>Application Status</TableHead>
 //             <TableHead>Onboard</TableHead>
-//             {/* <TableHead>Forward to TT</TableHead> */}
 //           </TableRow>
 //         </TableHeader>
-
 
 //         <TableBody>
 //           {data.map((row, index) => (
 //             <TableRow key={row.id}>
 //               <TableCell className="text-center">{index + 1}</TableCell>
 //               <TableCell>{row.lead_id}</TableCell>
-
-
 //               <TableCell
 //                 className="font-medium max-w-[150px] break-words whitespace-normal cursor-pointer text-blue-600 hover:underline"
 //                 onClick={() =>
@@ -785,15 +687,12 @@
 //               >
 //                 {row.leads?.name || "-"}
 //               </TableCell>
-
-
 //               <TableCell>{row.email}</TableCell>
 //               <TableCell>
 //                 {row.company_application_email || "not given"}
 //               </TableCell>
 //               <TableCell>{row.leads?.phone || "-"}</TableCell>
 //               <TableCell>{row.finance_status}</TableCell>
-
 
 //               {/* Resume Status */}
 //               <TableCell className="min-w-[220px]">
@@ -823,41 +722,17 @@
 //                 </Select>
 //               </TableCell>
 
-
 //               {/* Assigned to */}
 //               <TableCell className="min-w-[260px]">
 //                 <Select
 //                   value={row.assigned_to_email ?? "__none__"}
 //                   onValueChange={async (value) => {
 //                     try {
-//                       const chosen =
-//                         value === "__none__" ? null : value;
-//                       const member =
-//                         resumeTeamMembers.find(
-//                           (u) => u.email === chosen,
-//                         ) || null;
+//                       const chosen = value === "__none__" ? null : value;
+//                       const member = resumeTeamMembers.find((u) => u.email === chosen) || null;
 
-
-//                       await updateAssignedTo(
-//                         row.lead_id,
-//                         chosen,
-//                         member?.name ?? null,
-//                       );
-
-
-//                       setRows((rs) =>
-//                         rs.map((r) =>
-//                           r.lead_id === row.lead_id
-//                             ? {
-//                                 ...r,
-//                                 assigned_to_email: chosen,
-//                                 assigned_to_name:
-//                                   member?.name ?? null,
-//                               }
-//                             : r,
-//                         ),
-//                       );
-//                     //   await fetchData();
+//                       await updateAssignedTo(row.lead_id, chosen, member?.name ?? null);
+//                       await fetchData(page, limit, searchQuery, showMyTasks, assigneeFilter);
 //                     } catch (e: any) {
 //                       console.error("Assign failed:", e);
 //                       alert(e.message || "Failed to assign");
@@ -889,7 +764,6 @@
 //                 </Select>
 //               </TableCell>
 
-
 //               {/* Resume PDF */}
 //               <TableCell className="space-x-2 min-w-[220px]">
 //                 {row.rp_pdf_path ? (
@@ -908,9 +782,7 @@
 //                       size="sm"
 //                       onClick={() => {
 //                         setUploadForLead(row.lead_id);
-//                         setReplacingOldPath(
-//                           row.rp_pdf_path ?? null,
-//                         );
+//                         setReplacingOldPath(row.rp_pdf_path ?? null);
 //                         fileRef.current?.click();
 //                       }}
 //                     >
@@ -933,10 +805,8 @@
 //                 )}
 //               </TableCell>
 
-
 //               {/* Closed At */}
 //               <TableCell>{formatDateLabel(row.closed_at)}</TableCell>
-
 
 //               {/* Onboarded Date */}
 //               <TableCell className="min-w-[160px]">
@@ -951,7 +821,6 @@
 //                 )}
 //               </TableCell>
 
-
 //               {/* Portfolio Status */}
 //               <TableCell className="min-w-[140px]">
 //                 {row.portfolio_paid ? (
@@ -964,7 +833,6 @@
 //                   </span>
 //                 )}
 //               </TableCell>
-
 
 //               {/* Portfolio Link */}
 //               <TableCell className="max-w-[220px] truncate">
@@ -981,15 +849,13 @@
 //                     </a>
 //                   ) : row.leads?.name ? (
 //                     <a
-//                       href={`https://applywizz-${(row.leads?.name ||
-//                         "")
+//                       href={`https://applywizz-${(row.leads?.name || "")
 //                         .toLowerCase()
 //                         .replace(/[^a-z0-9]/g, "")}.vercel.app/`}
 //                       target="_blank"
 //                       rel="noreferrer"
 //                       className="text-blue-600 underline block truncate"
-//                       title={`https://applywizz-${(row.leads?.name ||
-//                         "")
+//                       title={`https://applywizz-${(row.leads?.name || "")
 //                         .toLowerCase()
 //                         .replace(/[^a-z0-9]/g, "")}.vercel.app/`}
 //                     >
@@ -1005,7 +871,6 @@
 //                 )}
 //               </TableCell>
 
-
 //               {/* Portfolio Assignee */}
 //               <TableCell>
 //                 {row.pp_assigned_name
@@ -1015,12 +880,9 @@
 //                         : ""
 //                     }`
 //                   : row.pp_assigned_email || (
-//                       <span className="text-gray-400 text-sm">
-//                         —
-//                       </span>
+//                       <span className="text-gray-400 text-sm">—</span>
 //                     )}
 //               </TableCell>
-
 
 //               {/* Commitments */}
 //               <TableCell className="min-w-[140px] text-center">
@@ -1041,7 +903,6 @@
 //                 )}
 //               </TableCell>
 
-
 //               {/* Application Status */}
 //               <TableCell className="min-w-[140px] text-center">
 //                 {Number(row.application_sale_value) > 0 ? (
@@ -1054,7 +915,6 @@
 //                   </span>
 //                 )}
 //               </TableCell>
-
 
 //               {/* Onboard button */}
 //               <TableCell>
@@ -1077,12 +937,8 @@
 //                   </Button>
 //                 )}
 //               </TableCell>
-
-
-             
 //             </TableRow>
 //           ))}
-
 
 //           {data.length === 0 && (
 //             <TableRow>
@@ -1098,53 +954,47 @@
 //       </Table>
      
 //       <div className="flex items-center justify-center px-4 py-2 border-t bg-gray-50">
-//   <div className="flex items-center gap-2">
-//     <span className="text-sm">Page:</span>
-//     <Select
-//       value={String(page)}
-//       onValueChange={async (val) => {
-//         const newPage = Number(val);
-//         setPage(newPage);
-//         await fetchData(newPage, limit);
-//       }}
-//     >
-//       <SelectTrigger className="w-[100px]">
-//         <SelectValue />
-//       </SelectTrigger>
-
-
-//       <SelectContent>
-//         {Array.from(
-//           { length: Math.ceil(totalRows / limit) },
-//           (_, i) => i + 1
-//         ).map((p) => (
-//           <SelectItem key={p} value={String(p)}>
-//             {p}
-//           </SelectItem>
-//         ))}
-//       </SelectContent>
-//     </Select>
-//   </div>
-//   &nbsp;&nbsp;
-
-
-//   <span className="text-sm text-gray-600">
-//     Showing {(page - 1) * limit + 1}–
-//     {Math.min(page * limit, totalRows)} of {totalRows}
-//   </span>
-//     </div>
+//         <div className="flex items-center gap-2">
+//           <span className="text-sm">Page:</span>
+//           <Select
+//             value={String(page)}
+//             onValueChange={async (val) => {
+//               const newPage = Number(val);
+//               setPage(newPage);
+//               await fetchData(newPage, limit, searchQuery, showMyTasks, assigneeFilter);
+//             }}
+//           >
+//             <SelectTrigger className="w-[100px]">
+//               <SelectValue />
+//             </SelectTrigger>
+//             <SelectContent>
+//               {Array.from(
+//                 { length: Math.ceil(totalRows / limit) },
+//                 (_, i) => i + 1
+//               ).map((p) => (
+//                 <SelectItem key={p} value={String(p)}>
+//                   {p}
+//                 </SelectItem>
+//               ))}
+//             </SelectContent>
+//           </Select>
+//         </div>
+//         &nbsp;&nbsp;
+//         <span className="text-sm text-gray-600">
+//           Showing {(page - 1) * limit + 1}–
+//           {Math.min(page * limit, totalRows)} of {totalRows}
+//         </span>
+//       </div>
 //     </div>
 //   );
-
 
 //   /* =========================
 //      JSX
 //      ========================= */
-// const handleOnboardClick = (leadId: string) => {
-//   router.push(`/resumeTeam/onboarding/${leadId}`);
-// }; 
+//   const handleOnboardClick = (leadId: string) => {
+//     router.push(`/resumeTeam/onboarding/${leadId}`);
+//   }; 
   
-
 //   return (
 //     <ProtectedRoute allowedRoles={["Super Admin", "Resume Head", "Resume Associate"]}>
 //       <DashboardLayout>
@@ -1156,24 +1006,23 @@
 //           onChange={onFilePicked}
 //         />
 
-
 //         <div className="space-y-6">
-//             <div>
+//           <div>
 //             <h1 className="text-3xl font-bold text-gray-900">
-//              Resume Team
+//               Resume Team
 //             </h1>
-//             </div>
-//             {/* Assignee filter (simple version) */}
-//                       <div className="flex items-center justify-start gap-4">
-
+//           </div>
+          
+//           {/* Assignee filter */}
+//           <div className="flex items-center justify-start gap-4">
 //             <div className="flex items-center gap-3">
 //               <div className="text-sm font-medium">Assigned To:</div>
 //               <Select
 //                 value={assigneeFilter}
 //                 onValueChange={async (val) => {
 //                   setAssigneeFilter(val);
-//                   // simple behaviour: for now just refetch all
-//                 //   await fetchData();
+//                   setPage(1);
+//                   await fetchData(1, limit, searchQuery, showMyTasks, val);
 //                 }}
 //               >
 //                 <SelectTrigger className="w-[260px]">
@@ -1181,8 +1030,9 @@
 //                 </SelectTrigger>
 //                 <SelectContent>
 //                   <SelectItem value="__all__">All</SelectItem>
+//                   <SelectItem value="__none__">Unassigned</SelectItem>
 //                   {resumeTeamMembers.length === 0 ? (
-//                     <SelectItem value="__none__" disabled>
+//                     <SelectItem value="__disabled__" disabled>
 //                       No team members found
 //                     </SelectItem>
 //                   ) : (
@@ -1199,127 +1049,107 @@
 //                 </SelectContent>
 //               </Select>
 //             </div>
+            
 //             {/* Pagination Controls */}
-// <div className="flex items-center gap-4">
- 
-//   <div className="flex items-center gap-2">
-//     <span className="text-sm">Rows per page:</span>
-//     <Select
-//       value={String(limit)}
-//       onValueChange={async (val) => {
-//         const newLimit = Number(val);
-//         setLimit(newLimit);
-//         setPage(1); // reset page
-//         await fetchData(1, newLimit);
-//       }}
-//     >
-//       <SelectTrigger className="w-[80px]">
-//         <SelectValue />
-//       </SelectTrigger>
-//       <SelectContent>
-//         <SelectItem value="30">30 per page</SelectItem>
-//         <SelectItem value="50">50 per page</SelectItem>
-//         <SelectItem value="100">100 per page</SelectItem>
-//         <SelectItem value="200">200 per page</SelectItem>
-//         <SelectItem value="500">500 per page</SelectItem>
-//         <SelectItem value="1000">1000 per page</SelectItem>
-//         <SelectItem value="2000">2000 per page</SelectItem>
-
-
-
-
-//       </SelectContent>
-//     </Select>
-//   </div>
-
-
-// </div>
-
-
+//             <div className="flex items-center gap-4">
+//               <div className="flex items-center gap-2">
+//                 <span className="text-sm">Rows per page:</span>
+//                 <Select
+//                   value={String(limit)}
+//                   onValueChange={async (val) => {
+//                     const newLimit = Number(val);
+//                     setLimit(newLimit);
+//                     setPage(1);
+//                     await fetchData(1, newLimit, searchQuery, showMyTasks, assigneeFilter);
+//                   }}
+//                 >
+//                   <SelectTrigger className="w-[80px]">
+//                     <SelectValue />
+//                   </SelectTrigger>
+//                   <SelectContent>
+//                     <SelectItem value="30">30 per page</SelectItem>
+//                     <SelectItem value="50">50 per page</SelectItem>
+//                     <SelectItem value="100">100 per page</SelectItem>
+//                     <SelectItem value="200">200 per page</SelectItem>
+//                     <SelectItem value="500">500 per page</SelectItem>
+//                     <SelectItem value="1000">1000 per page</SelectItem>
+//                     <SelectItem value="2000">2000 per page</SelectItem>
+//                   </SelectContent>
+//                 </Select>
+//               </div>
+//             </div>
 //           </div>
-//            <div className="flex flex-auto">
-//            <div className="flex items-center gap-3 w-full max-w-lg">
-//    <Input
-//      placeholder="Search by Lead ID, Name or Email"
-//      value={searchText}
-//      onChange={(e) => setSearchText(e.target.value)}
-//      onKeyDown={async (e) => {
-//        if (e.key === "Enter") {
-//          setSearchQuery(searchText);
-//          setPage(1);
-//          await fetchData(1, limit, searchText, showMyTasks);
-//        }
-//      }}
-//    />
-//    {/* <Button
-//      onClick={async () => {
-//        setSearchQuery(searchText);
-//        setPage(1);
-//        await fetchData(1, limit, searchText, showMyTasks);
-//      }}
-//    >
-//      Search
-//    </Button> */}
+          
+//           <div className="flex flex-auto">
+//             <div className="flex items-center gap-3 w-full max-w-lg">
+//               <Input
+//                 placeholder="Search by Lead ID, Name or Email"
+//                 value={searchText}
+//                 onChange={(e) => setSearchText(e.target.value)}
+//                 onKeyDown={async (e) => {
+//                   if (e.key === "Enter") {
+//                     setSearchQuery(searchText);
+//                     setPage(1);
+//                     await fetchData(1, limit, searchText, showMyTasks, assigneeFilter);
+//                   }
+//                 }}
+//               />
+              
+//               <Button
+//                 variant={showMyTasks ? "default" : "outline"}
+//                 className={showMyTasks ? "bg-blue-600 text-white" : ""}
+//                 onClick={async () => {
+//                   const newValue = !showMyTasks;
+//                   setShowMyTasks(newValue);
+//                   setPage(1);
+//                   await fetchData(1, limit, searchQuery, newValue, assigneeFilter);
+//                 }}
+//               >
+//                 {showMyTasks ? "Show All" : "My Tasks"}
+//               </Button>
 
-
-//    <Button
-//   variant={showMyTasks ? "default" : "outline"}
-//   className={showMyTasks ? "bg-blue-600 text-white" : ""}
-//   onClick={async () => {
-//     const newValue = !showMyTasks;
-//     setShowMyTasks(newValue);
-//     setPage(1);
-
-
-//     // 🚀 Pass newValue directly (the key fix)
-//     await fetchData(1, limit, searchQuery, newValue);
-//   }}
-// >
-//   {showMyTasks ? "Show All" : "My Tasks"}
-// </Button>
-
-//  <div className="flex flex-col sm:flex-row gap-2 items-center">
- 
-//   <DropdownMenu>
-//   <DropdownMenuTrigger asChild>
-//     <Button variant="outline" size="icon">
-//       <MoreVertical className="h-5 w-5" />
-//     </Button>
-//   </DropdownMenuTrigger>
-//   <DropdownMenuContent align="end">
-//     {/* Not Onboarded Clients Dialog */}
-//     <DropdownMenuItem
-//       onClick={()=>{ window.open(`/resumeTeam/notOnboardedClients`, "_blank")
- 
-//       }}
-//     >
-//       Not onboarded clients
-//     </DropdownMenuItem>
- 
-//     {/* Only for Resumes Dialog */}
-   
-   
-//     <DropdownMenuItem
-//       onClick={async () => { window.open(`/resumeTeam/jobBoardClients`, "_blank") }}
-//     >
-//       Job Board Clients
-//     </DropdownMenuItem>
-//     <DropdownMenuItem
-//       onClick={()=>{ window.open(`/resumeTeam/applications`, "_blank") }}
-//     >
-//       Only for Applications
-//     </DropdownMenuItem>
-//   </DropdownMenuContent>
-// </DropdownMenu>
- 
-// </div>
- 
- 
-//  </div>
-//      <span className="text-green-500 gap-3 mt-2 ml-4 font-semibold">Total Rows : {totalRows}</span>
- 
-//  </div>
-
+//               <div className="flex flex-col sm:flex-row gap-2 items-center">
+//                 <DropdownMenu>
+//                   <DropdownMenuTrigger asChild>
+//                     <Button variant="outline" size="icon">
+//                       <MoreVertical className="h-5 w-5" />
+//                     </Button>
+//                   </DropdownMenuTrigger>
+//                   <DropdownMenuContent align="end">
+//                     <DropdownMenuItem
+//                       onClick={() => { 
+//                         window.open(`/resumeTeam/notOnboardedClients`, "_blank")
+//                       }}
+//                     >
+//                       Not onboarded clients
+//                     </DropdownMenuItem>
+//                     <DropdownMenuItem
+//                       onClick={async () => { 
+//                         window.open(`/resumeTeam/jobBoardClients`, "_blank") 
+//                       }}
+//                     >
+//                       Job Board Clients
+//                     </DropdownMenuItem>
+//                     <DropdownMenuItem
+//                       onClick={() => { 
+//                         window.open(`/resumeTeam/applications`, "_blank") 
+//                       }}
+//                     >
+//                       Only for Applications
+//                     </DropdownMenuItem>
+//                      <DropdownMenuItem
+//                       onClick={() => { 
+//                         window.open(`/resumeTeam/renewals`, "_blank")
+//                       }}
+//                     >
+//                       Renewals
+//                     </DropdownMenuItem>
+//                   </DropdownMenuContent>
+//                 </DropdownMenu>
+//               </div>
+//             </div>
+//             <span className="text-green-500 gap-3 mt-2 ml-4 font-semibold">Total Rows : {totalRows}</span>
+//           </div>
 
 //           {loading ? (
 //             <p className="p-6 text-gray-600">Loading...</p>
@@ -1327,7 +1157,6 @@
 //             renderTable(sortedRows)
 //           )}
 //         </div>
-
 
 //         {/* Requirements Dialog */}
 //         <Dialog open={reqDialogOpen} onOpenChange={setReqDialogOpen}>
@@ -1343,7 +1172,6 @@
 //                 Commitment details captured at sale closure.
 //               </DialogDescription>
 //             </DialogHeader>
-
 
 //             <div className="space-y-4">
 //               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -1377,14 +1205,11 @@
 //                   </div>
 //                   <div className="font-medium">
 //                     {reqRow?.closed_at
-//                       ? new Date(
-//                           reqRow.closed_at,
-//                         ).toLocaleDateString("en-GB")
+//                       ? new Date(reqRow.closed_at).toLocaleDateString("en-GB")
 //                       : "—"}
 //                   </div>
 //                 </div>
 //               </div>
-
 
 //               <div>
 //                 <div className="text-xs text-muted-foreground mb-1">
@@ -1397,7 +1222,6 @@
 //                 </div>
 //               </div>
 //             </div>
-
 
 //             <DialogFooter className="gap-2">
 //               <Button
@@ -1418,10 +1242,8 @@
 //             </DialogFooter>
 //           </DialogContent>
 //         </Dialog>
-
-
 //       </DashboardLayout>
-//       </ProtectedRoute>
+//     </ProtectedRoute>
 //   );
 // }
 
@@ -1436,14 +1258,14 @@
 
 
 
-
+//app/resumeTeam/page.tsx
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { MoreVertical } from "lucide-react";
+import { MoreVertical, Download, Calendar, Clock, FileText, Trash2 } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -1469,8 +1291,6 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
@@ -1530,7 +1350,7 @@ interface SalesClosure {
 
   // resume_progress (from view)
   rp_status: ResumeStatus;
-  rp_pdf_path: string | null;
+  rp_pdf_path: string[] | string | null;
   assigned_to_email: string | null;
   assigned_to_name: string | null;
 
@@ -1553,18 +1373,209 @@ const formatDateLabel = (d: string | null) =>
 const formatOnboardLabel = (d: string | null) =>
   d ? new Date(d).toLocaleDateString("en-GB") : "Not Started";
 
-const csvFromArray = (arr?: string[] | null) =>
-  arr && arr.length ? arr.join(", ") : "";
-
-const csvToArray = (s: string) =>
-  s.split(",").map((v) => v.trim()).filter(Boolean);
-
 const BUCKET = "resumes";
 
-const ensurePdf = (file: File) => {
-  if (file.type !== "application/pdf")
-    throw new Error("Please select a PDF file.");
-  if (file.size > 20 * 1024 * 1024) throw new Error("Max file size is 20MB.");
+// Resume Selector Dialog Component
+interface ResumeSelectorDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  leadId: string;
+  currentResumes: string[];
+  onResumeSelect: (path: string) => void;
+  onDeleteResume: (path: string, leadId: string) => Promise<{ success: boolean; message: string }>;
+}
+
+const ResumeSelectorDialog = ({
+  open,
+  onOpenChange,
+  leadId,
+  currentResumes,
+  onResumeSelect,
+  onDeleteResume,
+}: ResumeSelectorDialogProps) => {
+  const [deleting, setDeleting] = useState<Record<string, boolean>>({});
+
+  // Function to extract filename from path
+  const getFileName = (path: string) => {
+    const segments = path.split("/");
+    return segments[segments.length - 1] || "resume.pdf";
+  };
+
+  // Function to format date from filename
+  const getFormattedDate = (path: string) => {
+    const filename = getFileName(path);
+    const parts = filename.split("-");
+    
+    if (parts.length >= 3) {
+      const dateStr = parts[1];
+      const timeStr = parts[2];
+      
+      if (dateStr && dateStr.length === 8 && timeStr && timeStr.length === 4) {
+        const day = dateStr.substring(0, 2);
+        const month = dateStr.substring(2, 4);
+        const year = dateStr.substring(4, 8);
+        const hour = timeStr.substring(0, 2);
+        const minute = timeStr.substring(2, 4);
+        
+        return `${day}/${month}/${year} ${hour}:${minute}`;
+      }
+    }
+    
+    // Try to parse timestamp from old format
+    const timestampMatch = filename.match(/^(\d+)-/);
+    if (timestampMatch) {
+      const timestamp = parseInt(timestampMatch[1]);
+      if (!isNaN(timestamp)) {
+        const date = new Date(timestamp);
+        return date.toLocaleDateString("en-GB") + " " + 
+               date.toLocaleTimeString("en-GB", { 
+                 hour: '2-digit', 
+                 minute: '2-digit',
+                 hour12: false 
+               });
+      }
+    }
+    
+    // Check if it's a regular timestamp
+    const pureTimestamp = parseInt(filename);
+    if (!isNaN(pureTimestamp) && pureTimestamp > 1000000000000) {
+      const date = new Date(pureTimestamp);
+      return date.toLocaleDateString("en-GB") + " " + 
+             date.toLocaleTimeString("en-GB", { 
+               hour: '2-digit', 
+               minute: '2-digit',
+               hour12: false 
+             });
+    }
+    
+    return "Unknown date";
+  };
+
+  // Handle delete click
+  const handleDelete = async (path: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    if (!confirm(`Are you sure you want to delete "${getFileName(path)}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    setDeleting(prev => ({ ...prev, [path]: true }));
+
+    try {
+      const result = await onDeleteResume(path, leadId);
+      
+      if (!result.success) {
+        alert(result.message || "Failed to delete resume");
+      }
+    } catch (error: any) {
+      console.error("Delete error:", error);
+      alert(error.message || "An error occurred while deleting");
+    } finally {
+      setDeleting(prev => ({ ...prev, [path]: false }));
+    }
+  };
+
+  // Handle download click
+  const handleDownload = (path: string) => {
+    onResumeSelect(path);
+    onOpenChange(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-2xl w-full" onPointerDownOutside={(e) => e.preventDefault()}>
+        <DialogHeader>
+          <DialogTitle>Manage Resumes</DialogTitle>
+          <DialogDescription>
+            {currentResumes.length} resume{currentResumes.length !== 1 ? 's' : ''} available for {leadId}
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div className="max-h-96 overflow-y-auto space-y-2 py-2">
+          {currentResumes.map((path, index) => {
+            const formattedDate = getFormattedDate(path);
+            const [datePart, timePart] = formattedDate.split(' ');
+            
+            return (
+              <div
+                key={index}
+                className="group flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                <div 
+                  className="flex-1 flex items-start space-x-3 cursor-pointer"
+                  onClick={() => handleDownload(path)}
+                >
+                  <div className="bg-blue-100 p-2 rounded-md flex-shrink-0">
+                    <FileText className="h-5 w-5 text-blue-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-sm truncate" title={getFileName(path)}>
+                      {getFileName(path)}
+                    </div>
+                    <div className="flex items-center space-x-3 text-xs text-gray-500 mt-1">
+                      {datePart && (
+                        <span className="flex items-center">
+                          <Calendar className="h-3 w-3 mr-1 flex-shrink-0" />
+                          <span>{datePart}</span>
+                        </span>
+                      )}
+                      {timePart && (
+                        <span className="flex items-center">
+                          <Clock className="h-3 w-3 mr-1 flex-shrink-0" />
+                          <span>{timePart}</span>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex items-center space-x-1 ml-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDownload(path)}
+                    title="Download"
+                    className="h-8 w-8 p-0"
+                  >
+                    <Download className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                    onClick={(e) => handleDelete(path, e)}
+                    title="Delete"
+                    disabled={deleting[path]}
+                  >
+                    {deleting[path] ? (
+                      <div className="h-4 w-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin"></div>
+                    ) : (
+                      <Trash2 className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
+          
+          {currentResumes.length === 0 && (
+            <div className="text-center py-8 text-gray-500">
+              No resumes found for this lead.
+            </div>
+          )}
+        </div>
+        
+        <DialogFooter className="gap-2">
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+          >
+            Close
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 };
 
 /* =========================
@@ -1589,6 +1600,11 @@ export default function ResumeTeamPage() {
   const [reqDialogOpen, setReqDialogOpen] = useState(false);
   const [reqRow, setReqRow] = useState<SalesClosure | null>(null);
 
+  // Resume selector dialog
+  const [resumeDialogOpen, setResumeDialogOpen] = useState(false);
+  const [selectedLeadForResume, setSelectedLeadForResume] = useState<string>("");
+  const [selectedLeadResumes, setSelectedLeadResumes] = useState<string[]>([]);
+
   const [showMyTasks, setShowMyTasks] = useState(false);
 
   // Pagination
@@ -1598,7 +1614,7 @@ export default function ResumeTeamPage() {
 
   // Search
   const [searchText, setSearchText] = useState("");
-  const [searchQuery, setSearchQuery] = useState(""); // actual query on Enter
+  const [searchQuery, setSearchQuery] = useState("");
 
   /* =========================
      Role gate + initial load
@@ -1675,14 +1691,12 @@ export default function ResumeTeamPage() {
         .from("full_client_status_final")
         .select("*", { count: "exact" });
 
-      // 🔍 Apply server-side search
       if (activeSearch.trim() !== "") {
         query = query.or(
           `lead_id.ilike.%${activeSearch}%,lead_name.ilike.%${activeSearch}%,email.ilike.%${activeSearch}%,company_application_email.ilike.%${activeSearch}%`
         );
       }
 
-      // 🔧 Apply assignee filter (if not "__all__")
       const currentAssigneeFilter = overrideAssigneeFilter !== undefined ? 
         overrideAssigneeFilter : assigneeFilter;
       
@@ -1690,12 +1704,10 @@ export default function ResumeTeamPage() {
         query = query.eq("resume_assigned_email", currentAssigneeFilter);
       }
       
-      // If "__none__" is selected, show unassigned
       if (currentAssigneeFilter === "__none__") {
         query = query.is("resume_assigned_email", null);
       }
 
-      // 👤 My Tasks filter
       const myTasks = overrideShowMyTasks ?? showMyTasks;
       if (myTasks && user?.email) {
         query = query.eq("resume_assigned_email", user.email);
@@ -1715,6 +1727,21 @@ export default function ResumeTeamPage() {
         const onboardRaw = r.onboarded_date ?? null;
         const portfolioPaid =
           r.portfolio_sale_value && Number(r.portfolio_sale_value) > 0;
+        
+        let pdfPaths: string[] = [];
+        if (r.resume_pdf) {
+          try {
+            if (typeof r.resume_pdf === 'string' && r.resume_pdf.startsWith('{')) {
+              pdfPaths = r.resume_pdf.replace(/[{}]/g, '').split(',');
+            } else if (Array.isArray(r.resume_pdf)) {
+              pdfPaths = r.resume_pdf;
+            } else {
+              pdfPaths = [r.resume_pdf];
+            }
+          } catch {
+            pdfPaths = [r.resume_pdf];
+          }
+        }
 
         return {
           id: String(r.sale_id),
@@ -1736,7 +1763,7 @@ export default function ResumeTeamPage() {
             phone: r.phone_number ?? "-",
           },
           rp_status: r.resume_status ?? "not_started",
-          rp_pdf_path: r.resume_pdf ?? null,
+          rp_pdf_path: pdfPaths,
           assigned_to_email: r.resume_assigned_email ?? null,
           assigned_to_name: r.resume_assigned_name ?? null,
           pp_status: r.portfolio_status ?? null,
@@ -1801,12 +1828,11 @@ export default function ResumeTeamPage() {
     try {
       await updateStatus(row.lead_id, newStatus);
 
-      if (newStatus === "completed" && !row.rp_pdf_path) {
+      if (newStatus === "completed" && (!row.rp_pdf_path || (Array.isArray(row.rp_pdf_path) && row.rp_pdf_path.length === 0))) {
         setUploadForLead(row.lead_id);
         setReplacingOldPath(null);
         fileRef.current?.click();
       } else {
-        // Refetch with current filters
         await fetchData(page, limit, searchQuery, showMyTasks, assigneeFilter);
       }
     } catch (e: any) {
@@ -1818,44 +1844,11 @@ export default function ResumeTeamPage() {
      Resume upload & download
      ========================= */
 
-  const uploadOrReplaceResume = async (
-    leadId: string,
-    file: File,
-    previousPath?: string | null,
-  ) => {
-    ensurePdf(file);
-
-    // find existing path from DB
-    const pathRes = await supabase
-      .from("resume_progress")
-      .select("pdf_path")
-      .eq("lead_id", leadId)
-      .maybeSingle();
-
-    const existingPath = pathRes.data?.pdf_path as string | undefined;
-
-    // delete old path (S3 or Supabase storage)
-    if (existingPath) {
-      if (existingPath.startsWith("CRM")) {
-        const del = await fetch("/api/resumes/delete", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ key: existingPath }),
-        });
-        if (!del.ok) {
-          const errData = await del.json().catch(() => ({}));
-          throw new Error(
-            errData?.error ||
-              `Failed to delete previous CRM resume: ${del.status}`,
-          );
-        }
-      } else {
-        const del = await supabase.storage.from(BUCKET).remove([existingPath]);
-        if (del.error) console.warn("STORAGE REMOVE WARNING:", del.error);
-      }
+  const uploadOrReplaceResume = async (leadId: string, file: File) => {
+    if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+      throw new Error("Only PDF files are allowed");
     }
 
-    // upload via API → S3
     const formData = new FormData();
     formData.append("file", file);
     formData.append("lead_id", leadId);
@@ -1871,24 +1864,109 @@ export default function ResumeTeamPage() {
       throw new Error(data.error || "Upload failed");
     }
 
-    // update resume_progress with new path
-    const db = await supabase
+    const { data: existingRecord, error: fetchError } = await supabase
+      .from("resume_progress")
+      .select("pdf_path, status")
+      .eq("lead_id", leadId)
+      .maybeSingle();
+
+    if (fetchError && fetchError.code !== 'PGRST116') {
+      console.error("Error fetching existing record:", fetchError);
+      throw new Error(fetchError.message || "Failed to fetch existing resumes");
+    }
+
+    const existingPaths = existingRecord?.pdf_path || [];
+    const newPaths = [...existingPaths, data.key];
+
+    const { error: dbError } = await supabase
       .from("resume_progress")
       .upsert(
         {
           lead_id: leadId,
           status: "completed",
-          pdf_path: data.key,
+          pdf_path: newPaths,
           pdf_uploaded_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         },
-        { onConflict: "lead_id" },
+        { onConflict: "lead_id" }
       );
-    if (db.error) {
-      console.error("DB UPSERT ERROR resume_progress:", db.error);
-      throw new Error(db.error.message || "DB upsert failed");
+
+    if (dbError) {
+      console.error("DB UPSERT ERROR resume_progress:", dbError);
+      throw new Error(dbError.message || "Failed to update database");
     }
 
-    return { key: data.key, publicUrl: data.publicUrl };
+    return { 
+      key: data.key, 
+      publicUrl: data.publicUrl,
+      totalResumes: newPaths.length,
+      allResumes: newPaths 
+    };
+  };
+
+  // Delete resume function
+  const deleteResume = async (path: string, leadId: string) => {
+    try {
+      // 1. Delete from S3 if it's a CRM file
+      if (path.startsWith("CRM")) {
+        const deleteRes = await fetch("/api/resumes/delete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ key: path }),
+        });
+        
+        if (!deleteRes.ok) {
+          const errData = await deleteRes.json().catch(() => ({}));
+          throw new Error(
+            errData?.error ||
+            `Failed to delete resume from S3: ${deleteRes.status}`
+          );
+        }
+      } else {
+        // Delete from Supabase Storage
+        const { error } = await supabase.storage
+          .from(BUCKET)
+          .remove([path]);
+        
+        if (error) {
+          throw new Error(`Failed to delete from storage: ${error.message}`);
+        }
+      }
+
+      // 2. Remove from database array
+      const { data: existingRecord, error: fetchError } = await supabase
+        .from("resume_progress")
+        .select("pdf_path")
+        .eq("lead_id", leadId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      const existingPaths = existingRecord?.pdf_path || [];
+      const updatedPaths = existingPaths.filter((p: string) => p !== path);
+
+      // 3. Update database
+      const { error: updateError } = await supabase
+        .from("resume_progress")
+        .update({
+          pdf_path: updatedPaths,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("lead_id", leadId);
+
+      if (updateError) throw updateError;
+
+      // 4. Refresh the data
+      await fetchData(page, limit, searchQuery, showMyTasks, assigneeFilter);
+      
+      return { success: true, message: "Resume deleted successfully" };
+    } catch (error: any) {
+      console.error("Delete resume error:", error);
+      return { 
+        success: false, 
+        message: error.message || "Failed to delete resume" 
+      };
+    }
   };
 
   const downloadResume = async (path: string) => {
@@ -1896,7 +1974,7 @@ export default function ResumeTeamPage() {
       if (path.startsWith("CRM")) {
         const base = "https://applywizz-prod.s3.us-east-2.amazonaws.com";
         const fileUrl = `${base}/${path}`;
-       window.open(`${fileUrl}`, "_blank");
+        window.open(`${fileUrl}`, "_blank");
       } else {
         const segments = (path || "").split("/");
         const fileName = segments[segments.length - 1] || "resume.pdf";
@@ -1922,6 +2000,34 @@ export default function ResumeTeamPage() {
     }
   };
 
+  // Function to handle opening resume selector dialog
+  const handleOpenResumeSelector = (leadId: string, pdfPaths: string[] | string | null) => {
+    let paths: string[] = [];
+    
+    if (Array.isArray(pdfPaths)) {
+      paths = pdfPaths;
+    } else if (typeof pdfPaths === 'string') {
+      paths = [pdfPaths];
+    }
+    
+    setSelectedLeadForResume(leadId);
+    setSelectedLeadResumes(paths);
+    setResumeDialogOpen(true);
+  };
+
+  // Function to get resume count text
+  const getResumeCountText = (pdfPaths: string[] | string | null) => {
+    let count = 0;
+    
+    if (Array.isArray(pdfPaths)) {
+      count = pdfPaths.length;
+    } else if (typeof pdfPaths === 'string' && pdfPaths) {
+      count = 1;
+    }
+    
+    return count > 0 ? `Download (${count})` : "Upload PDF";
+  };
+
   const onFilePicked = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
     const leadId = uploadForLead;
@@ -1934,7 +2040,8 @@ export default function ResumeTeamPage() {
     if (!file || !leadId) return;
 
     try {
-      await uploadOrReplaceResume(leadId, file, oldPath || undefined);
+      await uploadOrReplaceResume(leadId, file);
+
       await fetchData(page, limit, searchQuery, showMyTasks, assigneeFilter);
       alert("PDF uploaded.");
     } catch (err: any) {
@@ -1944,24 +2051,24 @@ export default function ResumeTeamPage() {
   };
 
   /* =========================
-     Sorting (optional)
+     Sorting
      ========================= */
 
-type SortKey = "clientId" | "name" | "email" | "closedAt" | "onboarded";
-type SortDir = "asc" | "desc";
+  type SortKey = "clientId" | "name" | "email" | "closedAt" | "onboarded";
+  type SortDir = "asc" | "desc";
 
-const [sort, setSort] = useState<{ key: SortKey | null; dir: SortDir }>({
-    key: "closedAt",
-    dir: "desc",
-});
+  const [sort, setSort] = useState<{ key: SortKey | null; dir: SortDir }>({
+      key: "closedAt",
+      dir: "desc",
+  });
 
-const toggleSort = (key: SortKey) => {
-    setSort((s) =>
-        s.key === key
-            ? { key, dir: s.dir === "asc" ? "desc" : "asc" }
-            : { key, dir: "asc" },
-    );
-};
+  const toggleSort = (key: SortKey) => {
+      setSort((s) =>
+          s.key === key
+              ? { key, dir: s.dir === "asc" ? "desc" : "asc" }
+              : { key, dir: "asc" },
+      );
+  };
 
   const parseClientIdNum = (id?: string | null) => {
     if (!id) return -Infinity;
@@ -2029,7 +2136,7 @@ const toggleSort = (key: SortKey) => {
     );
 
   /* =========================
-     Render table (EXACT UI)
+     Render table
      ========================= */
 
   const renderTable = (data: SalesClosure[]) => (
@@ -2037,12 +2144,12 @@ const toggleSort = (key: SortKey) => {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>S.No</TableHead>
+            <TableHead className="text-center">S.No</TableHead>
             <TableHead>
               <button
                 type="button"
                 onClick={() => toggleSort("clientId")}
-                className="inline-flex items-center"
+                className="inline-flex items-center text-center"
               >
                 Client ID
                 <SortIcon
@@ -2055,7 +2162,7 @@ const toggleSort = (key: SortKey) => {
               <button
                 type="button"
                 onClick={() => toggleSort("name")}
-                className="inline-flex items-center"
+                className="inline-flex items-center text-center"
               >
                 Name
                 <SortIcon active={sort.key === "name"} dir={sort.dir} />
@@ -2065,23 +2172,23 @@ const toggleSort = (key: SortKey) => {
               <button
                 type="button"
                 onClick={() => toggleSort("email")}
-                className="inline-flex items-center"
+                className="inline-flex items-center text-center"
               >
                 Email
                 <SortIcon active={sort.key === "email"} dir={sort.dir} />
               </button>
             </TableHead>
-            <TableHead>Application email</TableHead>
-            <TableHead>Phone</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Resume Status</TableHead>
-            <TableHead>Assigned to</TableHead>
-            <TableHead>Resume PDF</TableHead>
+            <TableHead className="text-center">Application email</TableHead>
+            <TableHead className="text-center">Phone</TableHead>
+            <TableHead className="text-center">Status</TableHead>
+            <TableHead className="text-center">Resume Status</TableHead>
+            <TableHead className="text-center">Assigned to</TableHead>
+            <TableHead className="text-center">Resume PDF</TableHead>
             <TableHead>
               <button
                 type="button"
                 onClick={() => toggleSort("closedAt")}
-                className="inline-flex items-center"
+                className="inline-flex items-center text-center"
               >
                 Closed At
                 <SortIcon
@@ -2094,7 +2201,7 @@ const toggleSort = (key: SortKey) => {
               <button
                 type="button"
                 onClick={() => toggleSort("onboarded")}
-                className="inline-flex items-center"
+                className="inline-flex items-center text-center"
               >
                 Onboarded Date
                 <SortIcon
@@ -2103,12 +2210,12 @@ const toggleSort = (key: SortKey) => {
                 />
               </button>
             </TableHead>
-            <TableHead>Portfolio Status</TableHead>
-            <TableHead>Portfolio Link</TableHead>
-            <TableHead>Portfolio Assignee</TableHead>
-            <TableHead>Client Requirements</TableHead>
-            <TableHead>Application Status</TableHead>
-            <TableHead>Onboard</TableHead>
+            <TableHead className="text-center">Portfolio Status</TableHead>
+            <TableHead className="text-center">Portfolio Link</TableHead>
+            <TableHead className="text-center">Portfolio Assignee</TableHead>
+            <TableHead className="text-center">Client Requirements</TableHead>
+            <TableHead className="text-center">Application Status</TableHead>
+            <TableHead className="text-center">Onboard</TableHead>
           </TableRow>
         </TableHeader>
 
@@ -2116,7 +2223,7 @@ const toggleSort = (key: SortKey) => {
           {data.map((row, index) => (
             <TableRow key={row.id}>
               <TableCell className="text-center">{index + 1}</TableCell>
-              <TableCell>{row.lead_id}</TableCell>
+              <TableCell className="text-center">{row.lead_id}</TableCell>
               <TableCell
                 className="font-medium max-w-[150px] break-words whitespace-normal cursor-pointer text-blue-600 hover:underline"
                 onClick={() =>
@@ -2125,15 +2232,15 @@ const toggleSort = (key: SortKey) => {
               >
                 {row.leads?.name || "-"}
               </TableCell>
-              <TableCell>{row.email}</TableCell>
-              <TableCell>
+              <TableCell className="text-center">{row.email}</TableCell>
+              <TableCell className="text-center">
                 {row.company_application_email || "not given"}
               </TableCell>
-              <TableCell>{row.leads?.phone || "-"}</TableCell>
-              <TableCell>{row.finance_status}</TableCell>
+              <TableCell className="text-center">{row.leads?.phone || "-"}</TableCell>
+              <TableCell className="text-center">{row.finance_status}</TableCell>
 
               {/* Resume Status */}
-              <TableCell className="min-w-[220px]">
+              <TableCell className="min-w-[220px] text-center">
                 <Select
                   value={row.rp_status || "not_started"}
                   onValueChange={(v) =>
@@ -2161,7 +2268,7 @@ const toggleSort = (key: SortKey) => {
               </TableCell>
 
               {/* Assigned to */}
-              <TableCell className="min-w-[260px]">
+              <TableCell className="min-w-[260px] text-center">
                 <Select
                   value={row.assigned_to_email ?? "__none__"}
                   onValueChange={async (value) => {
@@ -2203,28 +2310,30 @@ const toggleSort = (key: SortKey) => {
               </TableCell>
 
               {/* Resume PDF */}
-              <TableCell className="space-x-2 min-w-[220px]">
-                {row.rp_pdf_path ? (
+              <TableCell className="space-x-2 min-w-[250px] text-center">
+                {row.rp_pdf_path && (
+                  Array.isArray(row.rp_pdf_path) ?
+                    row.rp_pdf_path.length > 0 :
+                    !!row.rp_pdf_path
+                ) ? (
                   <>
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() =>
-                        downloadResume(row.rp_pdf_path!)
-                      }
+                      onClick={() => handleOpenResumeSelector(row.lead_id, row.rp_pdf_path)}
                     >
-                      Download
+                      {getResumeCountText(row.rp_pdf_path)}
                     </Button>
                     <Button
                       variant="secondary"
                       size="sm"
                       onClick={() => {
                         setUploadForLead(row.lead_id);
-                        setReplacingOldPath(row.rp_pdf_path ?? null);
+                        setReplacingOldPath(null);
                         fileRef.current?.click();
                       }}
                     >
-                      Replace
+                      Add New
                     </Button>
                   </>
                 ) : row.rp_status === "completed" ? (
@@ -2244,10 +2353,10 @@ const toggleSort = (key: SortKey) => {
               </TableCell>
 
               {/* Closed At */}
-              <TableCell>{formatDateLabel(row.closed_at)}</TableCell>
+              <TableCell className="text-center">{formatDateLabel(row.closed_at)}</TableCell>
 
               {/* Onboarded Date */}
-              <TableCell className="min-w-[160px]">
+              <TableCell className="min-w-[160px] text-center">
                 {row.onboarded_date_raw ? (
                   <span className="bg-green-500 text-white text-sm py-1 px-3 rounded-full">
                     {row.onboarded_date_label}
@@ -2260,7 +2369,7 @@ const toggleSort = (key: SortKey) => {
               </TableCell>
 
               {/* Portfolio Status */}
-              <TableCell className="min-w-[140px]">
+              <TableCell className="min-w-[140px] text-center">
                 {row.portfolio_paid ? (
                   <span className="bg-green-500 text-white text-sm py-1 px-3 rounded-full">
                     Paid
@@ -2355,12 +2464,12 @@ const toggleSort = (key: SortKey) => {
               </TableCell>
 
               {/* Onboard button */}
-              <TableCell>
+              <TableCell className="text-center">
                 {row.onboarded_date_raw ? (
                   <Button
                     variant="outline"
                     size="sm"
-                    className="bg-green-600 text-white hover:bg-green-600 hover:text-white cursor-not-allowed"
+                    className="bg-green-600 text-white hover:bg-green-600 hover:text-white cursor-not-allowed text-center"
                   >
                     Onboarded
                   </Button>
@@ -2431,7 +2540,7 @@ const toggleSort = (key: SortKey) => {
      ========================= */
   const handleOnboardClick = (leadId: string) => {
     router.push(`/resumeTeam/onboarding/${leadId}`);
-  }; 
+  };
   
   return (
     <ProtectedRoute allowedRoles={["Super Admin", "Resume Head", "Resume Associate"]}>
@@ -2442,6 +2551,26 @@ const toggleSort = (key: SortKey) => {
           accept="application/pdf"
           className="hidden"
           onChange={onFilePicked}
+        />
+
+        {/* Resume Selector Dialog */}
+        <ResumeSelectorDialog
+          open={resumeDialogOpen}
+          onOpenChange={setResumeDialogOpen}
+          leadId={selectedLeadForResume}
+          currentResumes={selectedLeadResumes}
+          onResumeSelect={downloadResume}
+          onDeleteResume={async (path, leadId) => {
+            const result = await deleteResume(path, leadId);
+            if (result.success) {
+              // Update local state to remove the deleted resume
+              setSelectedLeadResumes(prev => prev.filter(p => p !== path));
+              
+              // Refresh the table data
+              await fetchData(page, limit, searchQuery, showMyTasks, assigneeFilter);
+            }
+            return result;
+          }}
         />
 
         <div className="space-y-6">
@@ -2645,41 +2774,41 @@ const toggleSort = (key: SortKey) => {
                     {reqRow?.closed_at
                       ? new Date(reqRow.closed_at).toLocaleDateString("en-GB")
                       : "—"}
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">
+                    Commitments
+                  </div>
+                  <div className="rounded-md border bg-muted/30 p-3 max-h-[50vh] overflow-y-auto whitespace-pre-wrap">
+                    {reqRow?.commitments?.trim()
+                      ? reqRow.commitments
+                      : "—"}
                   </div>
                 </div>
               </div>
 
-              <div>
-                <div className="text-xs text-muted-foreground mb-1">
-                  Commitments
-                </div>
-                <div className="rounded-md border bg-muted/30 p-3 max-h-[50vh] overflow-y-auto whitespace-pre-wrap">
-                  {reqRow?.commitments?.trim()
-                    ? reqRow.commitments
-                    : "—"}
-                </div>
-              </div>
-            </div>
-
-            <DialogFooter className="gap-2">
-              <Button
-                variant="outline"
-                onClick={async () => {
-                  try {
-                    await navigator.clipboard.writeText(
-                      reqRow?.commitments ?? "",
-                    );
-                  } catch {
-                    // ignore
-                  }
-                }}
-              >
-                Copy Text
-              </Button>
-              <Button onClick={() => setReqDialogOpen(false)}>Close</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+              <DialogFooter className="gap-2">
+                <Button
+                  variant="outline"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(
+                        reqRow?.commitments ?? "",
+                      );
+                    } catch {
+                      // ignore
+                    }
+                  }}
+                >
+                  Copy Text
+                </Button>
+                <Button onClick={() => setReqDialogOpen(false)}>Close</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
       </DashboardLayout>
     </ProtectedRoute>
   );
