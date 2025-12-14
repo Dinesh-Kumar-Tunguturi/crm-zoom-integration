@@ -813,7 +813,13 @@ export default function SalesClosureDialog({ isOpen, onClose, currentUser, defau
                                     <TableRow key={row.id}>
                                         <TableCell>{idx + 1}</TableCell>
                                         <TableCell>{row.lead_id}</TableCell>
-                                        <TableCell className="font-medium">{row.lead_name}</TableCell>
+                                        {/* <TableCell className="font-medium">{row.lead_name}</TableCell> */}
+                                         <TableCell
+                                            className="font-medium max-w-[150px] break-words whitespace-normal cursor-pointer text-blue-600 hover:underline"
+                                            onClick={() => window.open(`/leads/${row.lead_id}`, "_blank")}
+                                        >
+                                            {row.lead_name}
+                                        </TableCell>
                                         <TableCell className="text-muted-foreground">{row.email}</TableCell>
                                         <TableCell>{row.phone}</TableCell>
                                         <TableCell>{row.source}</TableCell>
@@ -1720,4 +1726,5 @@ export default function SalesClosureDialog({ isOpen, onClose, currentUser, defau
 //         </Dialog>
 //     );
 // }
+
 
