@@ -52,12 +52,22 @@ export default function SalesClosureDialog({ isOpen, onClose, currentUser, defau
         }
     }, [isOpen, defaultMode]);
 
+    // Role-based restriction
+    useEffect(() => {
+        if (currentUser?.roles === "Sales Associate") {
+            setAssignedToFilter(currentUser.full_name);
+            setPageSize(999999); // Default to 'All' for Sales Associates
+        }
+    }, [currentUser, isOpen]);
+
     // Filters
     const [searchTerm, setSearchTerm] = useState("");
     const [startDate, setStartDate] = useState<string>("");
     const [endDate, setEndDate] = useState<string>("");
     const [sourceFilter, setSourceFilter] = useState<string>("all");
     const [sources, setSources] = useState<string[]>([]);
+    const [assignedToFilter, setAssignedToFilter] = useState<string>("all");
+    const [assignedToOptions, setAssignedToOptions] = useState<string[]>([]);
 
     // Sorting
     const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" }>({
@@ -87,13 +97,24 @@ export default function SalesClosureDialog({ isOpen, onClose, currentUser, defau
             const unique = Array.from(new Set(data.map((item: any) => item.source))).filter(Boolean);
             setSources(unique.sort());
         }
+
+        // Fetch assigned_to
+        const { data: assignedData, error: assignedErr } = await supabase
+            .from("leads")
+            .select("assigned_to")
+            .not("assigned_to", "is", null);
+
+        if (!assignedErr && assignedData) {
+            const uniqueAssigned = Array.from(new Set(assignedData.map((item: any) => item.assigned_to))).filter(Boolean);
+            setAssignedToOptions(uniqueAssigned.sort());
+        }
     };
 
     useEffect(() => {
         if (isOpen) {
             fetchData();
         }
-    }, [isOpen, page, pageSize, startDate, endDate, searchTerm, sourceFilter, sortConfig, reportMode]);
+    }, [isOpen, page, pageSize, startDate, endDate, searchTerm, sourceFilter, assignedToFilter, sortConfig, reportMode]);
 
     // Debounce search
     useEffect(() => {
@@ -153,6 +174,9 @@ export default function SalesClosureDialog({ isOpen, onClose, currentUser, defau
                 if (dateFilteredIds !== null) query = query.in("business_id", dateFilteredIds);
                 if (searchTerm) query = query.or(`name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,business_id.ilike.%${searchTerm}%,phone.ilike.%${searchTerm}%`);
                 if (sourceFilter && sourceFilter !== "all") query = query.eq("source", sourceFilter);
+                if (assignedToFilter && assignedToFilter !== "all") {
+                    query = query.eq("assigned_to", assignedToFilter);
+                }
 
                 // Sorting (Server-side for Lead fields)
                 if (["lead_id", "lead_name"].includes(sortConfig.key)) {
@@ -279,6 +303,13 @@ export default function SalesClosureDialog({ isOpen, onClose, currentUser, defau
                     };
                 }) || [];
 
+                if (sourceFilter && sourceFilter !== "all") {
+                    merged = merged.filter(x => x.source === sourceFilter);
+                }
+                if (assignedToFilter && assignedToFilter !== "all") {
+                    merged = merged.filter(x => x.assigned_to === assignedToFilter);
+                }
+
                 if (["sale_value", "closed_at"].includes(sortConfig.key)) {
                     merged.sort((a, b: any) => {
                         let valA = a[sortConfig.key as keyof SaleClosureRow]; let valB = b[sortConfig.key as keyof SaleClosureRow];
@@ -339,6 +370,9 @@ export default function SalesClosureDialog({ isOpen, onClose, currentUser, defau
                 if (sourceFilter && sourceFilter !== "all") {
                     merged = merged.filter(x => x.source === sourceFilter);
                 }
+                if (assignedToFilter && assignedToFilter !== "all") {
+                    merged = merged.filter(x => x.assigned_to === assignedToFilter);
+                }
 
                 setData(merged);
             }
@@ -358,7 +392,6 @@ export default function SalesClosureDialog({ isOpen, onClose, currentUser, defau
     };
 
     const handleExport = async () => {
-        console.log("Starting handleExport...");
         try {
             // MODE A: "FIRST SALES"
             if (reportMode === "first") {
@@ -396,6 +429,7 @@ export default function SalesClosureDialog({ isOpen, onClose, currentUser, defau
                 if (dateFilteredIds !== null) query = query.in("business_id", dateFilteredIds);
                 if (searchTerm) query = query.or(`name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,business_id.ilike.%${searchTerm}%,phone.ilike.%${searchTerm}%`);
                 if (sourceFilter && sourceFilter !== "all") query = query.eq("source", sourceFilter);
+                if (assignedToFilter && assignedToFilter !== "all") query = query.eq("assigned_to", assignedToFilter);
 
                 if (["lead_id", "lead_name"].includes(sortConfig.key)) {
                     const col = sortConfig.key === "lead_id" ? "business_id" : "name";
@@ -523,7 +557,6 @@ export default function SalesClosureDialog({ isOpen, onClose, currentUser, defau
             }
             // MODE C: "ALL SALES"
             else {
-                console.log("Exporting All Sales Mode");
                 let query = supabase.from("sales_closure").select("*");
 
                 if (startDate && endDate) {
@@ -573,6 +606,9 @@ export default function SalesClosureDialog({ isOpen, onClose, currentUser, defau
                 if (sourceFilter && sourceFilter !== "all") {
                     exportDataRaw = exportDataRaw.filter(x => x["Source"] === sourceFilter);
                 }
+                if (assignedToFilter && assignedToFilter !== "all") {
+                    exportDataRaw = exportDataRaw.filter(x => x["Assigned To"] === assignedToFilter);
+                }
 
                 const ws = XLSX.utils.json_to_sheet(exportDataRaw);
                 const wb = XLSX.utils.book_new();
@@ -581,8 +617,7 @@ export default function SalesClosureDialog({ isOpen, onClose, currentUser, defau
             }
 
         } catch (e: any) {
-            console.error("Export failed object:", e);
-            console.error("Export failed message:", e?.message);
+            console.error("Export failed:", e);
             alert("Export failed: " + (e?.message || "Unknown error"));
         }
     };
@@ -663,6 +698,22 @@ export default function SalesClosureDialog({ isOpen, onClose, currentUser, defau
                         </Select>
                     </div>
 
+                    {/* Assigned To Filter - Hide for Sales Associate */}
+                    {currentUser?.roles !== "Sales Associate" && (
+                        <div className="grid w-full max-w-[200px] items-center gap-1.5">
+                            <Label>Assigned To</Label>
+                            <Select value={assignedToFilter} onValueChange={setAssignedToFilter}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="All Users" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Users</SelectItem>
+                                    {assignedToOptions.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    )}
+
                     {/* Date Range */}
                     <div className="grid w-full max-w-sm items-center gap-1.5">
                         <Label>Date Range (Closed At)</Label>
@@ -692,9 +743,39 @@ export default function SalesClosureDialog({ isOpen, onClose, currentUser, defau
                         </div>
                     </div>
 
+
+
                     <Button onClick={handleExport} variant="outline" className="ml-auto">
                         Export to Excel
                     </Button>
+                    <div>
+                        <Label>Rows per page</Label>
+                        <Select
+                            value={pageSize === 999999 ? "all" : String(pageSize)}
+                            onValueChange={(v) => {
+                                if (v === "all") {
+                                    setPageSize(999999);
+                                } else {
+                                    setPageSize(Number(v));
+                                }
+                                setPage(1);
+                            }}
+                        >
+                            <SelectTrigger className="w-[120px]">
+                                <SelectValue placeholder="Rows per page" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="30">30 per page</SelectItem>
+                                <SelectItem value="50">50 per page</SelectItem>
+                                <SelectItem value="100">100 per page</SelectItem>
+                                <SelectItem value="200">200 per page</SelectItem>
+                                <SelectItem value="500">500 per page</SelectItem>
+                                <SelectItem value="1000">1000 per page</SelectItem>
+                                <SelectItem value="all">All</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
                 </div>
 
                 {/* Table */}
@@ -702,6 +783,7 @@ export default function SalesClosureDialog({ isOpen, onClose, currentUser, defau
                     <Table>
                         <TableHeader>
                             <TableRow>
+                                <TableHead>S.no</TableHead>
                                 <TableHead className="cursor-pointer select-none" onClick={() => handleSort("lead_id")}>
                                     <div className="flex items-center">Lead ID {renderSortIcon("lead_id")}</div>
                                 </TableHead>
@@ -727,8 +809,9 @@ export default function SalesClosureDialog({ isOpen, onClose, currentUser, defau
                                     <TableCell colSpan={9} className="text-center h-24">Loading...</TableCell>
                                 </TableRow>
                             ) : data.length > 0 ? (
-                                data.map((row) => (
+                                data.map((row, idx) => (
                                     <TableRow key={row.id}>
+                                        <TableCell>{idx + 1}</TableCell>
                                         <TableCell>{row.lead_id}</TableCell>
                                         <TableCell className="font-medium">{row.lead_name}</TableCell>
                                         <TableCell className="text-muted-foreground">{row.email}</TableCell>
@@ -777,30 +860,7 @@ export default function SalesClosureDialog({ isOpen, onClose, currentUser, defau
                             Next
                         </Button>
 
-                        <Select
-                            value={pageSize >= totalRecords && pageSize > 1000 ? "all" : String(pageSize)}
-                            onValueChange={(v) => {
-                                if (v === "all") {
-                                    setPageSize(totalRecords > 0 ? totalRecords * 2 : 10000);
-                                } else {
-                                    setPageSize(Number(v));
-                                }
-                                setPage(1);
-                            }}
-                        >
-                            <SelectTrigger className="w-[120px]">
-                                <SelectValue placeholder="Rows per page" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="30">30</SelectItem>
-                                <SelectItem value="50">50</SelectItem>
-                                <SelectItem value="100">100</SelectItem>
-                                <SelectItem value="200">200</SelectItem>
-                                <SelectItem value="500">500</SelectItem>
-                                <SelectItem value="1000">1000</SelectItem>
-                                <SelectItem value="all">All</SelectItem>
-                            </SelectContent>
-                        </Select>
+
                     </div>
                 </div>
 
