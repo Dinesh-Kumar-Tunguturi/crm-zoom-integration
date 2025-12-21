@@ -1834,9 +1834,9 @@ export default function SalesClosureDialog({ isOpen, onClose, currentUser, defau
                         {/* Mode Selectors (Pills) */}
                         <div className="flex bg-gray-50 p-1 rounded-xl border border-gray-200">
                             {[
-                                { id: "all", label: "All Sales" },
-                                { id: "first", label: "First Sales Only" },
-                                { id: "renewal", label: "Renewals Only" }
+                                { id: "all", label: "Total Sales" },
+                                { id: "first", label: "New Sales" },
+                                { id: "renewal", label: "Renewals" }
                             ].map((mode) => (
                                 <button
                                     key={mode.id}
@@ -2066,6 +2066,7 @@ export default function SalesClosureDialog({ isOpen, onClose, currentUser, defau
         </Dialog>
     );
 }
+
 
 
 
