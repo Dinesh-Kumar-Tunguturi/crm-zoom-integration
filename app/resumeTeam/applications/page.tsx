@@ -5287,7 +5287,7 @@ export default function ApplicationsPage() {
 
 
               {/* Portfolio Link */}
-              <TableCell className="max-w-[220px] truncate">
+             <TableCell className="max-w-[220px] truncate">
                 {row.portfolio_paid ? (
                   row.pp_link ? (
                     <a
@@ -5301,21 +5301,19 @@ export default function ApplicationsPage() {
                     </a>
                   ) : row.leads?.name ? (
                     <a
-                      href={`https://applywizz-${(row.leads?.name ||
-                        "")
+                      href={`https://applywizz-${(row.leads?.name || "")
                         .toLowerCase()
-                        .replace(/[^a-z0-9]/g, "")}.vercel.app/`}
+                        .replace(/[^a-z0-9]/g, "")}-${(row.lead_id || "").replace(/\D/g, "")}.vercel.app/`}
                       target="_blank"
                       rel="noreferrer"
                       className="text-blue-600 underline block truncate"
-                      title={`https://applywizz-${(row.leads?.name ||
-                        "")
+                      title={`https://applywizz-${(row.leads?.name || "")
                         .toLowerCase()
-                        .replace(/[^a-z0-9]/g, "")}.vercel.app/`}
+                        .replace(/[^a-z0-9]/g, "")}-${(row.lead_id || "").replace(/\D/g, "")}.vercel.app/`}
                     >
                       {`https://applywizz-${(row.leads?.name || "")
                         .toLowerCase()
-                        .replace(/[^a-z0-9]/g, "")}.vercel.app/`}
+                        .replace(/[^a-z0-9]/g, "")}-${(row.lead_id || "").replace(/\D/g, "")}.vercel.app/`}
                     </a>
                   ) : (
                     <span className="text-gray-400 text-sm">—</span>
