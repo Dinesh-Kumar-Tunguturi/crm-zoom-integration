@@ -1134,9 +1134,11 @@ onValueChange={(value) => {
     const confirmed = window.confirm("Are you sure you want to update status as PAID ?");
 if (!confirmed) return;
 
-  setSelectedSaleId(sale.id);
-  setShowPaymentDialog(true);
-  return;
+  // setSelectedSaleId(sale.id);
+  // setShowPaymentDialog(true);
+  // return;
+  window.open(`/finance/renewal/${sale.lead_id}`, "_blank");
+
 }
   else if (value === "Closed") {
     const confirmed = window.confirm("Are you sure you want to update status as CLOSED ?");
