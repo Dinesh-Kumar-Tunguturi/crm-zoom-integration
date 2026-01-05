@@ -1,3 +1,4 @@
+
 // //app/technicalTeam/page.tsx
 
 // "use client";
@@ -732,101 +733,215 @@
 //     }
 //   };
 
+//   // const fetchMyTasks = async () => {
+//   //   try {
+//   //     setMyTasksLoading(true);
+//   //     setMyTasksError(null);
+
+//   //     const assigneeEmail = (user?.email || "").trim().toLowerCase();
+//   //     const assigneeName = (user?.name || "").trim();
+//   //     const leadIds = new Set<string>();
+
+//   //     if (assigneeEmail) {
+//   //       const { data: byEmail, error: e1 } = await supabase
+//   //         .from("portfolio_progress")
+//   //         .select("lead_id")
+//   //         .eq("assigned_email", assigneeEmail);
+//   //       if (e1) throw e1;
+//   //       (byEmail ?? []).forEach(r => r.lead_id && leadIds.add(r.lead_id));
+//   //     }
+
+//   //     if (assigneeName) {
+//   //       const { data: byName, error: e2 } = await supabase
+//   //         .from("portfolio_progress")
+//   //         .select("lead_id")
+//   //         .ilike("assigned_name", `%${assigneeName}%`);
+//   //       if (e2) throw e2;
+//   //       (byName ?? []).forEach(r => r.lead_id && leadIds.add(r.lead_id));
+//   //     }
+
+//   //     const allowLeadIds = Array.from(leadIds);
+//   //     if (!allowLeadIds.length) {
+//   //       setMyTasksRows([]);
+//   //       setMyTasksOpen(true);
+//   //       return;
+//   //     }
+
+//   //     const { data: sales, error: salesErr } = await supabase
+//   //       .from("sales_closure")
+//   //       .select("id, lead_id, email, finance_status, closed_at, portfolio_sale_value, github_sale_value, associates_email, associates_name, associates_tl_email, associates_tl_name")
+//   //       .in("lead_id", allowLeadIds)
+//   //       .not("portfolio_sale_value", "is", null)
+//   //       .neq("portfolio_sale_value", 0);
+//   //     if (salesErr) throw salesErr;
+
+//   //     const latest = (() => {
+//   //       const map = new Map<string, any>();
+//   //       for (const r of sales ?? []) {
+//   //         const ex = map.get(r.lead_id);
+//   //         const ed = ex?.closed_at ?? "";
+//   //         const cd = r?.closed_at ?? "";
+//   //         if (!ex || new Date(cd) > new Date(ed)) map.set(r.lead_id, r);
+//   //       }
+//   //       return Array.from(map.values());
+//   //     })();
+
+//   //     const leadIdList = latest.map(r => r.lead_id);
+
+//   //     const [{ data: leadsData }, { data: resumeProg }, { data: portfolioProg }] = await Promise.all([
+//   //       supabase.from("leads").select("business_id, name, phone").in("business_id", leadIdList),
+//   //       supabase.from("resume_progress").select("lead_id, status, pdf_path").in("lead_id", leadIdList),
+//   //       supabase.from("portfolio_progress").select("lead_id, status, link, assigned_email, assigned_name").in("lead_id", leadIdList),
+//   //     ]);
+
+//   //     const leadMap = new Map((leadsData ?? []).map(l => [l.business_id, { name: l.name, phone: l.phone }]));
+//   //     const resumeMap = new Map((resumeProg ?? []).map(p => [p.lead_id, { status: p.status as ResumeStatus, pdf_path: p.pdf_path ?? null }]));
+//   //     const portfolioMap = new Map((portfolioProg ?? []).map(p => [
+//   //       p.lead_id,
+//   //       {
+//   //         status: (p.status ?? "not_started") as PortfolioStatus,
+//   //         link: p.link ?? null,
+//   //         assigned_email: p.assigned_email ?? null,
+//   //         assigned_name: p.assigned_name ?? null,
+//   //       },
+//   //     ]));
+
+//   //     const merged: SalesClosure[] = latest.map((r) => ({
+//   //       ...r,
+//   //       leads: leadMap.get(r.lead_id) || { name: "-", phone: "-" },
+//   //       rp_status: resumeMap.get(r.lead_id)?.status ?? "not_started",
+//   //       rp_pdf_path: resumeMap.get(r.lead_id)?.pdf_path ?? null,
+//   //       pp_status: portfolioMap.get(r.lead_id)?.status ?? "not_started",
+//   //       pp_link: portfolioMap.get(r.lead_id)?.link ?? null,
+//   //       pp_assigned_email: portfolioMap.get(r.lead_id)?.assigned_email ?? null,
+//   //       pp_assigned_name: portfolioMap.get(r.lead_id)?.assigned_name ?? null,
+//   //     }));
+
+//   //     setMyTasksRows(merged);
+//   //     setMyTasksOpen(true);
+//   //   } catch (e: any) {
+//   //     console.error(e);
+//   //     setMyTasksError(e?.message || "Failed to load your tasks");
+//   //     setMyTasksRows([]);
+//   //     setMyTasksOpen(true);
+//   //   } finally {
+//   //     setMyTasksLoading(false);
+//   //   }
+//   // };
+
+
 //   const fetchMyTasks = async () => {
-//     try {
-//       setMyTasksLoading(true);
-//       setMyTasksError(null);
+//   try {
+//     setMyTasksLoading(true);
+//     setMyTasksError(null);
 
-//       const assigneeEmail = (user?.email || "").trim().toLowerCase();
-//       const assigneeName = (user?.name || "").trim();
-//       const leadIds = new Set<string>();
+//     const assigneeEmail = (user?.email || "").trim().toLowerCase();
+//     const assigneeName = (user?.name || "").trim();
+//     const leadIds = new Set<string>();
 
-//       if (assigneeEmail) {
-//         const { data: byEmail, error: e1 } = await supabase
-//           .from("portfolio_progress")
-//           .select("lead_id")
-//           .eq("assigned_email", assigneeEmail);
-//         if (e1) throw e1;
-//         (byEmail ?? []).forEach(r => r.lead_id && leadIds.add(r.lead_id));
-//       }
+//     if (assigneeEmail) {
+//       const { data: byEmail, error: e1 } = await supabase
+//         .from("portfolio_progress")
+//         .select("lead_id")
+//         .eq("assigned_email", assigneeEmail);
+//       if (e1) throw e1;
+//       (byEmail ?? []).forEach(r => r.lead_id && leadIds.add(r.lead_id));
+//     }
 
-//       if (assigneeName) {
-//         const { data: byName, error: e2 } = await supabase
-//           .from("portfolio_progress")
-//           .select("lead_id")
-//           .ilike("assigned_name", `%${assigneeName}%`);
-//         if (e2) throw e2;
-//         (byName ?? []).forEach(r => r.lead_id && leadIds.add(r.lead_id));
-//       }
+//     if (assigneeName) {
+//       const { data: byName, error: e2 } = await supabase
+//         .from("portfolio_progress")
+//         .select("lead_id")
+//         .ilike("assigned_name", `%${assigneeName}%`);
+//       if (e2) throw e2;
+//       (byName ?? []).forEach(r => r.lead_id && leadIds.add(r.lead_id));
+//     }
 
-//       const allowLeadIds = Array.from(leadIds);
-//       if (!allowLeadIds.length) {
-//         setMyTasksRows([]);
-//         setMyTasksOpen(true);
-//         return;
-//       }
-
-//       const { data: sales, error: salesErr } = await supabase
-//         .from("sales_closure")
-//         .select("id, lead_id, email, finance_status, closed_at, portfolio_sale_value, github_sale_value, associates_email, associates_name, associates_tl_email, associates_tl_name")
-//         .in("lead_id", allowLeadIds)
-//         .not("portfolio_sale_value", "is", null)
-//         .neq("portfolio_sale_value", 0);
-//       if (salesErr) throw salesErr;
-
-//       const latest = (() => {
-//         const map = new Map<string, any>();
-//         for (const r of sales ?? []) {
-//           const ex = map.get(r.lead_id);
-//           const ed = ex?.closed_at ?? "";
-//           const cd = r?.closed_at ?? "";
-//           if (!ex || new Date(cd) > new Date(ed)) map.set(r.lead_id, r);
-//         }
-//         return Array.from(map.values());
-//       })();
-
-//       const leadIdList = latest.map(r => r.lead_id);
-
-//       const [{ data: leadsData }, { data: resumeProg }, { data: portfolioProg }] = await Promise.all([
-//         supabase.from("leads").select("business_id, name, phone").in("business_id", leadIdList),
-//         supabase.from("resume_progress").select("lead_id, status, pdf_path").in("lead_id", leadIdList),
-//         supabase.from("portfolio_progress").select("lead_id, status, link, assigned_email, assigned_name").in("lead_id", leadIdList),
-//       ]);
-
-//       const leadMap = new Map((leadsData ?? []).map(l => [l.business_id, { name: l.name, phone: l.phone }]));
-//       const resumeMap = new Map((resumeProg ?? []).map(p => [p.lead_id, { status: p.status as ResumeStatus, pdf_path: p.pdf_path ?? null }]));
-//       const portfolioMap = new Map((portfolioProg ?? []).map(p => [
-//         p.lead_id,
-//         {
-//           status: (p.status ?? "not_started") as PortfolioStatus,
-//           link: p.link ?? null,
-//           assigned_email: p.assigned_email ?? null,
-//           assigned_name: p.assigned_name ?? null,
-//         },
-//       ]));
-
-//       const merged: SalesClosure[] = latest.map((r) => ({
-//         ...r,
-//         leads: leadMap.get(r.lead_id) || { name: "-", phone: "-" },
-//         rp_status: resumeMap.get(r.lead_id)?.status ?? "not_started",
-//         rp_pdf_path: resumeMap.get(r.lead_id)?.pdf_path ?? null,
-//         pp_status: portfolioMap.get(r.lead_id)?.status ?? "not_started",
-//         pp_link: portfolioMap.get(r.lead_id)?.link ?? null,
-//         pp_assigned_email: portfolioMap.get(r.lead_id)?.assigned_email ?? null,
-//         pp_assigned_name: portfolioMap.get(r.lead_id)?.assigned_name ?? null,
-//       }));
-
-//       setMyTasksRows(merged);
-//       setMyTasksOpen(true);
-//     } catch (e: any) {
-//       console.error(e);
-//       setMyTasksError(e?.message || "Failed to load your tasks");
+//     const allowLeadIds = Array.from(leadIds);
+//     if (!allowLeadIds.length) {
 //       setMyTasksRows([]);
 //       setMyTasksOpen(true);
-//     } finally {
-//       setMyTasksLoading(false);
+//       return;
 //     }
-//   };
+
+//     const { data: sales, error: salesErr } = await supabase
+//       .from("sales_closure")
+//       .select("id, lead_id, email, finance_status, closed_at, portfolio_sale_value, github_sale_value, associates_email, associates_name, associates_tl_email, associates_tl_name")
+//       .in("lead_id", allowLeadIds)
+//       .not("portfolio_sale_value", "is", null)
+//       .neq("portfolio_sale_value", 0);
+//     if (salesErr) throw salesErr;
+
+//     const latest = (() => {
+//       const map = new Map<string, any>();
+//       for (const r of sales ?? []) {
+//         const ex = map.get(r.lead_id);
+//         const ed = ex?.closed_at ?? "";
+//         const cd = r?.closed_at ?? "";
+//         if (!ex || new Date(cd) > new Date(ed)) map.set(r.lead_id, r);
+//       }
+//       return Array.from(map.values());
+//     })();
+
+//     const leadIdList = latest.map(r => r.lead_id);
+
+//     const [{ data: leadsData }, { data: resumeProg }, { data: portfolioProg }] = await Promise.all([
+//       supabase.from("leads").select("business_id, name, phone").in("business_id", leadIdList),
+//       supabase.from("resume_progress").select("lead_id, status, pdf_path, pdf_uploaded_at").in("lead_id", leadIdList),
+//       supabase.from("portfolio_progress").select("lead_id, status, link, assigned_email, assigned_name").in("lead_id", leadIdList),
+//     ]);
+
+//     const leadMap = new Map((leadsData ?? []).map(l => [l.business_id, { name: l.name, phone: l.phone }]));
+    
+//     // Helper function for latest PDF
+//     const getLatestPdfPath = (pdfPaths: string[] | null, uploadedAt: string | null) => {
+//       if (!pdfPaths || pdfPaths.length === 0) return null;
+//       if (uploadedAt) {
+//         return pdfPaths[pdfPaths.length - 1];
+//       }
+//       return pdfPaths[pdfPaths.length - 1];
+//     };
+    
+//     const resumeMap = new Map((resumeProg ?? []).map(p => [
+//       p.lead_id, 
+//       { 
+//         status: p.status as ResumeStatus, 
+//         pdf_path: getLatestPdfPath(p.pdf_path, p.pdf_uploaded_at)
+//       }
+//     ]));
+    
+//     const portfolioMap = new Map((portfolioProg ?? []).map(p => [
+//       p.lead_id,
+//       {
+//         status: (p.status ?? "not_started") as PortfolioStatus,
+//         link: p.link ?? null,
+//         assigned_email: p.assigned_email ?? null,
+//         assigned_name: p.assigned_name ?? null,
+//       },
+//     ]));
+
+//     const merged: SalesClosure[] = latest.map((r) => ({
+//       ...r,
+//       leads: leadMap.get(r.lead_id) || { name: "-", phone: "-" },
+//       rp_status: resumeMap.get(r.lead_id)?.status ?? "not_started",
+//       rp_pdf_path: resumeMap.get(r.lead_id)?.pdf_path ?? null,
+//       pp_status: portfolioMap.get(r.lead_id)?.status ?? "not_started",
+//       pp_link: portfolioMap.get(r.lead_id)?.link ?? null,
+//       pp_assigned_email: portfolioMap.get(r.lead_id)?.assigned_email ?? null,
+//       pp_assigned_name: portfolioMap.get(r.lead_id)?.assigned_name ?? null,
+//     }));
+
+//     setMyTasksRows(merged);
+//     setMyTasksOpen(true);
+//   } catch (e: any) {
+//     console.error(e);
+//     setMyTasksError(e?.message || "Failed to load your tasks");
+//     setMyTasksRows([]);
+//     setMyTasksOpen(true);
+//   } finally {
+//     setMyTasksLoading(false);
+//   }
+// };
 
 //   const handleQuickFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
 //     const f = e.target.files?.[0];
@@ -1024,109 +1139,232 @@
 //       ? v.toLocaleString("en-IN", { maximumFractionDigits: 2 })
 //       : "-";
 
+//   // const fetchData = async () => {
+//   //   if (!user) return;
+
+//   //   const qPortfolio = supabase
+//   //     .from("sales_closure")
+//   //     .select(
+//   //       "id, lead_id, email, finance_status, closed_at, portfolio_sale_value, github_sale_value, associates_email, associates_name, associates_tl_email, associates_tl_name"
+//   //     )
+//   //     .not("portfolio_sale_value", "is", null)
+//   //     .neq("portfolio_sale_value", 0);
+
+//   //   const qGithub = supabase
+//   //     .from("sales_closure")
+//   //     .select(
+//   //       "id, lead_id, email, finance_status, closed_at, portfolio_sale_value, github_sale_value"
+//   //     )
+//   //     .not("github_sale_value", "is", null)
+//   //     .neq("github_sale_value", 0);
+
+//   //   const [{ data: pData, error: pErr }, { data: gData, error: gErr }] =
+//   //     await Promise.all([qPortfolio, qGithub]);
+//   //   if (pErr || gErr) {
+//   //     console.error("Failed to fetch sales data:", pErr || gErr);
+//   //     return;
+//   //   }
+
+//   //   const pLatest = latestByLead(pData || []);
+//   //   const gLatest = latestByLead(gData || []);
+//   //   const allLeadIds = Array.from(
+//   //     new Set([...pLatest, ...gLatest].map((r) => r.lead_id))
+//   //   );
+
+//   //   const { data: leadsData, error: leadsErr } = await supabase
+//   //     .from("leads")
+//   //     .select("business_id, name, phone")
+//   //     .in("business_id", allLeadIds);
+//   //   if (leadsErr) {
+//   //     console.error("Failed to fetch leads:", leadsErr);
+//   //     return;
+//   //   }
+//   //   const leadMap = new Map(
+//   //     (leadsData ?? []).map((l) => [
+//   //       l.business_id,
+//   //       { name: l.name, phone: l.phone },
+//   //     ])
+//   //   );
+
+//   //   const { data: resumeProg, error: resumeErr } = await supabase
+//   //     .from("resume_progress")
+//   //     .select("lead_id, status, pdf_path")
+//   //     .in("lead_id", allLeadIds);
+//   //   if (resumeErr) {
+//   //     console.error("Failed to fetch resume_progress:", resumeErr);
+//   //     return;
+//   //   }
+//   //   const resumeMap = new Map(
+//   //     (resumeProg ?? []).map((p) => [
+//   //       p.lead_id,
+//   //       { status: p.status as ResumeStatus, pdf_path: p.pdf_path ?? null },
+//   //     ])
+//   //   );
+
+//   //   const { data: portfolioProg, error: portErr } = await supabase
+//   //     .from("portfolio_progress")
+//   //     .select("lead_id, status, link, assigned_email, assigned_name")
+//   //     .in("lead_id", allLeadIds);
+//   //   if (portErr) {
+//   //     console.error("Failed to fetch portfolio_progress:", portErr);
+//   //     return;
+//   //   }
+//   //   const portfolioMap = new Map(
+//   //     (portfolioProg ?? []).map((p) => [
+//   //       p.lead_id,
+//   //       {
+//   //         status: (p.status ?? "not_started") as PortfolioStatus,
+//   //         link: p.link ?? null,
+//   //         assigned_email: p.assigned_email ?? null,
+//   //         assigned_name: p.assigned_name ?? null,
+//   //       },
+//   //     ])
+//   //   );
+
+//   //   const mergedPortfolio: SalesClosure[] = pLatest.map((r) => ({
+//   //     ...r,
+//   //     leads: leadMap.get(r.lead_id) || { name: "-", phone: "-" },
+//   //     rp_status: resumeMap.get(r.lead_id)?.status ?? "not_started",
+//   //     rp_pdf_path: resumeMap.get(r.lead_id)?.pdf_path ?? null,
+//   //     pp_status: portfolioMap.get(r.lead_id)?.status ?? "not_started",
+//   //     pp_link: portfolioMap.get(r.lead_id)?.link ?? null,
+//   //     pp_assigned_email: portfolioMap.get(r.lead_id)?.assigned_email ?? null,
+//   //     pp_assigned_name: portfolioMap.get(r.lead_id)?.assigned_name ?? null,
+//   //   }));
+
+//   //   const mergedGithub: SalesClosure[] = gLatest.map((r) => ({
+//   //     ...r,
+//   //     leads: leadMap.get(r.lead_id) || { name: "-", phone: "-" },
+//   //   }));
+
+//   //   setPortfolioRows(mergedPortfolio);
+//   //   setGithubRows(mergedGithub);
+//   //   setFilteredPortfolioRows(mergedPortfolio);
+//   //   setFilteredGithubRows(mergedGithub);
+//   // };
+
+
 //   const fetchData = async () => {
-//     if (!user) return;
+//   if (!user) return;
 
-//     const qPortfolio = supabase
-//       .from("sales_closure")
-//       .select(
-//         "id, lead_id, email, finance_status, closed_at, portfolio_sale_value, github_sale_value, associates_email, associates_name, associates_tl_email, associates_tl_name"
-//       )
-//       .not("portfolio_sale_value", "is", null)
-//       .neq("portfolio_sale_value", 0);
+//   const qPortfolio = supabase
+//     .from("sales_closure")
+//     .select(
+//       "id, lead_id, email, finance_status, closed_at, portfolio_sale_value, github_sale_value, associates_email, associates_name, associates_tl_email, associates_tl_name"
+//     )
+//     .not("portfolio_sale_value", "is", null)
+//     .neq("portfolio_sale_value", 0);
 
-//     const qGithub = supabase
-//       .from("sales_closure")
-//       .select(
-//         "id, lead_id, email, finance_status, closed_at, portfolio_sale_value, github_sale_value"
-//       )
-//       .not("github_sale_value", "is", null)
-//       .neq("github_sale_value", 0);
+//   const qGithub = supabase
+//     .from("sales_closure")
+//     .select(
+//       "id, lead_id, email, finance_status, closed_at, portfolio_sale_value, github_sale_value"
+//     )
+//     .not("github_sale_value", "is", null)
+//     .neq("github_sale_value", 0);
 
-//     const [{ data: pData, error: pErr }, { data: gData, error: gErr }] =
-//       await Promise.all([qPortfolio, qGithub]);
-//     if (pErr || gErr) {
-//       console.error("Failed to fetch sales data:", pErr || gErr);
-//       return;
+//   const [{ data: pData, error: pErr }, { data: gData, error: gErr }] =
+//     await Promise.all([qPortfolio, qGithub]);
+//   if (pErr || gErr) {
+//     console.error("Failed to fetch sales data:", pErr || gErr);
+//     return;
+//   }
+
+//   const pLatest = latestByLead(pData || []);
+//   const gLatest = latestByLead(gData || []);
+//   const allLeadIds = Array.from(
+//     new Set([...pLatest, ...gLatest].map((r) => r.lead_id))
+//   );
+
+//   const { data: leadsData, error: leadsErr } = await supabase
+//     .from("leads")
+//     .select("business_id, name, phone")
+//     .in("business_id", allLeadIds);
+//   if (leadsErr) {
+//     console.error("Failed to fetch leads:", leadsErr);
+//     return;
+//   }
+//   const leadMap = new Map(
+//     (leadsData ?? []).map((l) => [
+//       l.business_id,
+//       { name: l.name, phone: l.phone },
+//     ])
+//   );
+
+//   // Fetch resume_progress with array of pdf_paths
+//   const { data: resumeProg, error: resumeErr } = await supabase
+//     .from("resume_progress")
+//     .select("lead_id, status, pdf_path, pdf_uploaded_at")
+//     .in("lead_id", allLeadIds);
+//   if (resumeErr) {
+//     console.error("Failed to fetch resume_progress:", resumeErr);
+//     return;
+//   }
+  
+//   // Helper function to get the most recent PDF path
+//   const getLatestPdfPath = (pdfPaths: string[] | null, uploadedAt: string | null) => {
+//     if (!pdfPaths || pdfPaths.length === 0) return null;
+    
+//     // If we have upload timestamps, use them to find the latest
+//     if (uploadedAt) {
+//       return pdfPaths[pdfPaths.length - 1]; // Assuming last is latest
 //     }
-
-//     const pLatest = latestByLead(pData || []);
-//     const gLatest = latestByLead(gData || []);
-//     const allLeadIds = Array.from(
-//       new Set([...pLatest, ...gLatest].map((r) => r.lead_id))
-//     );
-
-//     const { data: leadsData, error: leadsErr } = await supabase
-//       .from("leads")
-//       .select("business_id, name, phone")
-//       .in("business_id", allLeadIds);
-//     if (leadsErr) {
-//       console.error("Failed to fetch leads:", leadsErr);
-//       return;
-//     }
-//     const leadMap = new Map(
-//       (leadsData ?? []).map((l) => [
-//         l.business_id,
-//         { name: l.name, phone: l.phone },
-//       ])
-//     );
-
-//     const { data: resumeProg, error: resumeErr } = await supabase
-//       .from("resume_progress")
-//       .select("lead_id, status, pdf_path")
-//       .in("lead_id", allLeadIds);
-//     if (resumeErr) {
-//       console.error("Failed to fetch resume_progress:", resumeErr);
-//       return;
-//     }
-//     const resumeMap = new Map(
-//       (resumeProg ?? []).map((p) => [
-//         p.lead_id,
-//         { status: p.status as ResumeStatus, pdf_path: p.pdf_path ?? null },
-//       ])
-//     );
-
-//     const { data: portfolioProg, error: portErr } = await supabase
-//       .from("portfolio_progress")
-//       .select("lead_id, status, link, assigned_email, assigned_name")
-//       .in("lead_id", allLeadIds);
-//     if (portErr) {
-//       console.error("Failed to fetch portfolio_progress:", portErr);
-//       return;
-//     }
-//     const portfolioMap = new Map(
-//       (portfolioProg ?? []).map((p) => [
-//         p.lead_id,
-//         {
-//           status: (p.status ?? "not_started") as PortfolioStatus,
-//           link: p.link ?? null,
-//           assigned_email: p.assigned_email ?? null,
-//           assigned_name: p.assigned_name ?? null,
-//         },
-//       ])
-//     );
-
-//     const mergedPortfolio: SalesClosure[] = pLatest.map((r) => ({
-//       ...r,
-//       leads: leadMap.get(r.lead_id) || { name: "-", phone: "-" },
-//       rp_status: resumeMap.get(r.lead_id)?.status ?? "not_started",
-//       rp_pdf_path: resumeMap.get(r.lead_id)?.pdf_path ?? null,
-//       pp_status: portfolioMap.get(r.lead_id)?.status ?? "not_started",
-//       pp_link: portfolioMap.get(r.lead_id)?.link ?? null,
-//       pp_assigned_email: portfolioMap.get(r.lead_id)?.assigned_email ?? null,
-//       pp_assigned_name: portfolioMap.get(r.lead_id)?.assigned_name ?? null,
-//     }));
-
-//     const mergedGithub: SalesClosure[] = gLatest.map((r) => ({
-//       ...r,
-//       leads: leadMap.get(r.lead_id) || { name: "-", phone: "-" },
-//     }));
-
-//     setPortfolioRows(mergedPortfolio);
-//     setGithubRows(mergedGithub);
-//     setFilteredPortfolioRows(mergedPortfolio);
-//     setFilteredGithubRows(mergedGithub);
+    
+//     // Otherwise return the last one in the array
+//     return pdfPaths[pdfPaths.length - 1];
 //   };
+  
+//   const resumeMap = new Map(
+//     (resumeProg ?? []).map((p) => [
+//       p.lead_id,
+//       { 
+//         status: p.status as ResumeStatus, 
+//         pdf_path: getLatestPdfPath(p.pdf_path, p.pdf_uploaded_at)
+//       },
+//     ])
+//   );
+
+//   const { data: portfolioProg, error: portErr } = await supabase
+//     .from("portfolio_progress")
+//     .select("lead_id, status, link, assigned_email, assigned_name")
+//     .in("lead_id", allLeadIds);
+//   if (portErr) {
+//     console.error("Failed to fetch portfolio_progress:", portErr);
+//     return;
+//   }
+//   const portfolioMap = new Map(
+//     (portfolioProg ?? []).map((p) => [
+//       p.lead_id,
+//       {
+//         status: (p.status ?? "not_started") as PortfolioStatus,
+//         link: p.link ?? null,
+//         assigned_email: p.assigned_email ?? null,
+//         assigned_name: p.assigned_name ?? null,
+//       },
+//     ])
+//   );
+
+//   const mergedPortfolio: SalesClosure[] = pLatest.map((r) => ({
+//     ...r,
+//     leads: leadMap.get(r.lead_id) || { name: "-", phone: "-" },
+//     rp_status: resumeMap.get(r.lead_id)?.status ?? "not_started",
+//     rp_pdf_path: resumeMap.get(r.lead_id)?.pdf_path ?? null,
+//     pp_status: portfolioMap.get(r.lead_id)?.status ?? "not_started",
+//     pp_link: portfolioMap.get(r.lead_id)?.link ?? null,
+//     pp_assigned_email: portfolioMap.get(r.lead_id)?.assigned_email ?? null,
+//     pp_assigned_name: portfolioMap.get(r.lead_id)?.assigned_name ?? null,
+//   }));
+
+//   const mergedGithub: SalesClosure[] = gLatest.map((r) => ({
+//     ...r,
+//     leads: leadMap.get(r.lead_id) || { name: "-", phone: "-" },
+//   }));
+
+//   setPortfolioRows(mergedPortfolio);
+//   setGithubRows(mergedGithub);
+//   setFilteredPortfolioRows(mergedPortfolio);
+//   setFilteredGithubRows(mergedGithub);
+// };
 
 //   const fetchTeam = async () => {
 //     const { data, error } = await supabase
@@ -1406,7 +1644,7 @@
 //                         </Select>
 //                       )}
 //                     </TableCell>
-//                     <TableCell className="max-w-[220px] truncate">
+//                     {/* <TableCell className="max-w-[220px] truncate">
 //                       {sale.leads?.name && (
 //                         <a
 //                           href={`https://applywizz-${sale.leads?.name
@@ -1423,6 +1661,27 @@
 //                           {sale.leads?.name
 //                             .toLowerCase()
 //                             .replace(/[^a-z0-9]/g, "")}
+//                           .vercel.app/
+//                         </a>
+//                       )}
+//                     </TableCell> */}
+//                     <TableCell className="max-w-[220px] truncate">
+//                       {sale.leads?.name && (
+//                         <a
+//                           href={`https://applywizz-${sale.leads?.name
+//                             .toLowerCase()
+//                             .replace(/[^a-z0-9]/g, "")}-${(sale.lead_id || "").replace(/\D/g, "")}.vercel.app/`}
+//                           target="_blank"
+//                           rel="noreferrer"
+//                           className="text-blue-600 underline block truncate"
+//                           title={`https://applywizz-${sale.leads?.name
+//                             .toLowerCase()
+//                             .replace(/[^a-z0-9]/g, "")}-${(sale.lead_id || "").replace(/\D/g, "")}.vercel.app/`}
+//                         >
+//                           https://applywizz-
+//                           {sale.leads?.name
+//                             .toLowerCase()
+//                             .replace(/[^a-z0-9]/g, "")}-{(sale.lead_id || "").replace(/\D/g, "")}
 //                           .vercel.app/
 //                         </a>
 //                       )}
@@ -1987,6 +2246,7 @@
 
 
 
+
 //app/technicalTeam/page.tsx
 
 "use client";
@@ -2167,18 +2427,18 @@ export default function TechnicalTeamPage() {
   const [filteredGithubRows, setFilteredGithubRows] = useState<SalesClosure[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamUser[]>([]);
   const [selectedAssignee, setSelectedAssignee] = useState<string>("all");
-  
+
   // Pagination states
   const [currentPortfolioPage, setCurrentPortfolioPage] = useState(1);
   const [currentGithubPage, setCurrentGithubPage] = useState(1);
   const [portfolioPageSize, setPortfolioPageSize] = useState<number | "all">(10);
   const [githubPageSize, setGithubPageSize] = useState<number | "all">(10);
-  
+
   const [linkDraft, setLinkDraft] = useState<Record<string, string>>({});
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [linkTargetLeadId, setLinkTargetLeadId] = useState<string | null>(null);
   const [linkTargetRowId, setLinkTargetRowId] = useState<string | null>(null);
-  
+
   const [importInsertOpen, setImportInsertOpen] = useState(false);
   const [insertFile, setInsertFile] = useState<File | null>(null);
   const [parsingInsert, setParsingInsert] = useState(false);
@@ -2188,7 +2448,7 @@ export default function TechnicalTeamPage() {
   const [invalidRowsInsert, setInvalidRowsInsert] = useState<
     { index: number; errors: string[] }[]
   >([]);
-  
+
   const [importUpdateOpen, setImportUpdateOpen] = useState(false);
   const [updateFile, setUpdateFile] = useState<File | null>(null);
   const [parsingUpdate, setParsingUpdate] = useState(false);
@@ -2197,21 +2457,24 @@ export default function TechnicalTeamPage() {
   const [invalidRowsUpdate, setInvalidRowsUpdate] = useState<
     { index: number; errors: string[] }[]
   >([]);
-  
+
   const [myTasksOpen, setMyTasksOpen] = useState(false);
   const [myTasksRows, setMyTasksRows] = useState<SalesClosure[]>([]);
   const [myTasksLoading, setMyTasksLoading] = useState(false);
   const [myTasksError, setMyTasksError] = useState<string | null>(null);
-  
+
   const [updatesToApply, setUpdatesToApply] = useState<
     { lead_id: string; patch: Record<string, any> }[]
   >([]);
   const [latestIdByLead, setLatestIdByLead] = useState<Record<string, string>>({});
   const [missingLeadIds, setMissingLeadIds] = useState<string[]>([]);
-  
+
   const [assigneeByRow, setAssigneeByRow] = useState<
     Record<string, string | undefined>
   >({});
+
+  const [searchInput, setSearchInput] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const { user } = useAuth();
   const router = useRouter();
@@ -2233,7 +2496,7 @@ export default function TechnicalTeamPage() {
   /* =========================
      Pagination Logic
      ========================= */
-  
+
   const getPaginatedRows = (rows: SalesClosure[], currentPage: number, pageSize: number | "all") => {
     if (pageSize === "all") {
       return rows;
@@ -2242,19 +2505,19 @@ export default function TechnicalTeamPage() {
     const endIndex = startIndex + pageSize;
     return rows.slice(startIndex, endIndex);
   };
-  
+
   const getTotalPages = (rows: SalesClosure[], pageSize: number | "all") => {
     if (pageSize === "all") {
       return 1;
     }
     return Math.ceil(rows.length / pageSize);
   };
-  
+
   const handlePortfolioPageChange = (page: number) => {
     setCurrentPortfolioPage(page);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
-  
+
   const handleGithubPageChange = (page: number) => {
     setCurrentGithubPage(page);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -2275,31 +2538,9 @@ export default function TechnicalTeamPage() {
   /* =========================
      Assignee Filter Logic
      ========================= */
-  
+
   const handleAssigneeFilter = (email: string) => {
     setSelectedAssignee(email);
-    
-    if (email === "all") {
-      setFilteredPortfolioRows(portfolioRows);
-      setFilteredGithubRows(githubRows);
-    } else {
-      // Filter portfolio rows
-      const filteredPortfolio = portfolioRows.filter(row => 
-        row.pp_assigned_email === email || 
-        (row.associates_email && row.associates_email.toLowerCase() === email.toLowerCase())
-      );
-      setFilteredPortfolioRows(filteredPortfolio);
-      
-      // Filter github rows (if you want to apply same filter)
-      const filteredGithub = githubRows.filter(row => 
-        row.associates_email && row.associates_email.toLowerCase() === email.toLowerCase()
-      );
-      setFilteredGithubRows(filteredGithub);
-    }
-    
-    // Reset to first page when filter changes
-    setCurrentPortfolioPage(1);
-    setCurrentGithubPage(1);
   };
 
   /* =========================
@@ -2819,117 +3060,117 @@ export default function TechnicalTeamPage() {
 
 
   const fetchMyTasks = async () => {
-  try {
-    setMyTasksLoading(true);
-    setMyTasksError(null);
+    try {
+      setMyTasksLoading(true);
+      setMyTasksError(null);
 
-    const assigneeEmail = (user?.email || "").trim().toLowerCase();
-    const assigneeName = (user?.name || "").trim();
-    const leadIds = new Set<string>();
+      const assigneeEmail = (user?.email || "").trim().toLowerCase();
+      const assigneeName = (user?.name || "").trim();
+      const leadIds = new Set<string>();
 
-    if (assigneeEmail) {
-      const { data: byEmail, error: e1 } = await supabase
-        .from("portfolio_progress")
-        .select("lead_id")
-        .eq("assigned_email", assigneeEmail);
-      if (e1) throw e1;
-      (byEmail ?? []).forEach(r => r.lead_id && leadIds.add(r.lead_id));
-    }
+      if (assigneeEmail) {
+        const { data: byEmail, error: e1 } = await supabase
+          .from("portfolio_progress")
+          .select("lead_id")
+          .eq("assigned_email", assigneeEmail);
+        if (e1) throw e1;
+        (byEmail ?? []).forEach(r => r.lead_id && leadIds.add(r.lead_id));
+      }
 
-    if (assigneeName) {
-      const { data: byName, error: e2 } = await supabase
-        .from("portfolio_progress")
-        .select("lead_id")
-        .ilike("assigned_name", `%${assigneeName}%`);
-      if (e2) throw e2;
-      (byName ?? []).forEach(r => r.lead_id && leadIds.add(r.lead_id));
-    }
+      if (assigneeName) {
+        const { data: byName, error: e2 } = await supabase
+          .from("portfolio_progress")
+          .select("lead_id")
+          .ilike("assigned_name", `%${assigneeName}%`);
+        if (e2) throw e2;
+        (byName ?? []).forEach(r => r.lead_id && leadIds.add(r.lead_id));
+      }
 
-    const allowLeadIds = Array.from(leadIds);
-    if (!allowLeadIds.length) {
+      const allowLeadIds = Array.from(leadIds);
+      if (!allowLeadIds.length) {
+        setMyTasksRows([]);
+        setMyTasksOpen(true);
+        return;
+      }
+
+      const { data: sales, error: salesErr } = await supabase
+        .from("sales_closure")
+        .select("id, lead_id, email, finance_status, closed_at, portfolio_sale_value, github_sale_value, associates_email, associates_name, associates_tl_email, associates_tl_name")
+        .in("lead_id", allowLeadIds)
+        .not("portfolio_sale_value", "is", null)
+        .neq("portfolio_sale_value", 0);
+      if (salesErr) throw salesErr;
+
+      const latest = (() => {
+        const map = new Map<string, any>();
+        for (const r of sales ?? []) {
+          const ex = map.get(r.lead_id);
+          const ed = ex?.closed_at ?? "";
+          const cd = r?.closed_at ?? "";
+          if (!ex || new Date(cd) > new Date(ed)) map.set(r.lead_id, r);
+        }
+        return Array.from(map.values());
+      })();
+
+      const leadIdList = latest.map(r => r.lead_id);
+
+      const [{ data: leadsData }, { data: resumeProg }, { data: portfolioProg }] = await Promise.all([
+        supabase.from("leads").select("business_id, name, phone").in("business_id", leadIdList),
+        supabase.from("resume_progress").select("lead_id, status, pdf_path, pdf_uploaded_at").in("lead_id", leadIdList),
+        supabase.from("portfolio_progress").select("lead_id, status, link, assigned_email, assigned_name").in("lead_id", leadIdList),
+      ]);
+
+      const leadMap = new Map((leadsData ?? []).map(l => [l.business_id, { name: l.name, phone: l.phone }]));
+
+      // Helper function for latest PDF
+      const getLatestPdfPath = (pdfPaths: string[] | null, uploadedAt: string | null) => {
+        if (!pdfPaths || pdfPaths.length === 0) return null;
+        if (uploadedAt) {
+          return pdfPaths[pdfPaths.length - 1];
+        }
+        return pdfPaths[pdfPaths.length - 1];
+      };
+
+      const resumeMap = new Map((resumeProg ?? []).map(p => [
+        p.lead_id,
+        {
+          status: p.status as ResumeStatus,
+          pdf_path: getLatestPdfPath(p.pdf_path, p.pdf_uploaded_at)
+        }
+      ]));
+
+      const portfolioMap = new Map((portfolioProg ?? []).map(p => [
+        p.lead_id,
+        {
+          status: (p.status ?? "not_started") as PortfolioStatus,
+          link: p.link ?? null,
+          assigned_email: p.assigned_email ?? null,
+          assigned_name: p.assigned_name ?? null,
+        },
+      ]));
+
+      const merged: SalesClosure[] = latest.map((r) => ({
+        ...r,
+        leads: leadMap.get(r.lead_id) || { name: "-", phone: "-" },
+        rp_status: resumeMap.get(r.lead_id)?.status ?? "not_started",
+        rp_pdf_path: resumeMap.get(r.lead_id)?.pdf_path ?? null,
+        pp_status: portfolioMap.get(r.lead_id)?.status ?? "not_started",
+        pp_link: portfolioMap.get(r.lead_id)?.link ?? null,
+        pp_assigned_email: portfolioMap.get(r.lead_id)?.assigned_email ?? null,
+        pp_assigned_name: portfolioMap.get(r.lead_id)?.assigned_name ?? null,
+      }));
+
+      setMyTasksRows(merged);
+      setMyTasksOpen(true);
+    } catch (e: any) {
+      console.error(e);
+      setMyTasksError(e?.message || "Failed to load your tasks");
       setMyTasksRows([]);
       setMyTasksOpen(true);
-      return;
+    } finally {
+      setMyTasksLoading(false);
     }
-
-    const { data: sales, error: salesErr } = await supabase
-      .from("sales_closure")
-      .select("id, lead_id, email, finance_status, closed_at, portfolio_sale_value, github_sale_value, associates_email, associates_name, associates_tl_email, associates_tl_name")
-      .in("lead_id", allowLeadIds)
-      .not("portfolio_sale_value", "is", null)
-      .neq("portfolio_sale_value", 0);
-    if (salesErr) throw salesErr;
-
-    const latest = (() => {
-      const map = new Map<string, any>();
-      for (const r of sales ?? []) {
-        const ex = map.get(r.lead_id);
-        const ed = ex?.closed_at ?? "";
-        const cd = r?.closed_at ?? "";
-        if (!ex || new Date(cd) > new Date(ed)) map.set(r.lead_id, r);
-      }
-      return Array.from(map.values());
-    })();
-
-    const leadIdList = latest.map(r => r.lead_id);
-
-    const [{ data: leadsData }, { data: resumeProg }, { data: portfolioProg }] = await Promise.all([
-      supabase.from("leads").select("business_id, name, phone").in("business_id", leadIdList),
-      supabase.from("resume_progress").select("lead_id, status, pdf_path, pdf_uploaded_at").in("lead_id", leadIdList),
-      supabase.from("portfolio_progress").select("lead_id, status, link, assigned_email, assigned_name").in("lead_id", leadIdList),
-    ]);
-
-    const leadMap = new Map((leadsData ?? []).map(l => [l.business_id, { name: l.name, phone: l.phone }]));
-    
-    // Helper function for latest PDF
-    const getLatestPdfPath = (pdfPaths: string[] | null, uploadedAt: string | null) => {
-      if (!pdfPaths || pdfPaths.length === 0) return null;
-      if (uploadedAt) {
-        return pdfPaths[pdfPaths.length - 1];
-      }
-      return pdfPaths[pdfPaths.length - 1];
-    };
-    
-    const resumeMap = new Map((resumeProg ?? []).map(p => [
-      p.lead_id, 
-      { 
-        status: p.status as ResumeStatus, 
-        pdf_path: getLatestPdfPath(p.pdf_path, p.pdf_uploaded_at)
-      }
-    ]));
-    
-    const portfolioMap = new Map((portfolioProg ?? []).map(p => [
-      p.lead_id,
-      {
-        status: (p.status ?? "not_started") as PortfolioStatus,
-        link: p.link ?? null,
-        assigned_email: p.assigned_email ?? null,
-        assigned_name: p.assigned_name ?? null,
-      },
-    ]));
-
-    const merged: SalesClosure[] = latest.map((r) => ({
-      ...r,
-      leads: leadMap.get(r.lead_id) || { name: "-", phone: "-" },
-      rp_status: resumeMap.get(r.lead_id)?.status ?? "not_started",
-      rp_pdf_path: resumeMap.get(r.lead_id)?.pdf_path ?? null,
-      pp_status: portfolioMap.get(r.lead_id)?.status ?? "not_started",
-      pp_link: portfolioMap.get(r.lead_id)?.link ?? null,
-      pp_assigned_email: portfolioMap.get(r.lead_id)?.assigned_email ?? null,
-      pp_assigned_name: portfolioMap.get(r.lead_id)?.assigned_name ?? null,
-    }));
-
-    setMyTasksRows(merged);
-    setMyTasksOpen(true);
-  } catch (e: any) {
-    console.error(e);
-    setMyTasksError(e?.message || "Failed to load your tasks");
-    setMyTasksRows([]);
-    setMyTasksOpen(true);
-  } finally {
-    setMyTasksLoading(false);
-  }
-};
+  };
 
   const handleQuickFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -3233,126 +3474,124 @@ export default function TechnicalTeamPage() {
 
 
   const fetchData = async () => {
-  if (!user) return;
+    if (!user) return;
 
-  const qPortfolio = supabase
-    .from("sales_closure")
-    .select(
-      "id, lead_id, email, finance_status, closed_at, portfolio_sale_value, github_sale_value, associates_email, associates_name, associates_tl_email, associates_tl_name"
-    )
-    .not("portfolio_sale_value", "is", null)
-    .neq("portfolio_sale_value", 0);
+    const qPortfolio = supabase
+      .from("sales_closure")
+      .select(
+        "id, lead_id, email, finance_status, closed_at, portfolio_sale_value, github_sale_value, associates_email, associates_name, associates_tl_email, associates_tl_name"
+      )
+      .not("portfolio_sale_value", "is", null)
+      .neq("portfolio_sale_value", 0);
 
-  const qGithub = supabase
-    .from("sales_closure")
-    .select(
-      "id, lead_id, email, finance_status, closed_at, portfolio_sale_value, github_sale_value"
-    )
-    .not("github_sale_value", "is", null)
-    .neq("github_sale_value", 0);
+    const qGithub = supabase
+      .from("sales_closure")
+      .select(
+        "id, lead_id, email, finance_status, closed_at, portfolio_sale_value, github_sale_value"
+      )
+      .not("github_sale_value", "is", null)
+      .neq("github_sale_value", 0);
 
-  const [{ data: pData, error: pErr }, { data: gData, error: gErr }] =
-    await Promise.all([qPortfolio, qGithub]);
-  if (pErr || gErr) {
-    console.error("Failed to fetch sales data:", pErr || gErr);
-    return;
-  }
-
-  const pLatest = latestByLead(pData || []);
-  const gLatest = latestByLead(gData || []);
-  const allLeadIds = Array.from(
-    new Set([...pLatest, ...gLatest].map((r) => r.lead_id))
-  );
-
-  const { data: leadsData, error: leadsErr } = await supabase
-    .from("leads")
-    .select("business_id, name, phone")
-    .in("business_id", allLeadIds);
-  if (leadsErr) {
-    console.error("Failed to fetch leads:", leadsErr);
-    return;
-  }
-  const leadMap = new Map(
-    (leadsData ?? []).map((l) => [
-      l.business_id,
-      { name: l.name, phone: l.phone },
-    ])
-  );
-
-  // Fetch resume_progress with array of pdf_paths
-  const { data: resumeProg, error: resumeErr } = await supabase
-    .from("resume_progress")
-    .select("lead_id, status, pdf_path, pdf_uploaded_at")
-    .in("lead_id", allLeadIds);
-  if (resumeErr) {
-    console.error("Failed to fetch resume_progress:", resumeErr);
-    return;
-  }
-  
-  // Helper function to get the most recent PDF path
-  const getLatestPdfPath = (pdfPaths: string[] | null, uploadedAt: string | null) => {
-    if (!pdfPaths || pdfPaths.length === 0) return null;
-    
-    // If we have upload timestamps, use them to find the latest
-    if (uploadedAt) {
-      return pdfPaths[pdfPaths.length - 1]; // Assuming last is latest
+    const [{ data: pData, error: pErr }, { data: gData, error: gErr }] =
+      await Promise.all([qPortfolio, qGithub]);
+    if (pErr || gErr) {
+      console.error("Failed to fetch sales data:", pErr || gErr);
+      return;
     }
-    
-    // Otherwise return the last one in the array
-    return pdfPaths[pdfPaths.length - 1];
+
+    const pLatest = latestByLead(pData || []);
+    const gLatest = latestByLead(gData || []);
+    const allLeadIds = Array.from(
+      new Set([...pLatest, ...gLatest].map((r) => r.lead_id))
+    );
+
+    const { data: leadsData, error: leadsErr } = await supabase
+      .from("leads")
+      .select("business_id, name, phone")
+      .in("business_id", allLeadIds);
+    if (leadsErr) {
+      console.error("Failed to fetch leads:", leadsErr);
+      return;
+    }
+    const leadMap = new Map(
+      (leadsData ?? []).map((l) => [
+        l.business_id,
+        { name: l.name, phone: l.phone },
+      ])
+    );
+
+    // Fetch resume_progress with array of pdf_paths
+    const { data: resumeProg, error: resumeErr } = await supabase
+      .from("resume_progress")
+      .select("lead_id, status, pdf_path, pdf_uploaded_at")
+      .in("lead_id", allLeadIds);
+    if (resumeErr) {
+      console.error("Failed to fetch resume_progress:", resumeErr);
+      return;
+    }
+
+    // Helper function to get the most recent PDF path
+    const getLatestPdfPath = (pdfPaths: string[] | null, uploadedAt: string | null) => {
+      if (!pdfPaths || pdfPaths.length === 0) return null;
+
+      // If we have upload timestamps, use them to find the latest
+      if (uploadedAt) {
+        return pdfPaths[pdfPaths.length - 1]; // Assuming last is latest
+      }
+
+      // Otherwise return the last one in the array
+      return pdfPaths[pdfPaths.length - 1];
+    };
+
+    const resumeMap = new Map(
+      (resumeProg ?? []).map((p) => [
+        p.lead_id,
+        {
+          status: p.status as ResumeStatus,
+          pdf_path: getLatestPdfPath(p.pdf_path, p.pdf_uploaded_at)
+        },
+      ])
+    );
+
+    const { data: portfolioProg, error: portErr } = await supabase
+      .from("portfolio_progress")
+      .select("lead_id, status, link, assigned_email, assigned_name")
+      .in("lead_id", allLeadIds);
+    if (portErr) {
+      console.error("Failed to fetch portfolio_progress:", portErr);
+      return;
+    }
+    const portfolioMap = new Map(
+      (portfolioProg ?? []).map((p) => [
+        p.lead_id,
+        {
+          status: (p.status ?? "not_started") as PortfolioStatus,
+          link: p.link ?? null,
+          assigned_email: p.assigned_email ?? null,
+          assigned_name: p.assigned_name ?? null,
+        },
+      ])
+    );
+
+    const mergedPortfolio: SalesClosure[] = pLatest.map((r) => ({
+      ...r,
+      leads: leadMap.get(r.lead_id) || { name: "-", phone: "-" },
+      rp_status: resumeMap.get(r.lead_id)?.status ?? "not_started",
+      rp_pdf_path: resumeMap.get(r.lead_id)?.pdf_path ?? null,
+      pp_status: portfolioMap.get(r.lead_id)?.status ?? "not_started",
+      pp_link: portfolioMap.get(r.lead_id)?.link ?? null,
+      pp_assigned_email: portfolioMap.get(r.lead_id)?.assigned_email ?? null,
+      pp_assigned_name: portfolioMap.get(r.lead_id)?.assigned_name ?? null,
+    }));
+
+    const mergedGithub: SalesClosure[] = gLatest.map((r) => ({
+      ...r,
+      leads: leadMap.get(r.lead_id) || { name: "-", phone: "-" },
+    }));
+
+    setPortfolioRows(mergedPortfolio);
+    setGithubRows(mergedGithub);
   };
-  
-  const resumeMap = new Map(
-    (resumeProg ?? []).map((p) => [
-      p.lead_id,
-      { 
-        status: p.status as ResumeStatus, 
-        pdf_path: getLatestPdfPath(p.pdf_path, p.pdf_uploaded_at)
-      },
-    ])
-  );
-
-  const { data: portfolioProg, error: portErr } = await supabase
-    .from("portfolio_progress")
-    .select("lead_id, status, link, assigned_email, assigned_name")
-    .in("lead_id", allLeadIds);
-  if (portErr) {
-    console.error("Failed to fetch portfolio_progress:", portErr);
-    return;
-  }
-  const portfolioMap = new Map(
-    (portfolioProg ?? []).map((p) => [
-      p.lead_id,
-      {
-        status: (p.status ?? "not_started") as PortfolioStatus,
-        link: p.link ?? null,
-        assigned_email: p.assigned_email ?? null,
-        assigned_name: p.assigned_name ?? null,
-      },
-    ])
-  );
-
-  const mergedPortfolio: SalesClosure[] = pLatest.map((r) => ({
-    ...r,
-    leads: leadMap.get(r.lead_id) || { name: "-", phone: "-" },
-    rp_status: resumeMap.get(r.lead_id)?.status ?? "not_started",
-    rp_pdf_path: resumeMap.get(r.lead_id)?.pdf_path ?? null,
-    pp_status: portfolioMap.get(r.lead_id)?.status ?? "not_started",
-    pp_link: portfolioMap.get(r.lead_id)?.link ?? null,
-    pp_assigned_email: portfolioMap.get(r.lead_id)?.assigned_email ?? null,
-    pp_assigned_name: portfolioMap.get(r.lead_id)?.assigned_name ?? null,
-  }));
-
-  const mergedGithub: SalesClosure[] = gLatest.map((r) => ({
-    ...r,
-    leads: leadMap.get(r.lead_id) || { name: "-", phone: "-" },
-  }));
-
-  setPortfolioRows(mergedPortfolio);
-  setGithubRows(mergedGithub);
-  setFilteredPortfolioRows(mergedPortfolio);
-  setFilteredGithubRows(mergedGithub);
-};
 
   const fetchTeam = async () => {
     const { data, error } = await supabase
@@ -3375,45 +3614,45 @@ export default function TechnicalTeamPage() {
      Actions
      ========================= */
 
-   const BUCKET = "resumes"; 
+  const BUCKET = "resumes";
 
- 
- const downloadResume = async (path: string) => {
-   try {
-     if(path.startsWith("CRM")){
-     const base = "https://applywizz-prod.s3.us-east-2.amazonaws.com";
-      // Combine base + path to form full URL
-     const fileUrl = `${base}/${path}`;
- 
-    window.open(fileUrl, '_blank');
-     }
-     else{
-       const segments = (path || "").split("/");
-       const fileName = segments[segments.length - 1] || "resume.pdf";
- 
-       const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, 60 * 60);
-       if (error) throw error;
-       if (!data?.signedUrl) throw new Error("No signed URL");
- 
-       const res = await fetch(data.signedUrl);
-       if (!res.ok) throw new Error(`Download failed (${res.status})`);
-       const blob = await res.blob();
-       const objectUrl = URL.createObjectURL(blob);
- 
-       const a = document.createElement("a");
-       a.href = objectUrl;
-       a.download = fileName; 
-       document.body.appendChild(a);
-       a.click();
-       a.remove();
-       URL.revokeObjectURL(objectUrl);
-     }
-   } catch (e: any) {
-     alert(e?.message || "Could not download PDF");
-   }
-   
- };
- 
+
+  const downloadResume = async (path: string) => {
+    try {
+      if (path.startsWith("CRM")) {
+        const base = "https://applywizz-prod.s3.us-east-2.amazonaws.com";
+        // Combine base + path to form full URL
+        const fileUrl = `${base}/${path}`;
+
+        window.open(fileUrl, '_blank');
+      }
+      else {
+        const segments = (path || "").split("/");
+        const fileName = segments[segments.length - 1] || "resume.pdf";
+
+        const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, 60 * 60);
+        if (error) throw error;
+        if (!data?.signedUrl) throw new Error("No signed URL");
+
+        const res = await fetch(data.signedUrl);
+        if (!res.ok) throw new Error(`Download failed (${res.status})`);
+        const blob = await res.blob();
+        const objectUrl = URL.createObjectURL(blob);
+
+        const a = document.createElement("a");
+        a.href = objectUrl;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(objectUrl);
+      }
+    } catch (e: any) {
+      alert(e?.message || "Could not download PDF");
+    }
+
+  };
+
   const handlePortfolioStatusChange = async (sale: SalesClosure, next: PortfolioStatus) => {
     if (next === "success") {
       setLinkTargetLeadId(sale.lead_id);
@@ -3530,6 +3769,48 @@ export default function TechnicalTeamPage() {
     });
   }, [portfolioRows, teamMembers]);
 
+  useEffect(() => {
+    let pRows = portfolioRows;
+    let gRows = githubRows;
+
+    if (selectedAssignee !== "all") {
+      pRows = pRows.filter(row =>
+        row.pp_assigned_email === selectedAssignee ||
+        (row.associates_email && row.associates_email.toLowerCase() === selectedAssignee.toLowerCase())
+      );
+      gRows = gRows.filter(row =>
+        row.associates_email && row.associates_email.toLowerCase() === selectedAssignee.toLowerCase()
+      );
+    }
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      pRows = pRows.filter(row =>
+        row.lead_id?.toLowerCase().includes(q) ||
+        row.leads?.name?.toLowerCase().includes(q) ||
+        row.email?.toLowerCase().includes(q) ||
+        row.leads?.phone?.toLowerCase().includes(q)
+      );
+      gRows = gRows.filter(row =>
+        row.lead_id?.toLowerCase().includes(q) ||
+        row.leads?.name?.toLowerCase().includes(q) ||
+        row.email?.toLowerCase().includes(q) ||
+        row.leads?.phone?.toLowerCase().includes(q)
+      );
+    }
+
+    setFilteredPortfolioRows(pRows);
+    setFilteredGithubRows(gRows);
+    setCurrentPortfolioPage(1);
+    setCurrentGithubPage(1);
+  }, [portfolioRows, githubRows, selectedAssignee, searchQuery]);
+
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      setSearchQuery(searchInput);
+    }
+  };
+
   /* =========================
      Renderers
      ========================= */
@@ -3554,10 +3835,10 @@ export default function TechnicalTeamPage() {
               </span>
             )}
           </div>
-          
-        
+
+
         </div>
-        
+
         <div className="rounded-md border">
           <Table>
             <TableHeader>
@@ -3569,8 +3850,8 @@ export default function TechnicalTeamPage() {
             </TableHeader>
             <TableBody>
               {paginatedRows.map((sale, index) => {
-                const actualIndex = portfolioPageSize === "all" 
-                  ? index + 1 
+                const actualIndex = portfolioPageSize === "all"
+                  ? index + 1
                   : (currentPortfolioPage - 1) * (portfolioPageSize as number) + index + 1;
                 return (
                   <TableRow key={sale.id}>
@@ -3632,27 +3913,6 @@ export default function TechnicalTeamPage() {
                         </Select>
                       )}
                     </TableCell>
-                    {/* <TableCell className="max-w-[220px] truncate">
-                      {sale.leads?.name && (
-                        <a
-                          href={`https://applywizz-${sale.leads?.name
-                            .toLowerCase()
-                            .replace(/[^a-z0-9]/g, "")}.vercel.app/`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-blue-600 underline block truncate"
-                          title={`https://applywizz-${sale.leads?.name
-                            .toLowerCase()
-                            .replace(/[^a-z0-9]/g, "")}.vercel.app/`}
-                        >
-                          https://applywizz-
-                          {sale.leads?.name
-                            .toLowerCase()
-                            .replace(/[^a-z0-9]/g, "")}
-                          .vercel.app/
-                        </a>
-                      )}
-                    </TableCell> */}
                     <TableCell className="max-w-[220px] truncate">
                       {sale.leads?.name && (
                         <a
@@ -3747,7 +4007,7 @@ export default function TechnicalTeamPage() {
             </TableBody>
           </Table>
         </div>
-        
+
         {portfolioPageSize !== "all" && totalPages > 1 && (
           <div className="flex justify-center mt-4">
             <Pagination>
@@ -3758,7 +4018,7 @@ export default function TechnicalTeamPage() {
                     className={currentPortfolioPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
                   />
                 </PaginationItem>
-                
+
                 {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                   let pageNum;
                   if (totalPages <= 5) {
@@ -3770,7 +4030,7 @@ export default function TechnicalTeamPage() {
                   } else {
                     pageNum = currentPortfolioPage - 2 + i;
                   }
-                  
+
                   return (
                     <PaginationItem key={pageNum}>
                       <PaginationLink
@@ -3783,7 +4043,7 @@ export default function TechnicalTeamPage() {
                     </PaginationItem>
                   );
                 })}
-                
+
                 <PaginationItem>
                   <PaginationNext
                     onClick={() => handlePortfolioPageChange(Math.min(totalPages, currentPortfolioPage + 1))}
@@ -3805,6 +4065,7 @@ export default function TechnicalTeamPage() {
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
+
           <div className="flex items-center gap-4">
             <span className="text-sm text-muted-foreground">
               Total: {rows.length} records
@@ -3818,27 +4079,10 @@ export default function TechnicalTeamPage() {
               </span>
             )}
           </div>
-          
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Show:</span>
-            <Select
-              value={githubPageSize.toString()}
-              onValueChange={handleGithubPageSizeChange}
-            >
-              <SelectTrigger className="w-[140px]">
-                <SelectValue placeholder="Page size" />
-              </SelectTrigger>
-              <SelectContent>
-                {pageSizeOptions.map((option) => (
-                  <SelectItem key={option.value.toString()} value={option.value.toString()}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+
+
         </div>
-        
+
         <div className="rounded-md border">
           <Table>
             <TableHeader>
@@ -3850,8 +4094,8 @@ export default function TechnicalTeamPage() {
             </TableHeader>
             <TableBody>
               {paginatedRows.map((sale, index) => {
-                const actualIndex = githubPageSize === "all" 
-                  ? index + 1 
+                const actualIndex = githubPageSize === "all"
+                  ? index + 1
                   : (currentGithubPage - 1) * (githubPageSize as number) + index + 1;
                 return (
                   <TableRow key={sale.id}>
@@ -3888,7 +4132,7 @@ export default function TechnicalTeamPage() {
             </TableBody>
           </Table>
         </div>
-        
+
         {githubPageSize !== "all" && totalPages > 1 && (
           <div className="flex justify-center mt-4">
             <Pagination>
@@ -3899,7 +4143,7 @@ export default function TechnicalTeamPage() {
                     className={currentGithubPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
                   />
                 </PaginationItem>
-                
+
                 {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                   let pageNum;
                   if (totalPages <= 5) {
@@ -3911,7 +4155,7 @@ export default function TechnicalTeamPage() {
                   } else {
                     pageNum = currentGithubPage - 2 + i;
                   }
-                  
+
                   return (
                     <PaginationItem key={pageNum}>
                       <PaginationLink
@@ -3924,7 +4168,7 @@ export default function TechnicalTeamPage() {
                     </PaginationItem>
                   );
                 })}
-                
+
                 <PaginationItem>
                   <PaginationNext
                     onClick={() => handleGithubPageChange(Math.min(totalPages, currentGithubPage + 1))}
@@ -3950,29 +4194,55 @@ export default function TechnicalTeamPage() {
       <DashboardLayout>
         <div className="space-y-6">
           <div className="flex items-center justify-between">
-            <h1 className="text-3xl font-bold text-gray-900">Technical Page</h1>
-
+            <div className="flex items-center gap-8"  >
+              <h1 className="text-3xl font-bold text-gray-900">Technical Page</h1>
+              <div className="relative w-64">
+                <Input
+                  placeholder="Search name, email, phone..."
+                  value={searchInput}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setSearchInput(val);
+                    if (val === "") {
+                      setSearchQuery("");
+                    }
+                  }}
+                  onKeyDown={handleSearchKeyDown}
+                  className="pr-10"
+                />
+                <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                  <svg className="w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+              </div>
+            </div>
             <div className="flex items-center gap-2">
-                <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Show:</span>
-            <Select
-              value={portfolioPageSize.toString()}
-              onValueChange={handlePortfolioPageSizeChange}
-            >
-              <SelectTrigger className="w-[140px]">
-                <SelectValue placeholder="Page size" />
-              </SelectTrigger>
-              <SelectContent>
-                {pageSizeOptions.map((option) => (
-                  <SelectItem key={option.value.toString()} value={option.value.toString()}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+
+
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Show:</span>
+                <Select
+                  value={portfolioPageSize.toString()}
+                  onValueChange={handlePortfolioPageSizeChange}
+                >
+                  <SelectTrigger className="w-[140px]">
+                    <SelectValue placeholder="Page size" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {pageSizeOptions.map((option) => (
+                      <SelectItem key={option.value.toString()} value={option.value.toString()}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+
+
               <Button variant="outline" onClick={fetchMyTasks}>My Tasks</Button>
-              
+
               {/* Assignee Filter Dropdown */}
               <Select
                 value={selectedAssignee}
@@ -3993,7 +4263,7 @@ export default function TechnicalTeamPage() {
                         {m.full_name} • Head
                       </SelectItem>
                     ))}
-                  
+
                   <div className="px-2 py-1 text-xs text-muted-foreground">
                     Technical Associates
                   </div>
@@ -4099,18 +4369,24 @@ export default function TechnicalTeamPage() {
         </div>
 
         <Dialog open={myTasksOpen} onOpenChange={setMyTasksOpen}>
-          <DialogContent className="max-w-7xl overflow-scroll">
-            <DialogHeader>
+          <DialogContent className="w-[90vw] h-[80vh] max-w-none flex flex-col p-0 overflow-hidden">
+            <DialogHeader className="p-6 pb-2">
               <DialogTitle>My Tasks</DialogTitle>
             </DialogHeader>
-            {myTasksLoading ? (
-              <div className="p-6 text-sm text-muted-foreground">Loading…</div>
-            ) : myTasksError ? (
-              <div className="p-6 text-sm text-red-600">{myTasksError}</div>
-            ) : (
-              renderPortfolioTable(myTasksRows)
-            )}
-            <DialogFooter className="gap-2">
+            <div className="flex-1 overflow-auto p-6 pt-0">
+              {myTasksLoading ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-sm text-muted-foreground">Loading…</div>
+                </div>
+              ) : myTasksError ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-sm text-red-600">{myTasksError}</div>
+                </div>
+              ) : (
+                renderPortfolioTable(myTasksRows)
+              )}
+            </div>
+            <DialogFooter className="p-6 pt-2 border-t flex flex-row justify-end gap-2">
               <Button variant="outline" onClick={fetchMyTasks}>Refresh</Button>
               <Button onClick={() => setMyTasksOpen(false)}>Close</Button>
             </DialogFooter>
