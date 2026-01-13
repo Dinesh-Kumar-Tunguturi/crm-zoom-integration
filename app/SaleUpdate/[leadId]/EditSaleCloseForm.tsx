@@ -891,8 +891,6 @@
 
 
 
-
-
 // app/SaleUpdate/[leadId]/EditSaleCloseForm.tsx
 "use client";
 
@@ -1570,6 +1568,7 @@ export default function EditSaleCloseForm({ leadId }: EditSaleCloseFormProps) {
                         <SelectValue placeholder="Select Subscription Duration" />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="0">No subscription</SelectItem>
                         <SelectItem value="15">15 Days</SelectItem>
                         <SelectItem value="30">1 Month</SelectItem>
                         <SelectItem value="60">2 Months</SelectItem>
