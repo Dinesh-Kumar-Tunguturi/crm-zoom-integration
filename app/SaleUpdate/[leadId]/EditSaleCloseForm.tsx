@@ -889,8 +889,6 @@
 
 
 
-
-
 // app/SaleUpdate/[leadId]/EditSaleCloseForm.tsx
 "use client";
 
@@ -1364,7 +1362,10 @@ export default function EditSaleCloseForm({ leadId }: EditSaleCloseFormProps) {
 
 
         payment_mode: paymentMode || null,
-        subscription_cycle: subscriptionCycle ? Number(subscriptionCycle) : null,
+        subscription_cycle:
+          subscriptionCycle || subscriptionCycle === 0
+            ? Number(subscriptionCycle)
+            : null,
 
 
         sale_value: Number(totalSale.toFixed(2)),
