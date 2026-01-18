@@ -4811,6 +4811,8 @@ export default function MarketingPage() {
                     <Table>
                       <TableHeader>
                         <TableRow>
+                          <TableHead>S.No</TableHead>
+                          <TableHead>Lead ID</TableHead>
                           <TableHead>Name</TableHead>
                           <TableHead>Phone</TableHead>
                           <TableHead>Status</TableHead>
