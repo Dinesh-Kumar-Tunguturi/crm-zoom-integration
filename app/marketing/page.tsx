@@ -2842,40 +2842,40 @@ export default function MarketingPage() {
   };
 
 
-  const handleDeleteConfirmation = async () => {
-    if (selectedLeadId) {
-      try {
-        // Check if the lead_id exists in the sales_closure table
+  // const handleDeleteConfirmation = async () => {
+  //   if (selectedLeadId) {
+  //     try {
+  //       // Check if the lead_id exists in the sales_closure table
 
 
-        // Now, delete the lead from the leads table
-        const { error: deleteLeadError } = await supabase
-          .from('leads')
-          .delete()
-          .eq('id', selectedLeadId); // Delete the lead record
+  //       // Now, delete the lead from the leads table
+  //       const { error: deleteLeadError } = await supabase
+  //         .from('leads')
+  //         .delete()
+  //         .eq('id', selectedLeadId); // Delete the lead record
 
-        if (deleteLeadError) {
-          console.error('Error deleting lead:', deleteLeadError);
-          alert('Failed to delete lead.');
-          return;
-        }
+  //       if (deleteLeadError) {
+  //         console.error('Error deleting lead:', deleteLeadError);
+  //         alert('Failed to delete lead.');
+  //         return;
+  //       }
 
-        // Successfully deleted the lead and sales closure records (if any)
-        setDeleteDialogOpen(false);
-        setSelectedLeadId(null);
-        alert('Lead deleted successfully!');
+  //       // Successfully deleted the lead and sales closure records (if any)
+  //       setDeleteDialogOpen(false);
+  //       setSelectedLeadId(null);
+  //       alert('Lead deleted successfully!');
 
-        // Refetch leads after deletion
-        const { data, error: fetchError } = await supabase.from('leads').select('*');
-        if (fetchError) throw fetchError;
-        setLeads(data ?? []); // Update leads state with the new data
+  //       // Refetch leads after deletion
+  //       const { data, error: fetchError } = await supabase.from('leads').select('*');
+  //       if (fetchError) throw fetchError;
+  //       setLeads(data ?? []); // Update leads state with the new data
 
-      } catch (err) {
-        console.error('Delete operation failed:', err);
-        alert('Error deleting lead and sales closures.');
-      }
-    }
-  };
+  //     } catch (err) {
+  //       console.error('Delete operation failed:', err);
+  //       alert('Error deleting lead and sales closures.');
+  //     }
+  //   }
+  // };
 
 
   const fetchAllUniqueSources = async () => {
@@ -3545,7 +3545,7 @@ export default function MarketingPage() {
                   )}
                 </Dialog>
 
-                <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                {/* <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
                   <DialogContent>
                     <DialogHeader>
                       <DialogTitle>Confirm Deletion</DialogTitle>
@@ -3563,7 +3563,7 @@ export default function MarketingPage() {
                       </Button>
                     </DialogFooter>
                   </DialogContent>
-                </Dialog>
+                </Dialog> */}
 
 
                 <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
@@ -4312,7 +4312,7 @@ export default function MarketingPage() {
 
                     <TableHeader >
                       <TableRow className="center">
-                        <TableHead className="sticky top-0 bg-white z-10 w-16 max-w-[80px] whitespace-normal">Delete</TableHead>
+                        {/* <TableHead className="sticky top-0 bg-white z-10 w-16 max-w-[80px] whitespace-normal">Delete</TableHead> */}
 
                         <TableHead className="sticky top-0 bg-white z-10 w-12 text-center">
                           <Checkbox
@@ -4483,7 +4483,7 @@ export default function MarketingPage() {
 
 
 
-                          <TableCell className="text-center">
+                          {/* <TableCell className="text-center">
                             {(lead.status !== "Assigned") && (
                               <Button
                                 variant="outline"
@@ -4493,10 +4493,10 @@ export default function MarketingPage() {
                                   setDeleteDialogOpen(true); // Open the delete confirmation dialog
                                 }}
                               >
-                                <Trash2 className="h-5 w-5 text-red-600" /> {/* Red color for delete */}
+                                <Trash2 className="h-5 w-5 text-red-600" /> 
                               </Button>
                             )}
-                          </TableCell>
+                          </TableCell> */}
                           <TableCell>
                             <Checkbox
                               checked={selectedLeads.includes(lead.id)}
