@@ -533,7 +533,7 @@ export function DashboardHome() {
           <OnboardingCard
             title="Applications + Add-ons Onboarding"
             color="indigo"
-            description="Use this form when the client has opted for job applications."
+            description="Use this form when the client has opted for job applications and job board."
             url={appUrl}
             setUrl={setAppUrl}
             userRole={user?.role}
@@ -543,7 +543,7 @@ export function DashboardHome() {
             <div className="space-y-2">
               {/* <p className="font-semibold text-gray-800">When to send this link:</p> */}
               <ul className="list-disc ml-5 space-y-1">
-                <li>Client opted <strong>Job Applications</strong> service</li>
+                <li>Client opted <strong>Job Applications and job board</strong> service</li>
                 <li>Client opted <strong>Applications + Add-ons</strong> package</li>
                 <li>Client initially chose only add-ons, but during <strong>renewal</strong> they added applications</li>
               </ul>
@@ -575,7 +575,7 @@ export function DashboardHome() {
             <div className="space-y-2">
               {/* <p className="font-semibold text-gray-800">When to send this link:</p> */}
               <ul className="list-disc ml-5 space-y-1">
-                <li>Client opted <strong>only add-on services</strong> (no job applications)</li>
+                <li>Client opted <strong>only add-on services</strong> (no job applications and no job board)</li>
                 <li>Services like resume review, portfolio support, or mock interviews</li>
               </ul>
 
@@ -587,7 +587,7 @@ export function DashboardHome() {
               </ul> */}
 
               <p className="text-red-600 pt-2 font-medium text-xs">
-                ⚠️ Important: Do NOT use this link if the client has opted for job applications at any stage.
+                ⚠️ Important: Do NOT use this link if the client has opted for job applications and job board at any stage.
               </p>
             </div>
           </OnboardingCard>
