@@ -13,12 +13,19 @@
 //   SidebarMenuButton,
 //   SidebarMenuItem,
 // } from "@/components/ui/sidebar"
-// import { Users, TrendingUp, UserCheck, DollarSign, Building2 } from "lucide-react"
+// import {
+//   Users,
+//   TrendingUp,
+//   UserCheck,
+//   DollarSign,
+//   Building2,
+//   Wrench,
+//   FileText,
+// } from "lucide-react"
 // import Link from "next/link"
 // import { usePathname } from "next/navigation"
 // import { useAuth } from "@/components/providers/auth-provider"
 // import { cn } from "@/lib/utils"
-
 
 // const navigationItems = [
 //   {
@@ -27,6 +34,14 @@
 //     icon: Users,
 //     module: "marketing",
 //     description: "Leads Management",
+//   },
+//   {
+//     title: "Marketing Associates",
+//     url: "/marketingAssociates",
+//     icon: Users,
+//     module: "marketingAssociates",
+//     description: "Leads Management",
+   
 //   },
 //   {
 //     title: "Sales CRM",
@@ -49,34 +64,65 @@
 //     module: "finance",
 //     description: "Revenue Management",
 //   },
-  
+//  // Onboard Client
+// {
+//   title: "Sale Done Form",
+//   url: "/SalesForm",
+//   icon: FileText,
+//   module: "onboard",            // ← was "sales"
+//   description: "Add a new client",
+// },
+
+
+
+//   // 🔧 Technical
+//   {
+//     title: "Technical Head",
+//     url: "/technicalTeam",
+//     icon: Wrench,
+//     module: "technical",
+//     description: "Tech Oversight",
+//   },
+//   {
+//     title: "Technical Associate",
+//     url: "/technicalTeam",
+//     icon: Wrench,
+//     module: "technical-associate",
+//     description: "Tech Operations",
+//   },
+
+//   // 📄 Resume
+//   {
+//     title: "Resume Head",
+//     url: "/resumeTeam",
+//     icon: FileText,
+//     module: "resume",
+//     description: "Resume Team Lead",
+//   },
+//   {
+//     title: "Resume Assocaite",
+//     url: "/resumeTeam",
+//     icon: FileText,
+//     module: "resume-associate",
+//     description: "Resume Operations",
+//   },
+
+//   // Admin utilities
 //   {
 //     title: "Add User",
 //     url: "/add-user",
-//     icon: Building2,  // You can choose any icon you want.
-//     module: "admin",  // <-- Make sure "admin" role can access it via your hasAccess function
-//     description: "User Management"
+//     icon: Building2,
+//     module: "admin",
+//     description: "User Management",
 //   },
-
-// //   {
-// //   title: "Finance Associates",
-// //   url: "/finance-associates",
-// //   icon: DollarSign,  // Reuse or change icon (e.g., `UserCheck`)
-// //   module: "finance", // Use the same role/module access as Finance CRM
-// //   description: "Client-wise View",
-// // },
-
-// {
-//   title: "Finance Associates",
-//   url: "/finance-associates",
-//   icon: DollarSign, // You can change this to a different icon if desired
-//   module: "finance-associates",
-//   description: "Associate Management",
-// }
-
-
+//   {
+//     title: "Finance Associates",
+//     url: "/finance-associates",
+//     icon: DollarSign,
+//     module: "finance-associates",
+//     description: "Associate Management",
+//   },
 // ]
-
 
 // export function AppSidebar() {
 //   const pathname = usePathname()
@@ -85,18 +131,14 @@
 
 //   return (
 //     <Sidebar className="border-r border-gray-200">
-
 //       <SidebarHeader className="border-b border-gray-200 p-6">
 //         <div className="flex flex-col items-center gap-1">
 //           <Link href="/" className="cursor-pointer">
 //             <img
-//               // src="/applywizz_logo.png" // Ensure this image is in public/applywizz_logo.png
-//               // alt="Apply Wizz Logo"
-              
-//   src="https://storage.googleapis.com/solwizz/website_content/Black%20Version.png" 
-//   alt="Applywizz logo"
-//   className="w-[100%] max-w-[120px] h-auto"  // Custom responsive sizing
-// />
+//               src="https://storage.googleapis.com/solwizz/website_content/Black%20Version.png"
+//               alt="Applywizz logo"
+//               className="w-[100%] max-w-[120px] h-auto"
+//             />
 //           </Link>
 //           <p className="text-sm text-gray-500">CRM System</p>
 //         </div>
@@ -157,6 +199,17 @@
 // }
 
 
+
+
+
+
+
+
+
+
+
+
+
 // components/layout/app-sidebar.tsx
 "use client"
 
@@ -200,7 +253,7 @@ const navigationItems = [
     icon: Users,
     module: "marketingAssociates",
     description: "Leads Management",
-   
+
   },
   {
     title: "Sales CRM",
@@ -223,14 +276,14 @@ const navigationItems = [
     module: "finance",
     description: "Revenue Management",
   },
- // Onboard Client
-{
-  title: "Sale Done Form",
-  url: "/SalesForm",
-  icon: FileText,
-  module: "onboard",            // ← was "sales"
-  description: "Add a new client",
-},
+  // Onboard Client
+  {
+    title: "Sale Done Form",
+    url: "/SalesForm",
+    icon: FileText,
+    module: "onboard",            // ← was "sales"
+    description: "Add a new client",
+  },
 
 
 
@@ -268,11 +321,11 @@ const navigationItems = [
 
   // Admin utilities
   {
-    title: "Add User",
+    title: "User Management",
     url: "/add-user",
     icon: Building2,
     module: "admin",
-    description: "User Management",
+    description: "Activate/Deactivate Users",
   },
   {
     title: "Finance Associates",
