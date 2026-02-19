@@ -188,8 +188,7 @@ export const ZoomPhoneEmbed = React.forwardRef<ZoomPhoneEmbedHandle, ZoomPhoneEm
                             ref={iframeRef}
                             src={embedUrl}
                             className="w-full h-[calc(100%-3rem)] border-none"
-                            allow="microphone *; camera *; clipboard-write *; autoplay *; speaker-selection *; display-capture *"
-                            sandbox="allow-forms allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-storage-access-by-user-activation"
+                            allow="microphone; camera; clipboard-write; autoplay; speaker-selection; display-capture"
                             onLoad={() => setIframeLoaded(true)}
                             onError={() => setLoadError(true)}
                         />
