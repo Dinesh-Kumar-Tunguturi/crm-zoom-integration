@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { Phone, X, Minimize2, Maximize2, PhoneCall, ExternalLink } from "lucide-react";
+import { Phone, X, Minimize2, Maximize2, PhoneCall, ExternalLink, Loader2, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -9,6 +9,7 @@ interface ZoomPhoneEmbedProps {
     onIncomingCall?: (data: any) => void;
     onCallEnd?: (data: any) => void;
     onConnect?: (data: any) => void;
+    callerEmail?: string;
 }
 
 // Define the handle interface
@@ -26,6 +27,7 @@ export const ZoomPhoneEmbed = React.forwardRef<ZoomPhoneEmbedHandle, ZoomPhoneEm
     onIncomingCall,
     onCallEnd,
     onConnect,
+    callerEmail,
 }, ref) => {
     const [isOpen, setIsOpen] = useState(false);
     const [isMinimized, setIsMinimized] = useState(false);
@@ -34,63 +36,44 @@ export const ZoomPhoneEmbed = React.forwardRef<ZoomPhoneEmbedHandle, ZoomPhoneEm
     const [embedUrl, setEmbedUrl] = useState("");
     const [callStatus, setCallStatus] = useState<string>("");
     const [lastDialedNumber, setLastDialedNumber] = useState<string>("");
+    const [showFallback, setShowFallback] = useState(false);
 
-    // We need a reference to the iframe to send postMessages
     const iframeRef = useRef<HTMLIFrameElement>(null);
+    const callTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-    // ─── DIAL METHOD ───────────────────────────────────────────────
-    // This is the core function exposed to the parent.
-    // It uses a HYBRID approach:
-    //   1. Mobile → tel: protocol (native dialer, user picks Zoom/Phone)
-    //   2. Desktop → zoomphonecall: deep link (launches Zoom Desktop App directly)
-    //   3. Fallback → Smart Embed iframe postMessage (if widget is loaded)
-    // ────────────────────────────────────────────────────────────────
-
+    // ─── DIAL METHOD (HYBRID) ──────────────────────────────────
     const dialNumber = (phoneNumber: string) => {
         if (!phoneNumber) return;
 
-        // Clean the phone number (remove spaces, dashes)
         const cleanNumber = phoneNumber.replace(/[\s\-\(\)]/g, "");
         setLastDialedNumber(cleanNumber);
+        setShowFallback(false);
 
-        // ── MOBILE: Use tel: protocol ──
+        // ── MOBILE: Use tel: protocol directly ──
         if (isMobileDevice()) {
-            setCallStatus("Opening dialer...");
             window.location.href = `tel:${cleanNumber}`;
             return;
         }
 
-        // ── DESKTOP: Try Zoom Deep Link first ──
-        // This launches the Zoom Desktop App directly, bypassing all firewall issues.
+        // ── DESKTOP: Open widget and try Smart Embed ──
         setIsOpen(true);
         setIsMinimized(false);
-        setCallStatus("Launching Zoom App...");
+        setCallStatus("Calling via Zoom...");
 
-        // Try the Zoom Phone deep link
-        const zoomLink = `zoommtg://zoom.us/callphone?number=${encodeURIComponent(cleanNumber)}`;
-
-        // Create a hidden iframe to attempt the deep link without navigating away
-        const deepLinkFrame = document.createElement("iframe");
-        deepLinkFrame.style.display = "none";
-        deepLinkFrame.src = zoomLink;
-        document.body.appendChild(deepLinkFrame);
-
-        // Also try the Smart Embed iframe as a parallel attempt
+        // Try Smart Embed iframe
         if (iframeRef.current && iframeRef.current.contentWindow) {
             const payload = {
                 type: 'zp-make-call',
                 data: { number: cleanNumber }
             };
             iframeRef.current.contentWindow.postMessage(payload, '*');
-            setCallStatus("Calling via Zoom...");
         }
 
-        // Clean up the deep link iframe after 3 seconds
-        setTimeout(() => {
-            if (deepLinkFrame.parentNode) {
-                deepLinkFrame.parentNode.removeChild(deepLinkFrame);
-            }
-        }, 3000);
+        // After 8 seconds, if still "Calling...", show fallback options
+        if (callTimeoutRef.current) clearTimeout(callTimeoutRef.current);
+        callTimeoutRef.current = setTimeout(() => {
+            setShowFallback(true);
+        }, 8000);
     };
 
     // Expose the 'dial' method to the parent
@@ -108,16 +91,7 @@ export const ZoomPhoneEmbed = React.forwardRef<ZoomPhoneEmbedHandle, ZoomPhoneEm
         setIsMinimized(!isMinimized);
     };
 
-    // Direct call via Zoom App button
-    const handleDirectZoomCall = () => {
-        if (!lastDialedNumber) return;
-        const cleanNumber = lastDialedNumber.replace(/[\s\-\(\)]/g, "");
-        // Open Zoom directly via web URL (works even without deep link support)
-        window.open(`https://zoom.us/wc/phone/${encodeURIComponent(cleanNumber)}`, "_blank");
-    };
-
     useEffect(() => {
-        // Construct the URL with the current origin to pass security checks
         setEmbedUrl(`https://applications.zoom.us/integration/phone/embeddablephone/home?origin=${window.location.origin}`);
     }, []);
 
@@ -136,24 +110,23 @@ export const ZoomPhoneEmbed = React.forwardRef<ZoomPhoneEmbedHandle, ZoomPhoneEm
                     if (onIncomingCall) onIncomingCall(data);
                     if (!isOpen) setIsOpen(true);
                     setCallStatus("Ringing...");
+                    setShowFallback(false);
+                    if (callTimeoutRef.current) clearTimeout(callTimeoutRef.current);
                     break;
                 case "zp-call-connected-event":
                     if (onConnect) onConnect(data);
                     setCallStatus("Connected");
+                    setShowFallback(false);
+                    if (callTimeoutRef.current) clearTimeout(callTimeoutRef.current);
                     break;
                 case "zp-call-ended-event":
                     if (onCallEnd) onCallEnd(data);
                     setCallStatus("");
                     setLastDialedNumber("");
+                    setShowFallback(false);
                     break;
                 case "zp-init-success-event":
                     setIframeLoaded(true);
-                    setCallStatus("");
-                    break;
-                case "zp-no-device-event":
-                case "zp-error-event":
-                    // If the embed fails, show fallback options
-                    setCallStatus("no-device");
                     break;
                 default:
                     break;
@@ -161,7 +134,10 @@ export const ZoomPhoneEmbed = React.forwardRef<ZoomPhoneEmbedHandle, ZoomPhoneEm
         };
 
         window.addEventListener("message", handleMessage);
-        return () => window.removeEventListener("message", handleMessage);
+        return () => {
+            window.removeEventListener("message", handleMessage);
+            if (callTimeoutRef.current) clearTimeout(callTimeoutRef.current);
+        };
     }, [onIncomingCall, onCallEnd, onConnect, isOpen]);
 
     return (
@@ -174,7 +150,7 @@ export const ZoomPhoneEmbed = React.forwardRef<ZoomPhoneEmbedHandle, ZoomPhoneEm
                     isMinimized ? "w-64 h-16" : "w-[375px] h-[600px]"
                 )}
             >
-                {/* Header ... */}
+                {/* Header */}
                 <div className="flex items-center justify-between px-4 py-2 bg-gray-50 dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 h-12">
                     <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
                         Zoom Phone
@@ -192,7 +168,7 @@ export const ZoomPhoneEmbed = React.forwardRef<ZoomPhoneEmbedHandle, ZoomPhoneEm
                             variant="ghost"
                             size="icon"
                             className="h-6 w-6 text-gray-500 hover:text-red-500"
-                            onClick={() => { setIsOpen(false); setCallStatus(""); }}
+                            onClick={() => { setIsOpen(false); setCallStatus(""); setShowFallback(false); }}
                         >
                             <X size={14} />
                         </Button>
@@ -219,48 +195,55 @@ export const ZoomPhoneEmbed = React.forwardRef<ZoomPhoneEmbedHandle, ZoomPhoneEm
                         />
                     )}
 
-                    {/* Fallback UI: Shown when "No available device" or load error */}
-                    {(loadError || callStatus === "no-device") && lastDialedNumber && (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-white p-6 text-center z-10">
-                            <PhoneCall className="h-12 w-12 text-blue-500 mb-4" />
+                    {/* ─── FALLBACK UI ─── */}
+                    {/* Shown when call is stuck OR "No available device" */}
+                    {(showFallback || loadError) && lastDialedNumber && (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/95 backdrop-blur-sm p-6 text-center z-10">
+                            <PhoneCall className="h-12 w-12 text-blue-500 mb-4 animate-pulse" />
                             <p className="text-lg font-semibold text-gray-800 mb-1">Call {lastDialedNumber}</p>
                             <p className="text-sm text-gray-500 mb-6">
-                                The browser phone is not available. Use one of the options below:
+                                The browser call is not connecting. Use one of these options:
                             </p>
 
-                            {/* Option 1: Open in Zoom Desktop App */}
+                            {/* Option 1: Open via Zoom Desktop App (tel: protocol) */}
                             <Button
                                 className="w-full mb-3 bg-blue-600 hover:bg-blue-700 text-white"
                                 onClick={() => {
-                                    // Deep link to Zoom Desktop App
-                                    window.location.href = `zoommtg://zoom.us/callphone?number=${encodeURIComponent(lastDialedNumber)}`;
+                                    window.location.href = `tel:${lastDialedNumber}`;
                                 }}
                             >
                                 <Phone className="h-4 w-4 mr-2" />
                                 Call via Zoom Desktop App
                             </Button>
 
-                            {/* Option 2: Open Zoom Web */}
+                            {/* Option 2: Open Zoom Phone Web */}
                             <Button
                                 variant="outline"
                                 className="w-full mb-3"
-                                onClick={handleDirectZoomCall}
-                            >
-                                <ExternalLink className="h-4 w-4 mr-2" />
-                                Open in Zoom Web
-                            </Button>
-
-                            {/* Option 3: Use tel: protocol */}
-                            <Button
-                                variant="outline"
-                                className="w-full"
                                 onClick={() => {
-                                    window.location.href = `tel:${lastDialedNumber}`;
+                                    window.open(`https://app.zoom.us/wc/phone`, "_blank");
                                 }}
                             >
-                                <Phone className="h-4 w-4 mr-2" />
-                                Use System Dialer
+                                <ExternalLink className="h-4 w-4 mr-2" />
+                                Open Zoom Phone in New Tab
                             </Button>
+
+                            {/* Option 3: Copy number for Zoom Mobile App */}
+                            <Button
+                                variant="outline"
+                                className="w-full mb-3"
+                                onClick={() => {
+                                    navigator.clipboard.writeText(lastDialedNumber);
+                                    alert(`Number copied: ${lastDialedNumber}\nOpen Zoom Mobile App and paste to dial.`);
+                                }}
+                            >
+                                <Smartphone className="h-4 w-4 mr-2" />
+                                Copy Number for Zoom Mobile
+                            </Button>
+
+                            <p className="text-xs text-gray-400 mt-2">
+                                Network may be blocking browser calls. Use the Zoom App instead.
+                            </p>
                         </div>
                     )}
 
@@ -309,5 +292,4 @@ export const ZoomPhoneEmbed = React.forwardRef<ZoomPhoneEmbedHandle, ZoomPhoneEm
     );
 });
 
-// Add display name for debugging
 ZoomPhoneEmbed.displayName = "ZoomPhoneEmbed";

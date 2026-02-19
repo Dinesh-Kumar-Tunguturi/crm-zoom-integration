@@ -4008,6 +4008,7 @@ export default function SalesPage() {
 
   const [allLeads, setAllLeads] = useState<Lead[]>([]);
   const [kpiFilteredLeads, setKpiFilteredLeads] = useState<Lead[]>([]);
+  const [userEmail, setUserEmail] = useState<string>("");
 
 
   const [page, setPage] = useState(1);
@@ -4170,6 +4171,8 @@ export default function SalesPage() {
       console.error("Error fetching auth user:", authError);
       return;
     }
+    // Store user email for Zoom API calling
+    if (user.email) setUserEmail(user.email);
 
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
@@ -5796,7 +5799,7 @@ export default function SalesPage() {
           currentUser={userProfile}
           defaultMode={salesDialogMode}
         />
-        <ZoomPhoneEmbed ref={zoomEmbedRef} />
+        <ZoomPhoneEmbed ref={zoomEmbedRef} callerEmail={userEmail} />
       </DashboardLayout>
 
 
