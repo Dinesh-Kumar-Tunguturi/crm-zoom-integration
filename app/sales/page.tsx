@@ -4018,6 +4018,17 @@ export default function SalesPage() {
 
   const handlePhoneClick = (phone: string) => {
     if (!phone) return;
+
+    // Mobile Device Check
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
+
+    if (isMobile) {
+      // On mobile, use the native dialer (User can select "Zoom" or "Phone" app)
+      window.location.href = `tel:${phone}`;
+      return;
+    }
+
+    // On Desktop, use the Smart Embed Widget
     if (zoomEmbedRef.current) {
       zoomEmbedRef.current.dial(phone);
     } else {
