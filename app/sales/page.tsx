@@ -4017,13 +4017,63 @@ export default function SalesPage() {
 
   const zoomEmbedRef = useRef<ZoomPhoneEmbedHandle>(null);
 
-  const handlePhoneClick = (phone: string) => {
+  const handlePhoneClick = async (phone: string) => {
     if (!phone) return;
+
+    // 1. Dial IMMEDIATELY so the user doesn't wait
     if (zoomEmbedRef.current) {
       zoomEmbedRef.current.dial(phone);
     } else {
-      // Fallback: If widget ref is not available, use tel: directly
       window.location.href = `tel:${phone}`;
+    }
+
+    // 2. Log to database in the background
+    try {
+      const matchedLead = leads.find((l) => l.phone === phone);
+      const leadId = matchedLead?.business_id || "unknown";
+      const now = new Date();
+
+      // Check for existing record safely
+      const { data: existingRecords, error: fetchError } = await supabase
+        .from("call_history")
+        .select("id")
+        .eq("lead_id", leadId)
+        .order("id", { ascending: false })
+        .limit(1);
+
+      if (fetchError) throw fetchError;
+
+      const recordToUpdate = existingRecords && existingRecords.length > 0 ? existingRecords[0] : null;
+
+      if (recordToUpdate) {
+        await supabase
+          .from("call_history")
+          .update({
+            call_started_at: now.toISOString(),
+            followup_date: now.toISOString().split("T")[0],
+            assigned_to: userProfile?.full_name || "Unknown",
+            phone: phone,
+            notes: `Outbound call by ${userProfile?.full_name || "Unknown"} to ${phone}`,
+          })
+          .eq("id", recordToUpdate.id);
+      } else {
+        const { error: insertError } = await supabase
+          .from("call_history")
+          .insert([{
+            lead_id: leadId,
+            email: matchedLead?.email || "",
+            phone: phone,
+            assigned_to: userProfile?.full_name || "Unknown",
+            current_stage: matchedLead?.current_stage || "Prospect",
+            followup_date: now.toISOString().split("T")[0],
+            notes: `Outbound call by ${userProfile?.full_name || "Unknown"} to ${phone}`,
+            call_started_at: now.toISOString(),
+          }]);
+        if (insertError) throw insertError;
+      }
+    } catch (err) {
+      console.error("Background call logging error:", err);
+      // We don't alert the user here because the call is already dialing
     }
   };
 
@@ -4707,7 +4757,7 @@ export default function SalesPage() {
     const { data, error } = await supabase
       .from("profiles")
       .select("full_name, user_email")
-      .in("roles", ["Sales", "Sales Associate"]);
+      .in("roles", ["Sales", "Sales Associate", "Sale Associate", "Admin", "Super Admin"]);
 
     if (error) {
       console.error("Error fetching sales users:", error);
@@ -5453,45 +5503,38 @@ export default function SalesPage() {
 
 
 
-                        <TableCell className="flex items-center gap-4">
-                          <Select
-                            value={lead.current_stage}
-                            onValueChange={(value: SalesStage) => handleStageUpdate(lead.id, value)}
-                          >
-                            <SelectTrigger
-                              className={`w-40 ${lead.current_stage === "sale done"
-                                ? "pointer-events-none opacity-100 text-black bg-gray-100 border border-gray-300 cursor-not-allowed"
-                                : ""
-                                }`}
+                        <TableCell>
+                          <div className="flex items-center gap-4">
+                            <Select
+                              value={lead.current_stage}
+                              onValueChange={(value: SalesStage) => handleStageUpdate(lead.id, value)}
                             >
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {salesStages
-                                .filter((stage) => lead.current_stage === "Prospect" || stage !== "Prospect")
-                                .map((stage) => (
-                                  <SelectItem key={stage} value={stage}>
-                                    <Badge className={getStageColor(stage)}>{stage}</Badge>
-                                  </SelectItem>
-                                ))}
-                            </SelectContent>
-                          </Select>
-                          {lead.current_stage === "sale done" && (
-
-                            <Button
-                              size="icon"
-                              variant="outline"
-                              onClick={() =>
-                                window.open(`/SaleUpdate/${lead.business_id}?mode=edit`, "_blank")
-                              }
-                              title="Edit sale close"
-                            >
-                              <EditIcon className="h-5 w-5" />
-                            </Button>
-
-
-                          )}
-
+                              <SelectTrigger className="w-40">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {salesStages
+                                  .filter((stage) => lead.current_stage === "Prospect" || stage !== "Prospect")
+                                  .map((stage) => (
+                                    <SelectItem key={stage} value={stage}>
+                                      <Badge className={getStageColor(stage)}>{stage}</Badge>
+                                    </SelectItem>
+                                  ))}
+                              </SelectContent>
+                            </Select>
+                            {lead.current_stage === "sale done" && (
+                              <Button
+                                size="icon"
+                                variant="outline"
+                                onClick={() =>
+                                  window.open(`/SaleUpdate/${lead.business_id}?mode=edit`, "_blank")
+                                }
+                                title="Edit sale close"
+                              >
+                                <EditIcon className="h-5 w-5" />
+                              </Button>
+                            )}
+                          </div>
                         </TableCell>
 
 

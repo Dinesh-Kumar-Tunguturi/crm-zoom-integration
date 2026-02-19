@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/utils/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2 } from "lucide-react";
+import { Loader2, RefreshCw } from "lucide-react";
 import { useAuth } from "@/components/providers/auth-provider";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
@@ -159,19 +159,19 @@ export default function LeadProfilePage() {
   const { user } = useAuth();
 
   const allowedRoles = [
-  "Marketing",
-  "Sales",
-  "Super Admin",
-  "Finance",
-  "Accounts",
-  "Resume Head",
-  "Technical Head",
-  "Sales Associate",
-];
+    "Marketing",
+    "Sales",
+    "Super Admin",
+    "Finance",
+    "Accounts",
+    "Resume Head",
+    "Technical Head",
+    "Sales Associate",
+  ];
 
-const norm = (s?: string | null) => (s ?? "").trim().toLowerCase();
-const ALLOWED_EDIT = new Set(allowedRoles.map(norm));
-const canEdit = ALLOWED_EDIT.has(norm(user?.role));
+  const norm = (s?: string | null) => (s ?? "").trim().toLowerCase();
+  const ALLOWED_EDIT = new Set(allowedRoles.map(norm));
+  const canEdit = ALLOWED_EDIT.has(norm(user?.role));
 
 
   // =========================
@@ -233,22 +233,22 @@ const canEdit = ALLOWED_EDIT.has(norm(user?.role));
       }
 
       // 🧾 Sales history (ordered by closed_at for add-ons logic)
-const { data: allSales, error: salesErr } = await supabase
-  .from("sales_closure")
-  .select("*")
-  .eq("lead_id", business_id)
-  .order("closed_at", { ascending: false });
+      const { data: allSales, error: salesErr } = await supabase
+        .from("sales_closure")
+        .select("*")
+        .eq("lead_id", business_id)
+        .order("closed_at", { ascending: false });
 
-if (salesErr) {
-  console.error("Error fetching sales_closure:", salesErr.message);
-  setSaleHistory([]);
-} else {
-  setSaleHistory(allSales ?? []);
-}
+      if (salesErr) {
+        console.error("Error fetching sales_closure:", salesErr.message);
+        setSaleHistory([]);
+      } else {
+        setSaleHistory(allSales ?? []);
+      }
 
-// 🧮 Compute merged Add-ons summary (based on closed_at)
-const mergedAddons = getLatestAddons(allSales ?? []);
-setLatestAddons(mergedAddons);
+      // 🧮 Compute merged Add-ons summary (based on closed_at)
+      const mergedAddons = getLatestAddons(allSales ?? []);
+      setLatestAddons(mergedAddons);
 
 
       // Call history
@@ -256,7 +256,7 @@ setLatestAddons(mergedAddons);
         .from("call_history")
         .select("*")
         .eq("lead_id", business_id)
-        .order("followup_date", { ascending: false });
+        .order("call_started_at", { ascending: false });
       if (callErr) console.error("Error fetching call history:", callErr.message);
       setCallHistory(callRows ?? []);
 
@@ -364,7 +364,7 @@ setLatestAddons(mergedAddons);
   // ✅ Save onboarding edits
   const saveOnboarding = async () => {
     if (!canEdit) { alert("You don’t have permission to edit."); return; }
-  if (!onboardingForm?.id) return;
+    if (!onboardingForm?.id) return;
 
     setSavingOnboarding(true);
     const payload: any = {
@@ -397,7 +397,7 @@ setLatestAddons(mergedAddons);
   // ✅ Save add-ons (latest sale row)
   const saveAddons = async () => {
     if (!canEdit) { alert("You don’t have permission to edit."); return; }
-  if (!saleForm?.id) return;
+    if (!saleForm?.id) return;
 
     setSavingSale(true);
     const payload = {
@@ -536,25 +536,25 @@ setLatestAddons(mergedAddons);
 
           {/* Client onboarding details */}
           <Card className="h-full col-span-2 row-span-1 overflow-scroll">
-           <CardHeader className="flex flex-row items-center justify-between">
-  <CardTitle className="text-2xl font-bold">Client onboarding details</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-2xl font-bold">Client onboarding details</CardTitle>
 
-  {canEdit && (
-    <div className="flex items-center gap-2">
-      {isEditOnboarding ? (
-        <>
-          <Button className="bg-blue-600" onClick={saveOnboarding} disabled={savingOnboarding || !onboardingForm}>
-            {savingOnboarding ? <Loader2 className="animate-spin mr-2" /> : null}
-            Save
-          </Button>
-          <Button variant="outline" onClick={() => setIsEditOnboarding(false)}>Cancel</Button>
-        </>
-      ) : (
-        <Button variant="outline" onClick={() => setIsEditOnboarding(true)}>Edit</Button>
-      )}
-    </div>
-  )}
-</CardHeader>
+              {canEdit && (
+                <div className="flex items-center gap-2">
+                  {isEditOnboarding ? (
+                    <>
+                      <Button className="bg-blue-600" onClick={saveOnboarding} disabled={savingOnboarding || !onboardingForm}>
+                        {savingOnboarding ? <Loader2 className="animate-spin mr-2" /> : null}
+                        Save
+                      </Button>
+                      <Button variant="outline" onClick={() => setIsEditOnboarding(false)}>Cancel</Button>
+                    </>
+                  ) : (
+                    <Button variant="outline" onClick={() => setIsEditOnboarding(true)}>Edit</Button>
+                  )}
+                </div>
+              )}
+            </CardHeader>
 
             <CardContent>
               {!onboarding ? (
@@ -598,29 +598,29 @@ setLatestAddons(mergedAddons);
 
                   {/* Sponsorship & DOB */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <Label>Sponsorship?</Label>
-                      {isEditOnboarding ? (
-                        <Input
-                          placeholder="Yes / No"
-                          value={toYesNo(onboardingForm?.needs_sponsorship)}
-                          onChange={(e) => handleOB("needs_sponsorship", fromYesNo(e.target.value))}
-                        />
-                      ) : (
-                        <Input value={yn(onboarding.needs_sponsorship)} readOnly />
-                      )}
-                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <Label>Sponsorship?</Label>
+                        {isEditOnboarding ? (
+                          <Input
+                            placeholder="Yes / No"
+                            value={toYesNo(onboardingForm?.needs_sponsorship)}
+                            onChange={(e) => handleOB("needs_sponsorship", fromYesNo(e.target.value))}
+                          />
+                        ) : (
+                          <Input value={yn(onboarding.needs_sponsorship)} readOnly />
+                        )}
+                      </div>
 
-                    <div className="space-y-1.5">
-                      <Label>Visa type</Label>
-                      <Input
-                        value={(isEditOnboarding ? onboardingForm?.visatypes : onboarding.visatypes) ?? ""}
-                        readOnly={!isEditOnboarding}
-                        onChange={(e) => isEditOnboarding && handleOB("visatypes", e.target.value)}
-                      />
+                      <div className="space-y-1.5">
+                        <Label>Visa type</Label>
+                        <Input
+                          value={(isEditOnboarding ? onboardingForm?.visatypes : onboarding.visatypes) ?? ""}
+                          readOnly={!isEditOnboarding}
+                          onChange={(e) => isEditOnboarding && handleOB("visatypes", e.target.value)}
+                        />
+                      </div>
                     </div>
-</div>
 
 
                     <div className="space-y-1.5">
@@ -672,11 +672,10 @@ setLatestAddons(mergedAddons);
                           href={(isEditOnboarding ? onboardingForm?.linkedin_url : onboarding.linkedin_url) ?? "#"}
                           target="_blank"
                           rel="noreferrer"
-                          className={`text-blue-600 underline text-sm ${
-                            !(isEditOnboarding ? onboardingForm?.linkedin_url : onboarding.linkedin_url)
-                              ? "pointer-events-none opacity-50"
-                              : ""
-                          }`}
+                          className={`text-blue-600 underline text-sm ${!(isEditOnboarding ? onboardingForm?.linkedin_url : onboarding.linkedin_url)
+                            ? "pointer-events-none opacity-50"
+                            : ""
+                            }`}
                         >
                           Open
                         </a>
@@ -697,11 +696,10 @@ setLatestAddons(mergedAddons);
                           href={(isEditOnboarding ? onboardingForm?.github_url : onboarding.github_url) ?? "#"}
                           target="_blank"
                           rel="noreferrer"
-                          className={`text-blue-600 underline text-sm ${
-                            !(isEditOnboarding ? onboardingForm?.github_url : onboarding.github_url)
-                              ? "pointer-events-none opacity-50"
-                              : ""
-                          }`}
+                          className={`text-blue-600 underline text-sm ${!(isEditOnboarding ? onboardingForm?.github_url : onboarding.github_url)
+                            ? "pointer-events-none opacity-50"
+                            : ""
+                            }`}
                         >
                           Open
                         </a>
@@ -720,11 +718,10 @@ setLatestAddons(mergedAddons);
                           href={(isEditOnboarding ? onboardingForm?.portfolio_url : onboarding.portfolio_url) ?? "#"}
                           target="_blank"
                           rel="noreferrer"
-                          className={`text-blue-600 underline text-sm ${
-                            !(isEditOnboarding ? onboardingForm?.portfolio_url : onboarding.portfolio_url)
-                              ? "pointer-events-none opacity-50"
-                              : ""
-                          }`}
+                          className={`text-blue-600 underline text-sm ${!(isEditOnboarding ? onboardingForm?.portfolio_url : onboarding.portfolio_url)
+                            ? "pointer-events-none opacity-50"
+                            : ""
+                            }`}
                         >
                           Open
                         </a>
@@ -787,279 +784,279 @@ setLatestAddons(mergedAddons);
             </CardContent>
           </Card>
 
-       
+
 
 
           <Card className="h-full col-span-1 row-span-1 overflow-auto">
-  <CardHeader className="flex flex-row items-center justify-between">
-    <CardTitle className="text-2xl font-bold">Add-ons & Requirements</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-2xl font-bold">Add-ons & Requirements</CardTitle>
 
-    {canEditAddons && saleHistory.length > 0 && (
-      <div className="flex items-center gap-2">
-        {isEditAddons ? (
-          <>
-            <Button className="bg-blue-600" onClick={saveAddons} disabled={savingSale || !saleForm}>
-              {savingSale ? <Loader2 className="animate-spin mr-2" /> : null}
-              Save
-            </Button>
-            <Button variant="outline" onClick={() => setIsEditAddons(false)}>
-              Cancel
-            </Button>
-          </>
-        ) : (
-          // <Button variant="outline" onClick={() => setIsEditAddons(true)}>
-          //   Edit
-          // </Button>
+              {canEditAddons && saleHistory.length > 0 && (
+                <div className="flex items-center gap-2">
+                  {isEditAddons ? (
+                    <>
+                      <Button className="bg-blue-600" onClick={saveAddons} disabled={savingSale || !saleForm}>
+                        {savingSale ? <Loader2 className="animate-spin mr-2" /> : null}
+                        Save
+                      </Button>
+                      <Button variant="outline" onClick={() => setIsEditAddons(false)}>
+                        Cancel
+                      </Button>
+                    </>
+                  ) : (
+                    // <Button variant="outline" onClick={() => setIsEditAddons(true)}>
+                    //   Edit
+                    // </Button>
 
-            <Button
-  variant="outline"
-  onClick={() => window.open(`/client_sale_history_update/${business_id}`, "_blank")}
->
-  Edit
-</Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => window.open(`/client_sale_history_update/${business_id}`, "_blank")}
+                    >
+                      Edit
+                    </Button>
 
-        )}
-      </div>
-    )}
-  </CardHeader>
-
-
-<CardContent className="space-y-3 text-sm">
-  {saleHistory.length === 0 ? (
-    <div className="text-gray-500 italic">
-      No add-ons or commitments recorded yet.
-    </div>
-  ) : (() => {
-      // const latest = saleHistory[saleHistory.length - 1];
-
-      const latest = latestAddons;
-
-
-      return (
-        <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-2">
-
-            {/*applications*/}
-            {/* Application Sale Value */}
-<div className="flex items-center justify-between border rounded-md px-3 py-2">
-  <span className="font-medium">Applications </span>
-  {isEditAddons ? (
-    <Input
-      className="w-24 h-8"
-      value={saleForm?.application_sale_value ?? ""}
-      onChange={(e) =>
-        setSaleForm((p: any) => ({
-          ...p,
-          application_sale_value: e.target.value,
-        }))
-      }
-      placeholder="0.00"
-    />
-  ) : (
-    <span className="text-gray-700">
-      {money(latest?.application_sale_value)}
-    </span>
-  )}
-</div>
-
-            {/* Resume */}
-            <div className="flex items-center justify-between border rounded-md px-3 py-2">
-              <span className="font-medium">Resume</span>
-              {allowedRoles.includes(user?.role || "") ? (
-                isEditAddons ? (
-                  <Input
-                    className="w-24 h-8"
-                    value={saleForm?.resume_sale_value ?? ""}
-                    onChange={(e) =>
-                      setSaleForm((p: any) => ({
-                        ...p,
-                        resume_sale_value: e.target.value,
-                      }))
-                    }
-                  />
-                ) : (
-                  <span className="text-gray-700">
-                    {money(latest?.resume_sale_value)}
-                  </span>
-                )
-              ) : latest?.resume_sale_value ? (
-                <Badge className="bg-green-100 text-green-700 border-green-200">
-                  Paid
-                </Badge>
-              ) : (
-                <span className="text-gray-400">—</span>
+                  )}
+                </div>
               )}
-            </div>
+            </CardHeader>
 
-            {/* LinkedIn */}
-            <div className="flex items-center justify-between border rounded-md px-3 py-2">
-              <span className="font-medium">LinkedIn</span>
-              {allowedRoles.includes(user?.role || "") ? (
-                isEditAddons ? (
-                  <Input
-                    className="w-24 h-8"
-                    value={saleForm?.linkedin_sale_value ?? ""}
-                    onChange={(e) =>
-                      setSaleForm((p: any) => ({
-                        ...p,
-                        linkedin_sale_value: e.target.value,
-                      }))
-                    }
-                  />
-                ) : (
-                  <span className="text-gray-700">
-                    {money(latest?.linkedin_sale_value)}
-                  </span>
-                )
-              ) : latest?.linkedin_sale_value ? (
-                <Badge className="bg-green-100 text-green-700 border-green-200">
-                  Paid
-                </Badge>
-              ) : (
-                <span className="text-gray-400">—</span>
-              )}
-            </div>
 
-            {/* Portfolio */}
-            <div className="flex items-center justify-between border rounded-md px-3 py-2">
-              <span className="font-medium">Portfolio</span>
-              {allowedRoles.includes(user?.role || "") ? (
-                isEditAddons ? (
-                  <Input
-                    className="w-24 h-8"
-                    value={saleForm?.portfolio_sale_value ?? ""}
-                    onChange={(e) =>
-                      setSaleForm((p: any) => ({
-                        ...p,
-                        portfolio_sale_value: e.target.value,
-                      }))
-                    }
-                  />
-                ) : (
-                  <span className="text-gray-700">
-                    {money(latest?.portfolio_sale_value)}
-                  </span>
-                )
-              ) : latest?.portfolio_sale_value ? (
-                <Badge className="bg-green-100 text-green-700 border-green-200">
-                  Paid
-                </Badge>
-              ) : (
-                <span className="text-gray-400">—</span>
-              )}
-            </div>
+            <CardContent className="space-y-3 text-sm">
+              {saleHistory.length === 0 ? (
+                <div className="text-gray-500 italic">
+                  No add-ons or commitments recorded yet.
+                </div>
+              ) : (() => {
+                // const latest = saleHistory[saleHistory.length - 1];
 
-            {/* GitHub */}
-            <div className="flex items-center justify-between border rounded-md px-3 py-2">
-              <span className="font-medium">GitHub</span>
-              {allowedRoles.includes(user?.role || "") ? (
-                isEditAddons ? (
-                  <Input
-                    className="w-24 h-8"
-                    value={saleForm?.github_sale_value ?? ""}
-                    onChange={(e) =>
-                      setSaleForm((p: any) => ({
-                        ...p,
-                        github_sale_value: e.target.value,
-                      }))
-                    }
-                  />
-                ) : (
-                  <span className="text-gray-700">
-                    {money(latest?.github_sale_value)}
-                  </span>
-                )
-              ) : latest?.github_sale_value ? (
-                <Badge className="bg-green-100 text-green-700 border-green-200">
-                  Paid
-                </Badge>
-              ) : (
-                <span className="text-gray-400">—</span>
-              )}
-            </div>
+                const latest = latestAddons;
 
-            {/* Custom */}
-            <div className="flex items-center justify-between border rounded-md px-3 py-2">
-              <span className="text-gray-700">
-                {latest?.custom_label || "Custom add on sales"}
-              </span>
-              {allowedRoles.includes(user?.role || "") ? (
-                isEditAddons ? (
-                  <Input
-                    className="mr-2"
-                    value={saleForm?.custom_label ?? ""}
-                    onChange={(e) =>
-                      setSaleForm((p: any) => ({
-                        ...p,
-                        custom_label: e.target.value,
-                      }))
-                    }
-                    placeholder="Custom add on sales"
-                  />
-                ) : (
-                  <span className="text-gray-700">
-                    {money(latest?.custom_sale_value)}
-                  </span>
-                )
-              ) : latest?.custom_sale_value ? (
-                <Badge className="bg-green-100 text-green-700 border-green-200">
-                  Paid
-                </Badge>
-              ) : (
-                <span className="text-gray-400">—</span>
-              )}
-            </div>
-          </div>
 
-          {/* Commitments */}
-          <div className="border rounded-md p-3">
-            <div className="font-medium mb-1">Commitments</div>
-            {isEditAddons ? (
-              <Textarea
-                rows={3}
-                value={saleForm?.commitments ?? ""}
-                onChange={(e) =>
-                  setSaleForm((p: any) => ({
-                    ...p,
-                    commitments: e.target.value,
-                  }))
-                }
-              />
-            ) : (
-              <div className="text-gray-700 whitespace-pre-wrap">
-                {latest?.commitments?.trim() ? latest.commitments : "—"}
-              </div>
-            )}
-          </div>
+                return (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-2">
 
-          {/* Badge Value */}
-          <div className="flex items-center justify-between border rounded-md px-3 py-2">
-            <span className="font-medium">Badge</span>
-            {isEditAddons ? (
-              <Input
-                className="w-24 h-8"
-                value={saleForm?.badge_value ?? ""}
-                onChange={(e) =>
-                  setSaleForm((p: any) => ({
-                    ...p,
-                    badge_value: e.target.value,
-                  }))
-                }
-                placeholder="0.00"
-              />
-            ) : (
-              <span className="text-gray-700">{money(latest?.badge_value)}</span>
-            )}
-          </div>
+                      {/*applications*/}
+                      {/* Application Sale Value */}
+                      <div className="flex items-center justify-between border rounded-md px-3 py-2">
+                        <span className="font-medium">Applications </span>
+                        {isEditAddons ? (
+                          <Input
+                            className="w-24 h-8"
+                            value={saleForm?.application_sale_value ?? ""}
+                            onChange={(e) =>
+                              setSaleForm((p: any) => ({
+                                ...p,
+                                application_sale_value: e.target.value,
+                              }))
+                            }
+                            placeholder="0.00"
+                          />
+                        ) : (
+                          <span className="text-gray-700">
+                            {money(latest?.application_sale_value)}
+                          </span>
+                        )}
+                      </div>
 
-          <div className="text-xs text-gray-500">
-            Showing latest sale/renewal add-ons.
-          </div>
-        </div>
-      );
-  })()}
-</CardContent>
-</Card>
+                      {/* Resume */}
+                      <div className="flex items-center justify-between border rounded-md px-3 py-2">
+                        <span className="font-medium">Resume</span>
+                        {allowedRoles.includes(user?.role || "") ? (
+                          isEditAddons ? (
+                            <Input
+                              className="w-24 h-8"
+                              value={saleForm?.resume_sale_value ?? ""}
+                              onChange={(e) =>
+                                setSaleForm((p: any) => ({
+                                  ...p,
+                                  resume_sale_value: e.target.value,
+                                }))
+                              }
+                            />
+                          ) : (
+                            <span className="text-gray-700">
+                              {money(latest?.resume_sale_value)}
+                            </span>
+                          )
+                        ) : latest?.resume_sale_value ? (
+                          <Badge className="bg-green-100 text-green-700 border-green-200">
+                            Paid
+                          </Badge>
+                        ) : (
+                          <span className="text-gray-400">—</span>
+                        )}
+                      </div>
+
+                      {/* LinkedIn */}
+                      <div className="flex items-center justify-between border rounded-md px-3 py-2">
+                        <span className="font-medium">LinkedIn</span>
+                        {allowedRoles.includes(user?.role || "") ? (
+                          isEditAddons ? (
+                            <Input
+                              className="w-24 h-8"
+                              value={saleForm?.linkedin_sale_value ?? ""}
+                              onChange={(e) =>
+                                setSaleForm((p: any) => ({
+                                  ...p,
+                                  linkedin_sale_value: e.target.value,
+                                }))
+                              }
+                            />
+                          ) : (
+                            <span className="text-gray-700">
+                              {money(latest?.linkedin_sale_value)}
+                            </span>
+                          )
+                        ) : latest?.linkedin_sale_value ? (
+                          <Badge className="bg-green-100 text-green-700 border-green-200">
+                            Paid
+                          </Badge>
+                        ) : (
+                          <span className="text-gray-400">—</span>
+                        )}
+                      </div>
+
+                      {/* Portfolio */}
+                      <div className="flex items-center justify-between border rounded-md px-3 py-2">
+                        <span className="font-medium">Portfolio</span>
+                        {allowedRoles.includes(user?.role || "") ? (
+                          isEditAddons ? (
+                            <Input
+                              className="w-24 h-8"
+                              value={saleForm?.portfolio_sale_value ?? ""}
+                              onChange={(e) =>
+                                setSaleForm((p: any) => ({
+                                  ...p,
+                                  portfolio_sale_value: e.target.value,
+                                }))
+                              }
+                            />
+                          ) : (
+                            <span className="text-gray-700">
+                              {money(latest?.portfolio_sale_value)}
+                            </span>
+                          )
+                        ) : latest?.portfolio_sale_value ? (
+                          <Badge className="bg-green-100 text-green-700 border-green-200">
+                            Paid
+                          </Badge>
+                        ) : (
+                          <span className="text-gray-400">—</span>
+                        )}
+                      </div>
+
+                      {/* GitHub */}
+                      <div className="flex items-center justify-between border rounded-md px-3 py-2">
+                        <span className="font-medium">GitHub</span>
+                        {allowedRoles.includes(user?.role || "") ? (
+                          isEditAddons ? (
+                            <Input
+                              className="w-24 h-8"
+                              value={saleForm?.github_sale_value ?? ""}
+                              onChange={(e) =>
+                                setSaleForm((p: any) => ({
+                                  ...p,
+                                  github_sale_value: e.target.value,
+                                }))
+                              }
+                            />
+                          ) : (
+                            <span className="text-gray-700">
+                              {money(latest?.github_sale_value)}
+                            </span>
+                          )
+                        ) : latest?.github_sale_value ? (
+                          <Badge className="bg-green-100 text-green-700 border-green-200">
+                            Paid
+                          </Badge>
+                        ) : (
+                          <span className="text-gray-400">—</span>
+                        )}
+                      </div>
+
+                      {/* Custom */}
+                      <div className="flex items-center justify-between border rounded-md px-3 py-2">
+                        <span className="text-gray-700">
+                          {latest?.custom_label || "Custom add on sales"}
+                        </span>
+                        {allowedRoles.includes(user?.role || "") ? (
+                          isEditAddons ? (
+                            <Input
+                              className="mr-2"
+                              value={saleForm?.custom_label ?? ""}
+                              onChange={(e) =>
+                                setSaleForm((p: any) => ({
+                                  ...p,
+                                  custom_label: e.target.value,
+                                }))
+                              }
+                              placeholder="Custom add on sales"
+                            />
+                          ) : (
+                            <span className="text-gray-700">
+                              {money(latest?.custom_sale_value)}
+                            </span>
+                          )
+                        ) : latest?.custom_sale_value ? (
+                          <Badge className="bg-green-100 text-green-700 border-green-200">
+                            Paid
+                          </Badge>
+                        ) : (
+                          <span className="text-gray-400">—</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Commitments */}
+                    <div className="border rounded-md p-3">
+                      <div className="font-medium mb-1">Commitments</div>
+                      {isEditAddons ? (
+                        <Textarea
+                          rows={3}
+                          value={saleForm?.commitments ?? ""}
+                          onChange={(e) =>
+                            setSaleForm((p: any) => ({
+                              ...p,
+                              commitments: e.target.value,
+                            }))
+                          }
+                        />
+                      ) : (
+                        <div className="text-gray-700 whitespace-pre-wrap">
+                          {latest?.commitments?.trim() ? latest.commitments : "—"}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Badge Value */}
+                    <div className="flex items-center justify-between border rounded-md px-3 py-2">
+                      <span className="font-medium">Badge</span>
+                      {isEditAddons ? (
+                        <Input
+                          className="w-24 h-8"
+                          value={saleForm?.badge_value ?? ""}
+                          onChange={(e) =>
+                            setSaleForm((p: any) => ({
+                              ...p,
+                              badge_value: e.target.value,
+                            }))
+                          }
+                          placeholder="0.00"
+                        />
+                      ) : (
+                        <span className="text-gray-700">{money(latest?.badge_value)}</span>
+                      )}
+                    </div>
+
+                    <div className="text-xs text-gray-500">
+                      Showing latest sale/renewal add-ons.
+                    </div>
+                  </div>
+                );
+              })()}
+            </CardContent>
+          </Card>
 
 
           {/*  Client Feedback (Left, Bottom) */}
@@ -1100,9 +1097,38 @@ setLatestAddons(mergedAddons);
           </Card>
 
           {/*  Call History (Right, Top) */}
-          <Card className="h-full col-span-1 row-span-1">
-            <CardHeader>
+          <Card className="h-full col-span-1 row-span-1 overflow-auto">
+            <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-2xl font-bold">Call History, {user?.name}</CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-1 text-xs"
+                onClick={async () => {
+                  try {
+                    const res = await fetch(`/api/zoom-call-logs?phone=${lead?.phone || ""}`);
+                    const data = await res.json();
+                    if (data.success && data.synced_to_db > 0) {
+                      // Refresh call history
+                      const { data: updatedHistory } = await supabase
+                        .from("call_history")
+                        .select("*")
+                        .eq("lead_id", business_id)
+                        .order("call_started_at", { ascending: false });
+                      if (updatedHistory) setCallHistory(updatedHistory);
+                      alert(`Synced ${data.synced_to_db} call duration(s) from Zoom!`);
+                    } else {
+                      alert(data.error || "No new durations to sync.");
+                    }
+                  } catch (err) {
+                    console.error(err);
+                    alert("Failed to sync. Check console.");
+                  }
+                }}
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+                Sync Duration from Zoom
+              </Button>
             </CardHeader>
             <CardContent>
               {callHistory.length === 0 ? (
@@ -1112,27 +1138,53 @@ setLatestAddons(mergedAddons);
                   <table className="min-w-full text-sm border border-gray-300">
                     <thead>
                       <tr className="bg-green-100 text-left">
-                        <th className="p-2 border">Follow-up Date</th>
-                        <th className="p-2 border">Stage</th>
-                        <th className="p-2 border">Notes</th>
-                        <th className="p-2 border">Assigned To</th>
+                        <th className="p-2 border">Date</th>
+                        <th className="p-2 border">Called By</th>
                         <th className="p-2 border">Phone</th>
-                        <th className="p-2 border">Email</th>
+                        <th className="p-2 border">Status</th>
+                        <th className="p-2 border">Duration</th>
+                        <th className="p-2 border">Notes</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {callHistory.map((call, index) => (
-                        <tr key={index} className="border-t hover:bg-gray-50">
-                          <td className="p-2 border">
-                            {call.followup_date ? new Date(call.followup_date).toLocaleDateString() : "-"}
-                          </td>
-                          <td className="p-2 border">{call.current_stage || "-"}</td>
-                          <td className="p-2 border">{call.notes || "-"}</td>
-                          <td className="p-2 border">{call.assigned_to || "-"}</td>
-                          <td className="p-2 border">{call.phone || "-"}</td>
-                          <td className="p-2 border">{call.email || "-"}</td>
-                        </tr>
-                      ))}
+                      {callHistory.map((call, index) => {
+                        const stage = (call.current_stage || "").toLowerCase();
+                        const statusColor =
+                          stage === "conversation done" ? "bg-blue-100 text-blue-800" :
+                            stage === "dnp" ? "bg-red-100 text-red-800" :
+                              stage === "target" ? "bg-yellow-100 text-yellow-800" :
+                                stage === "sale done" ? "bg-green-100 text-green-800" :
+                                  stage === "out of tg" ? "bg-gray-100 text-gray-600" :
+                                    stage === "not interested" ? "bg-orange-100 text-orange-800" :
+                                      stage === "prospect" ? "bg-purple-100 text-purple-800" :
+                                        "bg-gray-100 text-gray-800";
+
+                        const durationSec = call.call_duration_seconds || 0;
+                        const durationStr = durationSec > 0
+                          ? `${Math.floor(durationSec / 60).toString().padStart(2, "0")}:${(durationSec % 60).toString().padStart(2, "0")}`
+                          : "-";
+
+                        return (
+                          <tr key={index} className="border-t hover:bg-gray-50">
+                            <td className="p-2 border whitespace-nowrap">
+                              {call.call_started_at
+                                ? new Date(call.call_started_at).toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
+                                : call.followup_date ? new Date(call.followup_date).toLocaleDateString() : "-"}
+                            </td>
+                            <td className="p-2 border">
+                              <span className="font-medium text-blue-700">{call.assigned_to || "-"}</span>
+                            </td>
+                            <td className="p-2 border whitespace-nowrap">{call.phone || "-"}</td>
+                            <td className="p-2 border">
+                              <span className={`text-xs font-medium px-2 py-1 rounded-full ${statusColor}`}>
+                                {call.current_stage || "-"}
+                              </span>
+                            </td>
+                            <td className="p-2 border font-mono text-center">{durationStr}</td>
+                            <td className="p-2 border text-gray-600 max-w-[200px] break-words">{call.notes || "-"}</td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

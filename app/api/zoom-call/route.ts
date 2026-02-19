@@ -86,7 +86,9 @@ export async function POST(request: NextRequest) {
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
-                    callee: targetNumber,
+                    callee: {
+                        phone_number: targetNumber
+                    }
                 }),
             }
         );
@@ -105,7 +107,9 @@ export async function POST(request: NextRequest) {
                         "Content-Type": "application/json",
                     },
                     body: JSON.stringify({
-                        callee: targetNumber,
+                        callee: {
+                            phone_number: targetNumber
+                        }
                     }),
                 }
             );
