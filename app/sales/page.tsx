@@ -1,7 +1,7 @@
 // //app/sales/page.tsx
 // "use client";
 
-// import { useEffect, useState } from "react";
+// import { useEffect, useState, useRef } from "react";
 // import { supabase } from '@/utils/supabase/client';
 // import { DashboardLayout } from "@/components/layout/dashboard-layout";
 // import { Button } from "@/components/ui/button";
@@ -162,6 +162,17 @@
 //   const [page, setPage] = useState(1);
 //   const [pageSize, setPageSize] = useState(30); // default
 //   const [totalRecords, setTotalRecords] = useState(0);
+
+//   const zoomEmbedRef = useRef<ZoomPhoneEmbedHandle>(null);
+
+//   const handlePhoneClick = (phone: string) => {
+//     if (!phone) return;
+//     if (zoomEmbedRef.current) {
+//         zoomEmbedRef.current.dial(phone);
+//     } else {
+//         console.warn("Zoom Embed ref not found");
+//     }
+//   };
 
 
 //   const [endDate, setEndDate] = useState<string | null>(null);
@@ -1146,7 +1157,13 @@
 //                               </TableCell>
 
 //                               <TableCell>{item.email}</TableCell>
-//                               <TableCell>{item.phone}</TableCell>
+//                               <TableCell 
+//                                     className="cursor-pointer text-blue-600 hover:underline hover:bg-blue-50 transition-colors"
+//                                     onClick={() => handlePhoneClick(item.phone)}
+//                                     title="Click to call"
+//                               >
+//                                     {item.phone}
+//                               </TableCell>
 //                               <TableCell>{item.assigned_to}</TableCell>
 //                               <TableCell>
 //                                 <Select value={item.current_stage}
@@ -3833,7 +3850,7 @@
 //app/sales/page.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { supabase } from '@/utils/supabase/client';
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { Button } from "@/components/ui/button";
@@ -3853,6 +3870,7 @@ dayjs.extend(relativeTime);
 import isBetween from "dayjs/plugin/isBetween";
 import * as XLSX from "xlsx";
 import { useRouter } from "next/navigation";
+import { ZoomPhoneEmbedHandle } from "@/components/ZoomPhoneEmbed";
 
 
 dayjs.extend(isBetween);
@@ -3952,6 +3970,7 @@ const getStageColor = (stage: SalesStage) => {
 
 
 import SalesClosureDialog from "./_components/SalesClosureDialog";
+import { ZoomPhoneEmbed } from "@/components/ZoomPhoneEmbed";
 
 // ... [existing imports]
 
@@ -3994,6 +4013,17 @@ export default function SalesPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(30); // default
   const [totalRecords, setTotalRecords] = useState(0);
+
+  const zoomEmbedRef = useRef<ZoomPhoneEmbedHandle>(null);
+
+  const handlePhoneClick = (phone: string) => {
+    if (!phone) return;
+    if (zoomEmbedRef.current) {
+      zoomEmbedRef.current.dial(phone);
+    } else {
+      console.warn("Zoom Embed ref not found");
+    }
+  };
 
 
   const [endDate, setEndDate] = useState<string | null>(null);
@@ -5370,7 +5400,13 @@ export default function SalesPage() {
                           {lead.client_name}
                         </TableCell>
                         <TableCell className="w-32 truncate">{lead.email}</TableCell>
-                        <TableCell>{lead.phone}</TableCell>
+                        <TableCell
+                          className="cursor-pointer text-blue-600 hover:underline hover:bg-blue-50 transition-colors"
+                          onClick={() => handlePhoneClick(lead.phone)}
+                          title="Click to call"
+                        >
+                          {lead.phone}
+                        </TableCell>
 
                         <TableCell className="w-40">
                           {lead.created_at ? dayjs(lead.created_at).format("DD MMM YYYY") : "N/A"}
@@ -5759,6 +5795,7 @@ export default function SalesPage() {
           currentUser={userProfile}
           defaultMode={salesDialogMode}
         />
+        <ZoomPhoneEmbed ref={zoomEmbedRef} />
       </DashboardLayout>
 
 
