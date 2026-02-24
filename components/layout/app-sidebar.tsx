@@ -233,7 +233,6 @@ import {
   Building2,
   Wrench,
   FileText,
-  BarChart3,
 } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"

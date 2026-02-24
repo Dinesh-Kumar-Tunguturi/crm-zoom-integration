@@ -1121,7 +1121,7 @@ export default function SalesPage() {
           <div className="flex justify-between items-center">
             <h1 className="text-3xl font-bold">Sales CRM</h1>
 
-            <div className="flex justify-end items-center gap-2 relative z-50">
+            <div className="flex justify-end items-center gap-2">
 
 
               {userProfile?.roles === "Admin" && (
@@ -1136,7 +1136,7 @@ export default function SalesPage() {
               {(userProfile?.roles === "Super Admin" || userProfile?.roles === "Admin" || userProfile?.roles === "Sales Associate" || userProfile?.roles === "Sales") && (
                 <Button
                   onClick={() => setView(view === "leads" ? "activity" : "leads")}
-                  className="bg-orange-500 hover:bg-orange-600 text-white border-none min-w-[120px] h-10 px-6 cursor-pointer relative z-50 shadow-sm transition-all"
+                  className="bg-orange-500 hover:bg-orange-600 text-white border-none min-w-[120px] h-10 px-6 cursor-pointer shadow-sm transition-all"
                 >
                   {view === "leads" ? "Activity" : "Back to Leads"}
                 </Button>
@@ -1144,13 +1144,11 @@ export default function SalesPage() {
 
               <Button
                 onClick={() => window.open("/sales/followups", "_blank")}
-                className="relative z-50"
               >
                 Follow Ups
               </Button>
               <Button
                 onClick={() => window.open("/SalesAddonsInfo", "_blank")}
-                className="relative z-50"
               >
                 Portfolio/Resumes
               </Button>
@@ -1512,7 +1510,7 @@ export default function SalesPage() {
                   <CardTitle>Sales Pipeline</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="rounded-md border">
+                  <div className="rounded-md border overflow-x-auto">
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -1654,7 +1652,7 @@ export default function SalesPage() {
                                   handleUpdateAssignedTo(lead.id, selectedName, selectedEmail); // Pass both name and email
                                 }}
                               >
-                                <SelectTrigger className="w-52">
+                                <SelectTrigger className="w-52 cursor-pointer">
                                   <SelectValue placeholder="Assign to..." />
                                 </SelectTrigger>
 
@@ -1678,7 +1676,7 @@ export default function SalesPage() {
                                   value={lead.current_stage}
                                   onValueChange={(value: SalesStage) => handleStageUpdate(lead.id, value)}
                                 >
-                                  <SelectTrigger className="w-40">
+                                  <SelectTrigger className="w-40 cursor-pointer">
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent>
@@ -1712,6 +1710,7 @@ export default function SalesPage() {
                               <Button
                                 size="sm"
                                 variant="outline"
+                                className=""
                                 onClick={async () => {
                                   const callHistory = await fetchCallHistory(lead.id);
                                   setSelectedLead({ ...lead, call_history: callHistory });
@@ -1830,22 +1829,16 @@ export default function SalesPage() {
                                         </div>
                                       )}
                                       {call.recording_url && (
-                                        <div className="flex items-center gap-3 flex-1 lg:flex-none">
-                                          <audio
-                                            src={call.recording_url}
-                                            controls
-                                            className="h-8 w-full max-w-[240px]"
-                                          />
-                                          <Button
-                                            size="sm"
-                                            variant="outline"
-                                            className="h-8 px-2 flex gap-1 items-center text-xs"
-                                            onClick={() => window.open(call.recording_url, '_blank')}
-                                            title="Open recording in new tab"
+                                        <div className="flex items-center gap-3">
+                                          <a
+                                            href={call.recording_url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-blue-600 hover:text-blue-800 text-xs underline flex items-center gap-1 font-medium"
                                           >
                                             <ExternalLink className="h-3 w-3" />
-                                            <span>Open</span>
-                                          </Button>
+                                            Open Recording
+                                          </a>
                                         </div>
                                       )}
                                     </div>
