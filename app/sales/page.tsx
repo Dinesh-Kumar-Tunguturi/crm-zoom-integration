@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { EditIcon, Eye, Search } from "lucide-react";
+import { EditIcon, Eye, Search, ExternalLink } from "lucide-react";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
@@ -35,6 +35,8 @@ interface CallHistory {
   date: string;        // followup_date (YYYY-MM-DD)
   stage: SalesStage;
   notes: string;
+  duration?: number;
+  recording_url?: string;
 }
 
 type PRPaidFlag = "Paid" | "Not paid";
@@ -880,7 +882,7 @@ export default function SalesPage() {
 
     const { data, error } = await supabase
       .from("call_history")
-      .select("id, current_stage, followup_date, notes")
+      .select("id, current_stage, followup_date, notes, call_duration_seconds, recording_url")
       .eq("lead_id", lead.business_id)
       .order("id", { ascending: false });
 
@@ -894,6 +896,8 @@ export default function SalesPage() {
       date: r.followup_date,
       stage: r.current_stage,
       notes: r.notes,
+      duration: r.call_duration_seconds,
+      recording_url: r.recording_url,
     }));
     return callHistoryData;
   };
@@ -1110,7 +1114,7 @@ export default function SalesPage() {
 
 
   return (
-    <ProtectedRoute allowedRoles={["Sales", "Sales Associate", "Super Admin"]}>
+    <ProtectedRoute allowedRoles={["Sales", "Sales Associate", "Super Admin", "Admin"]}>
 
       <DashboardLayout>
         <div className="space-y-6">
@@ -1800,21 +1804,51 @@ export default function SalesPage() {
                                     </Button>
                                   </div>
                                 ) : (
-                                  <div className="flex justify-between">
-                                    <p className="text-sm text-gray-600">{call.notes}</p>
-                                    {isLatest && (
-                                      <Button
-                                        size="icon"
-                                        variant="ghost"
-                                        className="h-5 w-5 text-lg text-gray-500"
-                                        onClick={() => {
-                                          setEditingNote(true);
-                                          setEditedNote(call.notes);
-                                        }}
-                                      >
-                                        Edit
-                                      </Button>
-                                    )}
+                                  <div className="flex flex-col w-full">
+                                    <div className="flex justify-between items-start">
+                                      <p className="text-sm text-gray-600 flex-1">{call.notes}</p>
+                                      {isLatest && (
+                                        <Button
+                                          size="icon"
+                                          variant="ghost"
+                                          className="h-5 w-5 text-lg text-gray-500 ml-2"
+                                          onClick={() => {
+                                            setEditingNote(true);
+                                            setEditedNote(call.notes);
+                                          }}
+                                        >
+                                          <EditIcon className="h-3 w-3" />
+                                        </Button>
+                                      )}
+                                    </div>
+
+                                    <div className="flex flex-wrap justify-between items-center mt-3 pt-2 border-t border-gray-100 gap-4">
+                                      {call.duration !== undefined && call.duration > 0 && (
+                                        <div className="flex items-center gap-1 text-xs text-blue-600 font-medium">
+                                          <span>⏱️ Duration:</span>
+                                          <span>{Math.floor(call.duration / 60)}m {call.duration % 60}s</span>
+                                        </div>
+                                      )}
+                                      {call.recording_url && (
+                                        <div className="flex items-center gap-3 flex-1 lg:flex-none">
+                                          <audio
+                                            src={call.recording_url}
+                                            controls
+                                            className="h-8 w-full max-w-[240px]"
+                                          />
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            className="h-8 px-2 flex gap-1 items-center text-xs"
+                                            onClick={() => window.open(call.recording_url, '_blank')}
+                                            title="Open recording in new tab"
+                                          >
+                                            <ExternalLink className="h-3 w-3" />
+                                            <span>Open</span>
+                                          </Button>
+                                        </div>
+                                      )}
+                                    </div>
                                   </div>
                                 )}
                               </div>

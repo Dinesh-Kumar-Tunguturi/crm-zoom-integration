@@ -167,6 +167,7 @@ export default function LeadProfilePage() {
     "Resume Head",
     "Technical Head",
     "Sales Associate",
+    "Admin"
   ];
 
   const norm = (s?: string | null) => (s ?? "").trim().toLowerCase();
@@ -1143,6 +1144,7 @@ export default function LeadProfilePage() {
                         <th className="p-2 border">Phone</th>
                         <th className="p-2 border">Status</th>
                         <th className="p-2 border">Duration</th>
+                        <th className="p-2 border">Recording</th>
                         <th className="p-2 border">Notes</th>
                       </tr>
                     </thead>
@@ -1181,6 +1183,22 @@ export default function LeadProfilePage() {
                               </span>
                             </td>
                             <td className="p-2 border font-mono text-center">{durationStr}</td>
+                            <td className="p-2 border text-center">
+                              {call.recording_url ? (
+                                <div className="flex items-center justify-center gap-1">
+                                  <audio src={call.recording_url} className="h-6 w-32" controls />
+                                  <a
+                                    href={call.recording_url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="text-blue-600 hover:text-blue-800"
+                                    title="Open recording"
+                                  >
+                                    🔗
+                                  </a>
+                                </div>
+                              ) : "-"}
+                            </td>
                             <td className="p-2 border text-gray-600 max-w-[200px] break-words">{call.notes || "-"}</td>
                           </tr>
                         );
